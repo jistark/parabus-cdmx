@@ -123,7 +123,7 @@ struct SettingsView: View {
             ForEach(lines.prefix(3), id: \.self) { lineNumber in
                 ZStack {
                     Circle()
-                        .fill(LineColor.color(for: lineNumber).gradient)
+                        .fill(LineColors.color(for: lineNumber).gradient)
                         .frame(width: 24, height: 24)
 
                     Text(lineNumber)
@@ -165,7 +165,7 @@ struct FavoriteLinesView: View {
                             // Line badge
                             ZStack {
                                 Circle()
-                                    .fill(LineColor.color(for: lineNumber).gradient)
+                                    .fill(LineColors.color(for: lineNumber).gradient)
                                     .frame(width: 40, height: 40)
 
                                 Text(lineNumber)

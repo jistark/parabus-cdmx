@@ -91,11 +91,11 @@ struct LineCarouselCard: View {
     }
 
     private var lineColor: Color {
-        LineColor.color(for: line.lineNumber)
+        LineColors.color(for: line.lineNumber)
     }
 
     private var statusColor: Color {
-        StatusColor.color(for: line.status)
+        StatusColors.color(for: line.status)
     }
 
     private var statusIcon: String {

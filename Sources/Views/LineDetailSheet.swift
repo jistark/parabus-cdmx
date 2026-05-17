@@ -9,14 +9,14 @@ struct LineDetailSheet: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     // Dynamic Type support - unified badge size
-    @ScaledMetric(relativeTo: .body) private var badgeSize: CGFloat = BadgeSize.regular.dimension
+    @ScaledMetric(relativeTo: .body) private var badgeSize: CGFloat = Layout.badgeRegular
 
     private var statusColor: Color {
-        StatusColor.color(for: line.status)
+        StatusColors.color(for: line.status)
     }
 
     private var lineColor: Color {
-        LineColor.color(for: line.lineNumber)
+        LineColors.color(for: line.lineNumber)
     }
 
     var body: some View {
@@ -97,17 +97,17 @@ struct LineDetailSheet: View {
 
     private var statusPill: some View {
         HStack(spacing: 6) {
-            Image(systemName: StatusColor.icon(for: line.status))
+            Image(systemName: StatusColors.icon(for: line.status))
                 .font(.caption.weight(.semibold))
                 .symbolEffect(.pulse, options: .repeating, isActive: shouldPulse && !reduceMotion)
 
-            Text(StatusColor.displayText(for: line.status))
+            Text(StatusColors.displayText(for: line.status))
                 .font(.subheadline.weight(.medium))
         }
         .foregroundStyle(statusColor)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(statusColor.opacity(MaterialOpacity.light), in: Capsule())
+        .background(statusColor.opacity(SurfaceOpacity.tintLight), in: Capsule())
     }
 
     @ViewBuilder
@@ -116,14 +116,14 @@ struct LineDetailSheet: View {
             Color(white: colorScheme == .dark ? 0.15 : 0.95)
         } else if line.status.isNormal {
             LinearGradient(
-                colors: [StatusColor.good.opacity(MaterialOpacity.light), Color.clear],
+                colors: [StatusColors.good.opacity(SurfaceOpacity.tintLight), Color.clear],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .background(.ultraThinMaterial)
         } else {
             LinearGradient(
-                colors: [statusColor.opacity(MaterialOpacity.light), Color.clear],
+                colors: [statusColor.opacity(SurfaceOpacity.tintLight), Color.clear],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -138,7 +138,7 @@ struct LineDetailSheet: View {
             // Section header
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(StatusColor.warning)
+                    .foregroundStyle(StatusColors.warning)
                 Text(line.incidentCount == 1 ? "Incidente" : "\(line.incidentCount) incidentes")
                     .font(.headline)
             }
@@ -182,7 +182,7 @@ struct LineDetailSheet: View {
                 Divider().padding(.leading, 40)
 
                 infoRow(
-                    icon: StatusColor.icon(for: line.status),
+                    icon: StatusColors.icon(for: line.status),
                     iconColor: statusColor,
                     label: "Estado",
                     value: line.status.rawValue
@@ -193,7 +193,7 @@ struct LineDetailSheet: View {
 
                     infoRow(
                         icon: "mappin.and.ellipse",
-                        iconColor: StatusColor.warning,
+                        iconColor: StatusColors.warning,
                         label: "Afectadas",
                         value: "\(line.affectedStations.count) estacion\(line.affectedStations.count == 1 ? "" : "es")"
                     )
@@ -202,7 +202,7 @@ struct LineDetailSheet: View {
             .background(
                 reduceTransparency
                     ? AnyShapeStyle(Color(white: colorScheme == .dark ? 0.15 : 0.92))
-                    : AnyShapeStyle(Color.secondary.opacity(MaterialOpacity.subtle)),
+                    : AnyShapeStyle(Color.secondary.opacity(SurfaceOpacity.tintSubtle)),
                 in: RoundedRectangle(cornerRadius: 12)
             )
         }

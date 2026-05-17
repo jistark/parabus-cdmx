@@ -27,7 +27,7 @@ struct CompactStationTimeline: View {
         .background(
             reduceTransparency
                 ? AnyShapeStyle(Color(white: colorScheme == .dark ? 0.15 : 0.92))
-                : AnyShapeStyle(Color.secondary.opacity(MaterialOpacity.subtle)),
+                : AnyShapeStyle(Color.secondary.opacity(SurfaceOpacity.tintSubtle)),
             in: RoundedRectangle(cornerRadius: 12)
         )
     }
@@ -37,12 +37,12 @@ struct CompactStationTimeline: View {
             // Status indicator
             ZStack {
                 Circle()
-                    .fill(StatusColor.color(for: incident.status).opacity(MaterialOpacity.medium))
+                    .fill(StatusColors.color(for: incident.status).opacity(SurfaceOpacity.tintMedium))
                     .frame(width: statusBadgeSize, height: statusBadgeSize)
 
-                Image(systemName: StatusColor.icon(for: incident.status))
+                Image(systemName: StatusColors.icon(for: incident.status))
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(StatusColor.color(for: incident.status))
+                    .foregroundStyle(StatusColors.color(for: incident.status))
             }
 
             // Content
@@ -64,12 +64,12 @@ struct CompactStationTimeline: View {
             Spacer()
 
             // Status pill
-            Text(StatusColor.shortText(for: incident.status))
+            Text(StatusColors.shortText(for: incident.status))
                 .font(.caption2.weight(.medium))
-                .foregroundStyle(StatusColor.color(for: incident.status))
+                .foregroundStyle(StatusColors.color(for: incident.status))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(StatusColor.color(for: incident.status).opacity(MaterialOpacity.light), in: Capsule())
+                .background(StatusColors.color(for: incident.status).opacity(SurfaceOpacity.tintLight), in: Capsule())
         }
         .padding(.vertical, 8)
         .overlay(alignment: .bottom) {
@@ -100,7 +100,7 @@ struct CompactStationTimeline: View {
             Incident(status: .delayed, affectedStations: ["Buenavista"], info: "Alta afluencia"),
             Incident(status: .suspended, affectedStations: ["La Raza", "Autobuses del Norte"], info: "Cierre temporal")
         ],
-        lineColor: LineColor.line1
+        lineColor: LineColors.line1
     )
     .padding()
 }
@@ -111,7 +111,7 @@ struct CompactStationTimeline: View {
             Incident(status: .intervention, affectedStations: ["Centro Medico"], info: "Mantenimiento"),
             Incident(status: .delayed, affectedStations: ["Etiopia"], info: nil)
         ],
-        lineColor: LineColor.line6
+        lineColor: LineColors.line6
     )
     .padding()
     .environment(\.sizeCategory, .accessibilityExtraExtraLarge)
@@ -123,7 +123,7 @@ struct CompactStationTimeline: View {
             Incident(status: .intervention, affectedStations: ["Centro Medico"], info: "Mantenimiento"),
             Incident(status: .delayed, affectedStations: ["Etiopia"], info: nil)
         ],
-        lineColor: LineColor.line6
+        lineColor: LineColors.line6
     )
     .padding()
     .preferredColorScheme(.dark)

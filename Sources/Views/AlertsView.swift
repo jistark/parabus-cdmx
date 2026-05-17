@@ -441,7 +441,7 @@ struct TimelineEntryCard: View {
         } else {
             ZStack {
                 Circle()
-                    .fill(LineColor.color(for: line.lineNumber).gradient)
+                    .fill(LineColors.color(for: line.lineNumber).gradient)
 
                 Text(line.lineNumber)
                     .font(.caption.weight(.bold))

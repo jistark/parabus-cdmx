@@ -67,17 +67,7 @@ struct LineBadge: View {
     }
 
     private var lineColor: Color {
-        // Fallback colors for non-Metrobus or unknown lines
-        switch number {
-        case "1": return Color(red: 0.83, green: 0.18, blue: 0.18)
-        case "2": return Color(red: 0.48, green: 0.18, blue: 0.56)
-        case "3": return Color(red: 0.13, green: 0.55, blue: 0.13)
-        case "4": return Color(red: 0.96, green: 0.65, blue: 0.14)
-        case "5": return Color(red: 0.00, green: 0.48, blue: 0.65)
-        case "6": return Color(red: 0.80, green: 0.00, blue: 0.47)
-        case "7": return Color(red: 0.00, green: 0.60, blue: 0.40)
-        default: return Color.gray
-        }
+        LineColors.color(for: number)
     }
 }
 
