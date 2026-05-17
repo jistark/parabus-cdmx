@@ -6,18 +6,21 @@ import Foundation
 actor RealtimeService {
     static let shared = RealtimeService()
 
-    private let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        return d
-    }()
+    private let decoder = JSONDecoder()
 
-    private lazy var session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = APIConfiguration.timeoutInterval
-        config.timeoutIntervalForResource = APIConfiguration.timeoutInterval * 2
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
-        return URLSession(configuration: config)
-    }()
+    private let session: URLSession
+
+    /// Production initializer uses a sensible default URLSession. Tests pass
+    /// an ephemeral session with a MockURLProtocol in its protocolClasses.
+    init(session: URLSession? = nil) {
+        self.session = session ?? {
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = APIConfiguration.timeoutInterval
+            config.timeoutIntervalForResource = APIConfiguration.timeoutInterval * 2
+            config.requestCachePolicy = .reloadIgnoringLocalCacheData
+            return URLSession(configuration: config)
+        }()
+    }
 
     /// In-memory memoization of /static/routes. The worker regenerates the
     /// underlying GTFS daily at midnight; cache up to 6h on the client to
