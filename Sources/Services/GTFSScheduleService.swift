@@ -199,19 +199,15 @@ actor GTFSScheduleService {
     }
 
     private func findGTFSFile(named filename: String) -> URL? {
-        // Check in Sources/GTFS folder (development)
-        let fileManager = FileManager.default
-        let possiblePaths = [
-            "/Users/ji/Sites/parabus/Sources/GTFS/\(filename)",
-            Bundle.main.bundlePath + "/GTFS/\(filename)"
-        ]
-
-        for path in possiblePaths {
-            if fileManager.fileExists(atPath: path) {
-                return URL(fileURLWithPath: path)
-            }
-        }
-        return nil
+        // Bundle.main first (covers app + tests). Previously had a hardcoded
+        // "/Users/ji/Sites/parabus/Sources/GTFS/\(filename)" dev-machine path
+        // baked in — shipped in release binaries (privacy leak of username
+        // via strings dump, and brittle). Caller already tries Bundle.module
+        // before us, so this is the on-disk fallback only.
+        let candidate = Bundle.main.bundlePath + "/GTFS/\(filename)"
+        return FileManager.default.fileExists(atPath: candidate)
+            ? URL(fileURLWithPath: candidate)
+            : nil
     }
 }
 
