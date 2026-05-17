@@ -127,8 +127,9 @@ struct SettingsView: View {
                         .frame(width: 24, height: 24)
 
                     Text(lineNumber)
-                        .font(.caption2.weight(.bold))
+                        .font(BrandTypography.numeralSmall)
                         .foregroundStyle(.white)
+                        .monospacedDigit()
                 }
             }
 
@@ -136,6 +137,7 @@ struct SettingsView: View {
                 Text("+\(lines.count - 3)")
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
+                    .monospacedDigit()
                     .padding(.leading, 12)
             }
         }
@@ -162,20 +164,12 @@ struct FavoriteLinesView: View {
                         toggleLine(lineNumber)
                     } label: {
                         HStack(spacing: Spacing.sm) {
-                            // Line badge
-                            ZStack {
-                                Circle()
-                                    .fill(LineColors.color(for: lineNumber).gradient)
-                                    .frame(width: 40, height: 40)
-
-                                Text(lineNumber)
-                                    .font(.headline.weight(.bold))
-                                    .foregroundStyle(.white)
-                            }
+                            LineBadge(number: lineNumber, transportType: .metrobus, size: .regular)
+                                .frame(width: 40, height: 40)
 
                             // Line name
                             VStack(alignment: .leading) {
-                                Text("Linea \(lineNumber)")
+                                Text("Línea \(lineNumber)")
                                     .font(.body)
                                     .foregroundStyle(.primary)
 
@@ -200,6 +194,8 @@ struct FavoriteLinesView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Línea \(lineNumber), \(lineDescription(for: lineNumber))")
+                    .accessibilityValue(selectedSet.contains(lineNumber) ? "Seleccionada" : "No seleccionada")
                 }
             } header: {
                 Text("Selecciona tus lineas")

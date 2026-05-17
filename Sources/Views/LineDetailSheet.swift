@@ -4,9 +4,7 @@ import SwiftUI
 struct LineDetailSheet: View {
     let line: LineStatus
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     // Dynamic Type support - unified badge size
     @ScaledMetric(relativeTo: .body) private var badgeSize: CGFloat = Layout.badgeRegular
@@ -54,45 +52,29 @@ struct LineDetailSheet: View {
     // MARK: - Compact Header
 
     private var compactHeader: some View {
-        HStack(spacing: 16) {
-            // Line badge - unified 48pt size
-            lineBadgeView
+        HStack(spacing: Layout.cardInset) {
+            // Line badge — canonical component handles fallback + shadow + Tipo Movin
+            LineBadge(number: line.lineNumber, transportType: line.transportType, size: .large)
                 .frame(width: badgeSize, height: badgeSize)
 
             // Line info
             VStack(alignment: .leading, spacing: 4) {
                 Text(line.lineName)
-                    .font(.title2.weight(.semibold))
+                    .font(BrandTypography.displayMedium)
 
-                // Status pill
                 statusPill
             }
 
             Spacer()
         }
-        .padding(16)
-        .background(headerBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(Layout.cardInset)
+        .surface(
+            line.status.isNormal ? .base : .elevated,
+            cornerRadius: Layout.cornerRadiusLarge - 4,
+            tint: line.status.isNormal ? nil : statusColor
+        )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(line.lineName), \(line.status.rawValue)")
-    }
-
-    @ViewBuilder
-    private var lineBadgeView: some View {
-        if let image = TransitImageLoader.loadOfficialImage(for: line) {
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-        } else {
-            ZStack {
-                Circle()
-                    .fill(lineColor.gradient)
-
-                Text(line.lineNumber)
-                    .font(.title.weight(.bold))
-                    .foregroundStyle(.white)
-            }
-        }
+        .accessibilityLabel("\(line.lineName), \(line.status.accessibilityLabel)")
     }
 
     private var statusPill: some View {
@@ -102,45 +84,24 @@ struct LineDetailSheet: View {
                 .symbolEffect(.pulse, options: .repeating, isActive: shouldPulse && !reduceMotion)
 
             Text(StatusColors.displayText(for: line.status))
-                .font(.subheadline.weight(.medium))
+                .font(BrandTypography.statusLabel)
         }
         .foregroundStyle(statusColor)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.xs - 2)
         .background(statusColor.opacity(SurfaceOpacity.tintLight), in: Capsule())
-    }
-
-    @ViewBuilder
-    private var headerBackground: some View {
-        if reduceTransparency {
-            Color(white: colorScheme == .dark ? 0.15 : 0.95)
-        } else if line.status.isNormal {
-            LinearGradient(
-                colors: [StatusColors.good.opacity(SurfaceOpacity.tintLight), Color.clear],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .background(.ultraThinMaterial)
-        } else {
-            LinearGradient(
-                colors: [statusColor.opacity(SurfaceOpacity.tintLight), Color.clear],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .background(.ultraThinMaterial)
-        }
     }
 
     // MARK: - Incidents Section
 
     private var incidentsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
             // Section header
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(StatusColors.warning)
                 Text(line.incidentCount == 1 ? "Incidente" : "\(line.incidentCount) incidentes")
-                    .font(.headline)
+                    .font(BrandTypography.lineLabel)
             }
 
             // Compact timeline - incidents sorted by severity (most severe first)
@@ -154,13 +115,13 @@ struct LineDetailSheet: View {
     // MARK: - Service Info Section
 
     private var serviceInfoSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
             // Section header
             HStack {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyle(.secondary)
-                Text("Informacion")
-                    .font(.headline)
+                Text("Información")
+                    .font(BrandTypography.lineLabel)
             }
 
             // Info rows
@@ -195,16 +156,11 @@ struct LineDetailSheet: View {
                         icon: "mappin.and.ellipse",
                         iconColor: StatusColors.warning,
                         label: "Afectadas",
-                        value: "\(line.affectedStations.count) estacion\(line.affectedStations.count == 1 ? "" : "es")"
+                        value: "\(line.affectedStations.count) estación\(line.affectedStations.count == 1 ? "" : "es")"
                     )
                 }
             }
-            .background(
-                reduceTransparency
-                    ? AnyShapeStyle(Color(white: colorScheme == .dark ? 0.15 : 0.92))
-                    : AnyShapeStyle(Color.secondary.opacity(SurfaceOpacity.tintSubtle)),
-                in: RoundedRectangle(cornerRadius: 12)
-            )
+            .surface(.base, cornerRadius: Layout.cornerRadiusSmall + 4)
         }
     }
 
