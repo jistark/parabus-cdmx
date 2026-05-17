@@ -92,16 +92,66 @@ export async function refreshStaticGtfs(env: Env): Promise<GtfsStaticMeta | null
     expirationTtl: KV_TTL_SECONDS,
   });
 
+  // Update the in-isolate memo so the caller (typically admin endpoint or
+  // cron) immediately sees the new data without waiting for the next KV read.
+  memoVersion = versionTag;
+  memoMeta = meta;
+  memoLineRouteIndex = null;
+
   return meta;
+}
+
+// ============================================================================
+// Module-scoped memoization
+// ============================================================================
+//
+// loadStaticMeta gets called on every /vehicles?line= request via
+// loadLineRouteIndex. The underlying KV read + JSON.parse on a ~100KB blob
+// adds 5-50ms to the hot path of an endpoint we already aggressively cache
+// in Cache API. Memoize both the parsed meta and the derived line→routeIds
+// Map per Worker isolate.
+//
+// Cache invalidation is keyed by the KV version tag (refreshed daily by the
+// 0 6 * * * cron). If the version tag changes, the memo entries are dropped
+// and the next call re-reads KV. Worst case: an isolate keeps an entry that
+// matches the *current* version tag indefinitely — fine, the data is
+// immutable within a day. When the cron writes a new version tag, the next
+// isolate-level read picks it up automatically.
+
+let memoVersion: string | null = null;
+let memoMeta: GtfsStaticMeta | null = null;
+let memoLineRouteIndex: Map<string, Set<string>> | null = null;
+
+async function getCurrentVersion(env: Env): Promise<string | null> {
+  return env.METROBUS_CACHE.get(KV_VERSION_KEY);
+}
+
+function clearMemo() {
+  memoVersion = null;
+  memoMeta = null;
+  memoLineRouteIndex = null;
 }
 
 /** Read the cached meta. Returns null if KV doesn't have it yet. */
 export async function loadStaticMeta(env: Env): Promise<GtfsStaticMeta | null> {
+  const version = await getCurrentVersion(env);
+  if (version && version === memoVersion && memoMeta) {
+    return memoMeta;
+  }
+
   const raw = await env.METROBUS_CACHE.get(KV_META_KEY);
-  if (!raw) return null;
+  if (!raw) {
+    clearMemo();
+    return null;
+  }
   try {
-    return JSON.parse(raw) as GtfsStaticMeta;
+    const parsed = JSON.parse(raw) as GtfsStaticMeta;
+    memoVersion = version;
+    memoMeta = parsed;
+    memoLineRouteIndex = null; // rebuild lazily in loadLineRouteIndex
+    return parsed;
   } catch {
+    clearMemo();
     return null;
   }
 }
@@ -109,14 +159,23 @@ export async function loadStaticMeta(env: Env): Promise<GtfsStaticMeta | null> {
 /**
  * Convenience: line → Set<routeId>. Used by realtime-handlers to filter
  * vehicle positions by line. Null when static GTFS hasn't been loaded yet.
+ *
+ * The derived Map is built once per memo-version cycle (every ~24h), then
+ * reused across requests until the next cron refresh swaps versions.
  */
 export async function loadLineRouteIndex(env: Env): Promise<Map<string, Set<string>> | null> {
+  if (memoLineRouteIndex && memoVersion) {
+    const current = await getCurrentVersion(env);
+    if (current === memoVersion) return memoLineRouteIndex;
+  }
+
   const meta = await loadStaticMeta(env);
   if (!meta) return null;
   const map = new Map<string, Set<string>>();
   for (const [line, routeIds] of Object.entries(meta.lineRoutes)) {
     map.set(line, new Set(routeIds));
   }
+  memoLineRouteIndex = map;
   return map;
 }
 
