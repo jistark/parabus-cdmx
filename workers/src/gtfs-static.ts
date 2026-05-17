@@ -216,8 +216,9 @@ export async function handleStaticStops(env: Env): Promise<Response> {
 // ============================================================================
 // CSV parsing — minimal, RFC 4180-ish for GTFS files
 // ============================================================================
+// Exported for unit tests; not part of the public module surface.
 
-function parseCsv(text: string): { header: string[]; rows: string[][] } {
+export function parseCsv(text: string): { header: string[]; rows: string[][] } {
   const rows: string[][] = [];
   let i = 0;
   let field = '';
@@ -332,7 +333,7 @@ function parseStops(csv: string): Record<string, StopMeta> {
  * Supports compression methods 0 (stored) and 8 (deflate). Other methods
  * throw — GTFS zips in practice only use these two.
  */
-async function extractZipFiles(
+export async function extractZipFiles(
   zip: Uint8Array,
   wantedNames: string[],
 ): Promise<Map<string, string>> {
