@@ -292,11 +292,16 @@ actor APITransitDataProvider: TransitDataProviding {
         )
     }
 
-    /// Parse ISO 8601 date string. Tries fractional-seconds variant first
-    /// (worker emits those), falls back to the plain ISO formatter.
+    /// Parse ISO 8601 date string. Tries fractional-seconds first (worker
+    /// emits those), falls back to plain ISO. Allocates a single formatter
+    /// per call (down from two) — ISO8601DateFormatter is not Sendable under
+    /// Swift 6 so we can't hoist a shared instance the way we do for JSON.
     private func parseDate(_ string: String) -> Date? {
-        SharedCoders.iso8601Fractional.date(from: string)
-            ?? SharedCoders.iso8601Plain.date(from: string)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = formatter.date(from: string) { return d }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: string)
     }
 }
 
