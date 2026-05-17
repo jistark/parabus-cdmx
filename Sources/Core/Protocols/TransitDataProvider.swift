@@ -5,7 +5,6 @@ import Foundation
 protocol TransitDataProviding: Sendable {
     func fetchStatus() async throws -> ScrapingResult
     func fetchStatus(forceRefresh: Bool) async throws -> ScrapingResult
-    func fetchStatus(forLine lineNumber: String) async throws -> LineStatus?
     func fetchMaintenanceClosures() async throws -> MaintenanceResult
 }
 
@@ -121,11 +120,6 @@ actor MockTransitDataProvider: TransitDataProviding {
             scrapedAt: Date(),
             source: URL(string: "https://mock.test")!
         )
-    }
-
-    func fetchStatus(forLine lineNumber: String) async throws -> LineStatus? {
-        let result = try await fetchStatus()
-        return result.lines.first { $0.lineNumber == lineNumber }
     }
 
     func fetchMaintenanceClosures() async throws -> MaintenanceResult {

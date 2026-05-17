@@ -99,23 +99,6 @@ final class MetrobusViewModel {
         return filteredScheduled + interventionClosures
     }
 
-    /// Helper: fuzzy match station names (handles accents, case, partial matches)
-    private func stationNamesMatch(_ name1: String, _ name2: String) -> Bool {
-        let normalized1 = normalizeStationName(name1)
-        let normalized2 = normalizeStationName(name2)
-
-        // Exact match after normalization
-        if normalized1 == normalized2 {
-            return true
-        }
-
-        // One contains the other (for partial names like "Buenavista" vs "Est. Buenavista")
-        if normalized1.contains(normalized2) || normalized2.contains(normalized1) {
-            return true
-        }
-
-        return false
-    }
 
     /// Normalize station name for comparison
     private func normalizeStationName(_ name: String) -> String {
@@ -301,16 +284,6 @@ final class MetrobusViewModel {
             group.addTask { await self.refreshIncidents(forceRefresh: true) }
             group.addTask { await self.refreshMaintenance() }
         }
-    }
-
-    /// Solo refresca incidentes en tiempo real
-    func refreshIncidentsOnly() async {
-        await refreshIncidents()
-    }
-
-    /// Solo refresca mantenimientos programados
-    func refreshMaintenanceOnly() async {
-        await refreshMaintenance()
     }
 
     func clearError() {
