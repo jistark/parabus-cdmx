@@ -2,7 +2,68 @@
 
 **Source:** REVIEW.md (root) + Phase 1+2 cleanup commits.
 **Audience:** parallel session working on visual design / interaction / accessibility.
-**Last updated:** 2026-05-17 after backend Phase 3 + HIGH-17 data alignment.
+**Last updated:** 2026-05-17 after UX Phase B + xcodebuild unblock.
+
+---
+
+## ⚡ Update 2026-05-17 — UX Phase B complete (commits ba97a39 → ba0c7cf)
+
+5 commits on top of your HIGH-17 alignment. xcodebuild green for app+widget+LiveActivity. swift test passes 30/30.
+
+**ba97a39  fix(xcodeproj): add Shared/ as synchronized root group for both targets**
+
+The widget xcodebuild blocker I flagged turned out to be a plain xcodeproj misconfiguration — `Shared/` wasn't a `PBXFileSystemSynchronizedRootGroup` with either target as a member, so `WidgetData`/`WidgetLineColor`/`MetrobusDisruptionAttributes`/`ParabusConstants` were invisible to the widget target even though Package.swift bundled them for `swift build`. Added a new sync group `F10000000000000000000200 /* Shared */` with both targets as members. Pattern mirrors the existing Sources and widget-pb groups exactly.
+
+If you add files to `Shared/` going forward, they auto-bundle into both the app and the widget — no manual Xcode work required.
+
+**5906d71  feat(theme): expand StatusColors — resolve protest/suspended and limited/intervention color collisions**
+
+Took up your handoff polish targets. Two new semantic tokens land in `StatusColors`:
+- `attention` (`.yellow`) — real-time partial; lighter than `warning` so the user reads it as "happening now" vs "scheduled"
+- `urgent` (`.pink`) — protest/manifestación; hue-shifted from `.red` so users with red-vision deficiencies can still distinguish it from `suspended`
+- `delay` promoted to a first-class token (WCAG-amber, was hard-coded in `StatusBadge:49`)
+
+Severity gradient now reads: regular(green) → limited(yellow) → intervention(orange) → delayed(amber) → suspended(red) → protest(pink). Every step changes hue, not just intensity — so the encoding survives color-vision deficiencies, with icons (`StatusColors.icon(for:)`) reinforcing the signal.
+
+Did **not** reuse Pantone line colors for status. The Pantone palette stays in brand identity (line badges, corporate header); system semantic colors stay in status. Mixing the two would conflate "this is L4" with "this is a warning".
+
+**bd371fc + a15994c  B1 component polish + B2 screen polish**
+
+Six components (LineBadge, StatusBadge, IncidentAlertBanner, LinesCarousel, MaintenanceSection, CompactStationTimeline) and four screens (AlertsView, CommuteTabView, LineDetailSheet, SettingsView) all pulled through the Foundation API:
+- Section headers → `BrandTypography.lineLabel`
+- Line numerals → `BrandTypography.numeralSmall/Regular/Large` with `.monospacedDigit()`
+- Card backgrounds → `.surface(.base)` / `.surface(.elevated, tint:)` (one switchpoint between iOS 26 `.glassEffect` and `.ultraThinMaterial` fallback; honors `accessibilityReduceTransparency` for free)
+- Repeated `Color.secondary.opacity(0.1)` in CommuteTabView (3 dupes) → `.surface(.base)`
+- LineDetailSheet hero header → `BrandTypography.displayMedium` for line name + `.surface(.elevated, tint: statusColor)` for the unified iOS 26 path (lost the LinearGradient direction in exchange for real glass refraction — acceptable for a hero)
+- TimelineEntryCard, FavoriteLinesView, affectedLinesSection inline badge ZStacks → `LineBadge` component (eliminates 3 more sites of badge-construction duplication)
+- VoiceOver labels combine line name + `ServiceStatus.accessibilityLabel` (descriptive Spanish) instead of raw enum text
+
+Net negative LoC in B2 (114 + / 211 −) because `.surface(_:)` collapses 5-line material/opacity/reduceTransparency switches into single calls.
+
+**ba0c7cf  feat(ux): B3 widget + Live Activity polish — Tipo Movin, Pantone, severity fix**
+
+- `WidgetServiceStatus.color` now mirrors the expanded `StatusColors` palette exactly (.pink for protest, .yellow for limited, etc.) — replaces the stubs you left
+- `WidgetLineColor` switched to Display-P3 Pantone matching `LineColors` in DesignTokens
+- `LineStatusBadge.lineColor` had a **third copy** of the line hex dict — eliminated; now uses `WidgetLineColor.color(for:)`
+- Widget previews exercise `.protest` and `.limited` per your request
+- Tipo Movin Bold applied via `Font.custom(_:size:relativeTo:)` for numerals + headers in widgets and LiveActivity. Widget target can't import `BrandTypography` (lives in Sources/Theme/ which the widget doesn't include), so this uses Apple's Font.custom API directly — same UIFontMetrics scaling under the hood, no Theme dependency.
+- **BUG FIX in LiveActivityTypes.swift**: `statusColor` and `statusIcon` only handled severity 2/3/4. After your HIGH-17 work expanded the scale to 0-6, `LiveActivityService:202` already passes the full range (`line.status.severity`), so a protest disruption (severity 6) was rendering with a green checkmark on the lock screen / Dynamic Island. Now all 7 severities map correctly.
+- `shortStatusText` / `StatusPill.statusText` in MetrobusLiveActivity also expanded to all 7 severities.
+
+**What I did NOT touch:**
+- `Sources/Services/`, `Sources/ViewModels/`, `Sources/Core/`, `Sources/Models/` — untouched (your domain)
+- `Sources/Views/RealtimeMapView.swift` — only the token rename from A2, no visual polish per coordination rules
+- CRIT-04 (4× MetrobusViewModel instances) — left for you to hoist when ready; my Phase B work doesn't conflict
+
+**Pending polish (low priority — defer or skip):**
+- Remove `.environment(\.sizeCategory, .accessibilityExtraExtraLarge)` from #Preview blocks. Today these provide useful visual confirmation in Xcode; removing them only buys you "I'm not hiding layout bugs in previews" — currently no known bugs hidden, so worth keeping as-is until a real issue surfaces.
+- Stress-test Dynamic Type / Reduce Transparency / Reduce Motion in the simulator's Accessibility Inspector. All paths support them by construction (`.surface(_:)` honors reduceTransparency, BrandTypography uses UIFontMetrics), but I haven't visually verified every combination.
+- Open questions from the original handoff (CRIT-04, HIGH-16) still apply — nothing in Phase B changed the answers.
+
+**Files I touched in this pass** (so you know what to watch for in merges):
+- New: `Sources/Theme/BrandTypography.swift`, `ref/CDMX_PALETTE.md`, `ref/manual-mi-mb.txt`, `Sources/Resources/Fonts/*.otf`, `widget-pb/Fonts/*.otf`
+- Modified: every `Sources/Views/*.swift` except `CommuteSetupView.swift` (which got an A2 rename only), `Sources/Theme/DesignTokens.swift`, `Package.swift`, `Parabus-Info.plist`, `widget-pb/Info.plist`, `widget-pb/*.swift`, `Shared/SharedTypes.swift`, `Shared/LiveActivityTypes.swift`, `Parabus.xcodeproj/project.pbxproj`
+- Deleted: `Sources/Theme/TransitColors.swift`
 
 ---
 
