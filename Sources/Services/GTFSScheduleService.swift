@@ -2,7 +2,13 @@ import Foundation
 
 // MARK: - GTFS Schedule Service
 
-/// Provides schedule-based ETA calculations using GTFS static data
+/// Provides schedule-based ETA calculations using GTFS static data.
+///
+/// The stop_times.txt parse is heavy (the file ships at ~56MB → roughly
+/// 150k+ ScheduledArrival rows). To keep the actor's executor free for
+/// short reads while the first call loads, the parse runs on a detached
+/// Task; the actor only blocks on the result assignment. Concurrent
+/// callers coalesce via a shared loading Task so we never double-parse.
 actor GTFSScheduleService {
     static let shared = GTFSScheduleService()
 
@@ -10,6 +16,9 @@ actor GTFSScheduleService {
 
     private var stopTimes: [String: [ScheduledArrival]] = [:]
     private var isLoaded = false
+    /// Tracks an in-flight load so concurrent callers wait on the same parse
+    /// instead of each kicking off their own.
+    private var loadingTask: Task<Void, Never>?
 
     // MARK: - Public API
 
@@ -104,89 +113,103 @@ actor GTFSScheduleService {
     // MARK: - Private Methods
 
     private func loadIfNeeded() async {
-        guard !isLoaded else { return }
-        await loadScheduleData()
-        isLoaded = true
+        if isLoaded { return }
+        // Coalesce concurrent callers onto a single in-flight parse.
+        if let existing = loadingTask {
+            await existing.value
+            return
+        }
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.performLoad()
+        }
+        loadingTask = task
+        await task.value
+        loadingTask = nil
     }
 
-    private func loadScheduleData() async {
-        // Load stop_times.txt from bundle resources
-        // Bundle.module is only available when built via SPM, not Xcode directly
+    /// Performs the actual load: locates the file, then hands the CPU-heavy
+    /// parse to a detached Task so the actor's executor is free during the
+    /// hundreds of ms it takes. Other actor calls (etaString, travelTime)
+    /// queue on loadingTask without doing redundant parse work.
+    private func performLoad() async {
+        guard let url = Self.findStopTimesURL() else {
+            print("GTFSSchedule: stop_times.txt not found")
+            isLoaded = true // don't keep retrying a missing file
+            return
+        }
+
+        let parsed: [String: [ScheduledArrival]] = await Task.detached(priority: .utility) {
+            do {
+                let content = try String(contentsOf: url, encoding: .utf8)
+                return Self.parseStopTimes(content)
+            } catch {
+                print("GTFSSchedule: Failed to load: \(error)")
+                return [:]
+            }
+        }.value
+
+        stopTimes = parsed
+        isLoaded = true
+        print("GTFSSchedule: Loaded \(parsed.count) stations with schedules")
+    }
+
+    private static func findStopTimesURL() -> URL? {
         #if SWIFT_PACKAGE
         let moduleURL = Bundle.module.url(forResource: "stop_times", withExtension: "txt", subdirectory: "GTFS")
         #else
         let moduleURL: URL? = nil
         #endif
-
-        guard let url = moduleURL ??
-                        Bundle.main.url(forResource: "stop_times", withExtension: "txt", subdirectory: "GTFS") ??
-                        Bundle.main.url(forResource: "stop_times", withExtension: "txt") ??
-                        findGTFSFile(named: "stop_times.txt") else {
-            print("GTFSSchedule: stop_times.txt not found")
-            return
-        }
-
-        do {
-            let content = try String(contentsOf: url, encoding: .utf8)
-            parseStopTimes(content)
-            print("GTFSSchedule: Loaded \(stopTimes.count) stations with schedules")
-        } catch {
-            print("GTFSSchedule: Failed to load: \(error)")
-        }
+        return moduleURL
+            ?? Bundle.main.url(forResource: "stop_times", withExtension: "txt", subdirectory: "GTFS")
+            ?? Bundle.main.url(forResource: "stop_times", withExtension: "txt")
     }
 
-    private func parseStopTimes(_ content: String) {
+    /// Pure parse — nonisolated so it can run inside Task.detached without
+    /// touching actor state.
+    private static func parseStopTimes(_ content: String) -> [String: [ScheduledArrival]] {
         let lines = content.components(separatedBy: .newlines)
-        guard lines.count > 1 else { return }
+        guard lines.count > 1 else { return [:] }
 
-        // Parse header to find column indices
         let header = lines[0].components(separatedBy: ",")
         guard let tripIdx = header.firstIndex(of: "trip_id"),
               let arrivalIdx = header.firstIndex(of: "arrival_time"),
               let stopIdx = header.firstIndex(of: "stop_id"),
               let seqIdx = header.firstIndex(of: "stop_sequence") else {
             print("GTFSSchedule: Invalid header format")
-            return
+            return [:]
         }
 
-        var tempStopTimes: [String: [ScheduledArrival]] = [:]
-
+        var temp: [String: [ScheduledArrival]] = [:]
         for line in lines.dropFirst() where !line.isEmpty {
             let cols = line.components(separatedBy: ",")
             guard cols.count > max(tripIdx, arrivalIdx, stopIdx, seqIdx) else { continue }
-
             let tripId = cols[tripIdx]
             let stopId = cols[stopIdx]
-            let arrivalStr = cols[arrivalIdx]
+            guard let arrivalMinutes = parseTime(cols[arrivalIdx]) else { continue }
             let sequence = Int(cols[seqIdx]) ?? 0
-
-            guard let arrivalMinutes = parseTime(arrivalStr) else { continue }
-
             let arrival = ScheduledArrival(
                 tripId: tripId,
                 stopId: stopId,
                 arrivalMinutes: arrivalMinutes,
                 sequence: sequence
             )
-
-            if tempStopTimes[stopId] == nil {
-                tempStopTimes[stopId] = []
-            }
-            tempStopTimes[stopId]?.append(arrival)
+            temp[stopId, default: []].append(arrival)
         }
-
-        stopTimes = tempStopTimes
+        return temp
     }
 
-    private func parseTime(_ timeStr: String) -> Int? {
-        // Format: HH:MM:SS
+    private static func parseTime(_ timeStr: String) -> Int? {
+        // Format: HH:MM:SS — GTFS allows >24:00 for next-day service. We mod
+        // by 24, which folds a 25:00 trip back to 1:00 (wrong day association
+        // for late-night routes). Tracked as REVIEW HIGH-15 bug; out of scope
+        // for the detached-parse refactor.
         let parts = timeStr.components(separatedBy: ":")
         guard parts.count >= 2,
               let hours = Int(parts[0]),
               let minutes = Int(parts[1]) else {
             return nil
         }
-        // Handle times > 24:00 (next day service)
         return (hours % 24) * 60 + minutes
     }
 
@@ -198,17 +221,6 @@ actor GTFSScheduleService {
         return hour * 60 + minute
     }
 
-    private func findGTFSFile(named filename: String) -> URL? {
-        // Bundle.main first (covers app + tests). Previously had a hardcoded
-        // "/Users/ji/Sites/parabus/Sources/GTFS/\(filename)" dev-machine path
-        // baked in — shipped in release binaries (privacy leak of username
-        // via strings dump, and brittle). Caller already tries Bundle.module
-        // before us, so this is the on-disk fallback only.
-        let candidate = Bundle.main.bundlePath + "/GTFS/\(filename)"
-        return FileManager.default.fileExists(atPath: candidate)
-            ? URL(fileURLWithPath: candidate)
-            : nil
-    }
 }
 
 // MARK: - Scheduled Arrival
