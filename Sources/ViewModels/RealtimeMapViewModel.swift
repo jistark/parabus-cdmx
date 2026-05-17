@@ -101,8 +101,9 @@ final class RealtimeMapViewModel {
         // Coalesce against in-flight work so pull-to-refresh during a poll
         // tick doesn't double-decode.
         refreshTask?.cancel()
-        let task = Task { [weak self] in
-            await self?.fetchOnce()
+        let task: Task<Void, Never> = Task { [weak self] in
+            guard let self else { return }
+            await self.fetchOnce()
         }
         refreshTask = task
         await task.value
