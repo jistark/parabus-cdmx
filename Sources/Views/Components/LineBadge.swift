@@ -50,19 +50,22 @@ struct LineBadge: View {
 
             Text(number)
                 .font(fallbackFont)
-                .fontWeight(.bold)
                 .foregroundStyle(.white)
+                .monospacedDigit()
                 .minimumScaleFactor(0.5)
         }
         .frame(width: size.dimension, height: size.dimension)
         .shadow(color: lineColor.opacity(colorScheme == .dark ? 0.5 : 0.3), radius: 4, y: 2)
     }
 
+    /// Brand-typography numeral — Tipo Movin CDMX Bold, scaled per badge size.
+    /// Uses `.monospacedDigit()` so multi-character labels ("A", "10") don't
+    /// jitter against single-character ones in adjacent badges.
     private var fallbackFont: Font {
         switch size {
-        case .small: .subheadline
-        case .regular: .headline
-        case .large: .title
+        case .small: BrandTypography.numeralSmall
+        case .regular: BrandTypography.numeralRegular
+        case .large: BrandTypography.numeralLarge
         }
     }
 

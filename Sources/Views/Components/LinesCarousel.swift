@@ -35,15 +35,12 @@ struct LineCarouselCard: View {
     let line: LineStatus
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Line badge with status indicator
+        VStack(spacing: Spacing.xs) {
+            // Line badge with status indicator overlay
             ZStack(alignment: .bottomTrailing) {
-                // Main badge - prefer official image, fallback to colored circle
-                lineBadgeView
-                    .frame(width: 56, height: 56)
+                LineBadge(number: line.lineNumber, transportType: line.transportType, size: .large)
                     .shadow(color: lineColor.opacity(0.3), radius: 4, y: 2)
 
-                // Status indicator
                 if line.hasIssues {
                     Circle()
                         .fill(statusColor)
@@ -54,6 +51,7 @@ struct LineCarouselCard: View {
                                 .foregroundStyle(.white)
                         }
                         .offset(x: 4, y: 4)
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
 
@@ -65,29 +63,8 @@ struct LineCarouselCard: View {
         }
         .frame(width: 70)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Linea \(line.lineNumber), \(statusText)")
+        .accessibilityLabel("Línea \(line.lineNumber), \(statusText)")
         .accessibilityAddTraits(line.hasIssues ? .updatesFrequently : [])
-    }
-
-    // MARK: - Line Badge View
-
-    @ViewBuilder
-    private var lineBadgeView: some View {
-        if let image = TransitImageLoader.loadOfficialImage(for: line) {
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-        } else {
-            // Fallback to colored circle with number
-            ZStack {
-                Circle()
-                    .fill(lineColor.gradient)
-
-                Text(line.lineNumber)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
-            }
-        }
     }
 
     private var lineColor: Color {
@@ -98,8 +75,11 @@ struct LineCarouselCard: View {
         StatusColors.color(for: line.status)
     }
 
+    /// Simplified glyphs that render legibly at 20×20.
+    /// Differs from `StatusColors.icon(for:)` (full-color symbols) because
+    /// these go inside a tiny solid-color circle — we need stroke-only or
+    /// minimal-fill variants to keep white-on-color contrast.
     private var statusIcon: String {
-        // Use simple, bold icons that render well at 20x20
         switch line.status {
         case .regular: return "checkmark"
         case .intervention: return "wrench.fill"

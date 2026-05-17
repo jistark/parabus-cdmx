@@ -104,9 +104,9 @@ struct MaintenanceLineGroup: View {
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, Layout.cardInset)
+                .padding(.vertical, Spacing.sm)
+                .surface(.base, cornerRadius: Layout.cornerRadiusSmall + 4)
             }
             .buttonStyle(.plain)
 
@@ -209,15 +209,16 @@ struct LineBadgeMini: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 28, height: 28)
             } else {
-                // Fallback to colored circle
+                // Fallback to colored circle — Tipo Movin Bold numeral
                 ZStack {
                     Circle()
                         .fill(lineColor.gradient)
                         .frame(width: 28, height: 28)
 
                     Text(lineNumber)
-                        .font(.caption.weight(.bold))
+                        .font(BrandTypography.numeralSmall)
                         .foregroundStyle(.white)
+                        .monospacedDigit()
                 }
             }
         }

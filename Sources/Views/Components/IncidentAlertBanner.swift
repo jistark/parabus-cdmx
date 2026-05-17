@@ -5,9 +5,7 @@ struct IncidentAlertBanner: View {
     let line: LineStatus
     let onTap: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     // Dynamic Type support - unified badge size
     @ScaledMetric(relativeTo: .body) private var badgeSize: CGFloat = Layout.badgeRegular
@@ -18,7 +16,7 @@ struct IncidentAlertBanner: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
+            HStack(spacing: Layout.inlineSpacing) {
                 // Line badge - unified 48pt size
                 lineBadgeView
                     .frame(width: badgeSize, height: badgeSize)
@@ -26,7 +24,7 @@ struct IncidentAlertBanner: View {
                 // Incident info
                 VStack(alignment: .leading, spacing: 2) {
                     Text(line.lineName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(BrandTypography.lineLabel)
                         .foregroundStyle(.primary)
 
                     Text(incidentSummary)
@@ -38,7 +36,7 @@ struct IncidentAlertBanner: View {
                 Spacer()
 
                 // Status badge + chevron
-                HStack(spacing: 8) {
+                HStack(spacing: Spacing.xs) {
                     statusBadge
 
                     Image(systemName: "chevron.right")
@@ -46,19 +44,18 @@ struct IncidentAlertBanner: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(minHeight: 64) // Garantizar altura tactil
-            .background(bannerBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.horizontal, Layout.cardInset)
+            .padding(.vertical, Spacing.sm)
+            .frame(minHeight: Layout.alertRowMinHeight)
+            .surface(.elevated, cornerRadius: Layout.cornerRadiusMedium, tint: statusColor)
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium, style: .continuous)
                     .strokeBorder(statusColor.opacity(SurfaceOpacity.border), lineWidth: 1)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 14))
+            .contentShape(RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(line.lineName), \(incidentSummary)")
+        .accessibilityLabel("\(line.lineName), \(line.status.accessibilityLabel)")
         .accessibilityHint("Toca para ver detalles")
     }
 
@@ -85,30 +82,22 @@ struct IncidentAlertBanner: View {
     // MARK: - Status Badge
 
     private var statusBadge: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.xxs) {
             Image(systemName: StatusColors.icon(for: line.status))
                 .font(.caption2.weight(.semibold))
-                .symbolEffect(.pulse, options: .repeating, isActive: line.status == .suspended && !reduceMotion)
+                .symbolEffect(
+                    .pulse,
+                    options: .repeating,
+                    isActive: StatusColors.shouldPulse(for: line.status) && !reduceMotion
+                )
 
-            Text(statusText)
+            Text(StatusColors.shortText(for: line.status))
                 .font(.caption.weight(.medium))
         }
         .foregroundStyle(statusColor)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, Layout.pillInset)
+        .padding(.vertical, Spacing.xs - 2)
         .background(statusColor.opacity(SurfaceOpacity.tintLight), in: Capsule())
-    }
-
-    private var statusText: String {
-        switch line.status {
-        case .regular: return "OK"
-        case .intervention: return "Obra"
-        case .limited: return "Limitado"
-        case .delayed: return "Retraso"
-        case .suspended: return "Suspendido"
-        case .protest: return "Protestas"
-        case .unknown: return "?"
-        }
     }
 
     // MARK: - Summary
@@ -129,17 +118,6 @@ struct IncidentAlertBanner: View {
         return "\(line.affectedStations[0]) y \(line.affectedStations.count - 1) mas"
     }
 
-    // MARK: - Background
-
-    @ViewBuilder
-    private var bannerBackground: some View {
-        if reduceTransparency {
-            Color(white: colorScheme == .dark ? 0.15 : 0.95)
-        } else {
-            statusColor.opacity(SurfaceOpacity.tintSubtle)
-                .background(.ultraThinMaterial)
-        }
-    }
 }
 
 #Preview("Single Banner") {
