@@ -29,7 +29,7 @@ struct MetrobusLiveActivity: Widget {
 
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.attributes.lineName)
-                        .font(.headline)
+                        .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
                         .lineLimit(1)
                 }
 
@@ -57,19 +57,24 @@ struct MetrobusLiveActivity: Widget {
                     Circle()
                         .fill(WidgetLineColor.color(for: context.attributes.lineNumber))
                     Text(context.attributes.lineNumber)
-                        .font(.caption2.weight(.bold))
+                        .font(.custom("TipoMovinCDMX-Bold", size: 11, relativeTo: .caption2))
                         .foregroundStyle(.white)
+                        .monospacedDigit()
                 }
             }
             .keylineTint(context.state.statusColor)
         }
     }
 
+    /// Compact pill labels. Severity mapping mirrors `ServiceStatus.severity`
+    /// (post REVIEW HIGH-17). Long forms in `StatusPill.statusText` below.
     private func shortStatusText(for state: MetrobusDisruptionAttributes.ContentState) -> String {
         switch state.statusSeverity {
-        case 4: return "Susp."
-        case 3: return "Obra"
-        case 2: return "Retraso"
+        case 6: return "Marcha"
+        case 5: return "Susp."
+        case 4: return "Retraso"
+        case 3: return "Lim."
+        case 2: return "Obra"
         default: return "OK"
         }
     }
@@ -92,7 +97,7 @@ struct LockScreenLiveActivityView: View {
                 // Line name + status
                 HStack {
                     Text(attributes.lineName)
-                        .font(.headline)
+                        .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
 
                     Spacer()
 
@@ -217,11 +222,14 @@ struct LineBadgeView: View {
             }
         }
 
+        /// Tipo Movin CDMX Bold, scaled relative to the system text style most
+        /// appropriate for the badge size. Custom font registered via
+        /// UIAppFonts in widget-pb/Info.plist.
         var font: Font {
             switch self {
-            case .compact: return .caption2.weight(.bold)
-            case .regular: return .caption.weight(.bold)
-            case .large: return .headline.weight(.bold)
+            case .compact: return .custom("TipoMovinCDMX-Bold", size: 11, relativeTo: .caption2)
+            case .regular: return .custom("TipoMovinCDMX-Bold", size: 13, relativeTo: .caption)
+            case .large:   return .custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline)
             }
         }
     }
@@ -235,7 +243,9 @@ struct LineBadgeView: View {
             Text(lineNumber)
                 .font(size.font)
                 .foregroundStyle(.white)
+                .monospacedDigit()
         }
+        .accessibilityLabel("Línea \(lineNumber)")
     }
 }
 
@@ -271,9 +281,11 @@ struct StatusPill: View {
 
     private var statusText: String {
         switch state.statusSeverity {
-        case 4: return "Suspendido"
-        case 3: return "Obra"
-        case 2: return "Retraso"
+        case 6: return "Manifestación"
+        case 5: return "Suspendido"
+        case 4: return "Con retraso"
+        case 3: return "Servicio limitado"
+        case 2: return "Intervención"
         default: return "Normal"
         }
     }

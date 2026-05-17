@@ -91,8 +91,9 @@ struct SmallWidgetView: View {
 
                 if !data.allClear {
                     Text("\(data.affectedLinesCount)")
-                        .font(.title.weight(.bold))
+                        .font(.custom("TipoMovinCDMX-Bold", size: 28, relativeTo: .title))
                         .foregroundStyle(data.worstStatus.color)
+                        .monospacedDigit()
                 }
             }
 
@@ -100,7 +101,7 @@ struct SmallWidgetView: View {
 
             // Status text
             Text(statusTitle)
-                .font(.headline)
+                .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
                 .lineLimit(2)
 
             // Subtitle
@@ -112,6 +113,7 @@ struct SmallWidgetView: View {
             Text(data.updatedAt, style: .relative)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+                .monospacedDigit()
         }
         .padding()
     }
@@ -120,9 +122,9 @@ struct SmallWidgetView: View {
         if data.allClear {
             return "Todo en orden"
         } else if data.affectedLinesCount == 1 {
-            return "1 linea afectada"
+            return "1 línea afectada"
         } else {
-            return "\(data.affectedLinesCount) lineas"
+            return "\(data.affectedLinesCount) líneas"
         }
     }
 
@@ -147,8 +149,8 @@ struct MediumWidgetView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
-                Text("Metrobus CDMX")
-                    .font(.headline)
+                Text("Metrobús CDMX")
+                    .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
 
                 Spacer()
 
@@ -161,6 +163,7 @@ struct MediumWidgetView: View {
                 Text(data.updatedAt, style: .time)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
 
             // Line grid
@@ -219,15 +222,16 @@ struct LineStatusBadge: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            // Line number circle - simplified without gradient for memory efficiency
+            // Line number circle — flat fill (no gradient) for widget memory efficiency
             ZStack {
                 Circle()
-                    .fill(lineColor)
+                    .fill(WidgetLineColor.color(for: line.lineNumber))
                     .frame(width: 32, height: 32)
 
                 Text(line.lineNumber)
-                    .font(.subheadline.weight(.bold))
+                    .font(.custom("TipoMovinCDMX-Bold", size: 13, relativeTo: .footnote))
                     .foregroundStyle(.white)
+                    .monospacedDigit()
             }
 
             // Status indicator
@@ -235,19 +239,8 @@ struct LineStatusBadge: View {
                 .font(.caption2)
                 .foregroundStyle(line.status.color)
         }
-    }
-
-    private var lineColor: Color {
-        switch line.lineNumber {
-        case "1": return Color(red: 0.83, green: 0.18, blue: 0.18)
-        case "2": return Color(red: 0.48, green: 0.18, blue: 0.56)
-        case "3": return Color(red: 0.13, green: 0.55, blue: 0.13)
-        case "4": return Color(red: 0.96, green: 0.65, blue: 0.14)
-        case "5": return Color(red: 0.00, green: 0.48, blue: 0.65)
-        case "6": return Color(red: 0.80, green: 0.00, blue: 0.47)
-        case "7": return Color(red: 0.00, green: 0.60, blue: 0.40)
-        default: return .gray
-        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Línea \(line.lineNumber), \(line.status.displayText)")
     }
 }
 
@@ -261,8 +254,9 @@ struct LineStatusBadge: View {
         lines: [
             WidgetLineStatus(id: "1", lineNumber: "1", status: .regular, affectedStationsCount: 0, incidentCount: 0),
             WidgetLineStatus(id: "2", lineNumber: "2", status: .intervention, affectedStationsCount: 2, incidentCount: 1),
-            WidgetLineStatus(id: "3", lineNumber: "3", status: .regular, affectedStationsCount: 0, incidentCount: 0),
+            WidgetLineStatus(id: "3", lineNumber: "3", status: .limited, affectedStationsCount: 3, incidentCount: 1),
             WidgetLineStatus(id: "4", lineNumber: "4", status: .suspended, affectedStationsCount: 1, incidentCount: 1),
+            WidgetLineStatus(id: "5", lineNumber: "5", status: .protest, affectedStationsCount: 4, incidentCount: 1),
         ],
         updatedAt: Date(),
         isStale: false
@@ -274,12 +268,20 @@ struct LineStatusBadge: View {
 } timeline: {
     MetrobusStatusEntry(date: .now, data: WidgetData(
         lines: (1...7).map { num in
-            WidgetLineStatus(
+            let status: WidgetServiceStatus = switch num {
+            case 2: .intervention
+            case 3: .limited
+            case 4: .suspended
+            case 5: .delayed
+            case 6: .protest
+            default: .regular
+            }
+            return WidgetLineStatus(
                 id: "\(num)",
                 lineNumber: "\(num)",
-                status: num == 2 ? .intervention : (num == 4 ? .suspended : .regular),
-                affectedStationsCount: num == 2 ? 2 : (num == 4 ? 1 : 0),
-                incidentCount: (num == 2 || num == 4) ? 1 : 0
+                status: status,
+                affectedStationsCount: status == .regular ? 0 : Int.random(in: 1...3),
+                incidentCount: status == .regular ? 0 : 1
             )
         },
         updatedAt: Date(),
