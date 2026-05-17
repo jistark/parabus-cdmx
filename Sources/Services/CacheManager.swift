@@ -127,15 +127,21 @@ actor CacheManager {
 // MARK: - WidgetServiceStatus Conversion
 
 extension WidgetServiceStatus {
+    /// 1:1 mapping from main-app status. Previously squashed `.protest` →
+    /// `.suspended` and `.limited` → `.delayed` because the widget enum
+    /// lacked those cases; both are now first-class (REVIEW HIGH-17), so the
+    /// widget reflects the same urgency the main app does (and the
+    /// `WidgetData.worstStatus` ranking stays consistent with
+    /// `ServiceStatus.severity`).
     init(from status: ServiceStatus) {
         switch status {
-        case .regular: self = .regular
+        case .regular:      self = .regular
         case .intervention: self = .intervention
-        case .limited: self = .delayed  // Map limited to delayed for widget
-        case .delayed: self = .delayed
-        case .suspended: self = .suspended
-        case .protest: self = .suspended  // Map protest to suspended for widget (urgent)
-        case .unknown: self = .unknown
+        case .limited:      self = .limited
+        case .delayed:      self = .delayed
+        case .suspended:    self = .suspended
+        case .protest:      self = .protest
+        case .unknown:      self = .unknown
         }
     }
 }

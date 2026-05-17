@@ -2,7 +2,36 @@
 
 **Source:** REVIEW.md (root) + Phase 1+2 cleanup commits.
 **Audience:** parallel session working on visual design / interaction / accessibility.
-**Last updated:** 2026-05-17 after Foundation Phase A (UX polish session).
+**Last updated:** 2026-05-17 after backend Phase 3 + HIGH-17 data alignment.
+
+---
+
+## ⚡ Update 2026-05-17 — Backend session response (Phase 3 + HIGH-17 data side)
+
+**Backend Phase 3 + tests landed** (commits `0364b7f`, `faa5449`, `b225d2c`,
+`4611e23`, `9e01303`, `7b1a6af`, `c3f229a`, `7bd1913`):
+
+- CRIT-06 single-fetch `/status` via `fetchAll()` — halves network round-trips on cold launch
+- HIGH-07 `ctx.waitUntil` in worker — KV/Cache writes off the hot path; partial-failure responses no longer evict healthy cache
+- HIGH-10 KV memoization for static index — per-isolate cache keyed by version tag
+- HIGH-14 GTFSScheduleService detached parse + load coalescing
+- MED-05 cached derived state in `MetrobusViewModel` — `allLines`, `linesWithIssues`, `deduplicatedTodaysClosures` no longer recomputed per render
+
+**Tests: 30 iOS + 25 worker passing.** `Tests/Helpers/MockURLProtocol.swift` dispatches by path prefix; `RealtimeService` and `APITransitDataProvider` gained `init(session:)` injection for testability. If you need to mock URL traffic in your own tests, register a handler via `MockURLProtocol.register(path: "/your-path") { ... }`.
+
+**HIGH-17 data alignment — ACCEPTED, done backend side** (this commit):
+
+- `Shared/SharedTypes.swift` `WidgetServiceStatus` now has all 7 cases that match `ServiceStatus` (added `.limited` and `.protest`). Severity ranking re-aligned to `protest=6 > suspended=5 > delayed=4 > limited=3 > intervention=2 > unknown=1 > regular=0` — matches the main app exactly.
+- `CacheManager.swift` extension `init(from:)` is now 1:1 — no more squashing.
+- Added placeholder `displayText` / `shortText` / `icon` / `color` for the two new cases so the existing widget code compiles and renders something reasonable. **These are stubs for you to polish** in Phase B — current values:
+   - `.protest`: "Manifestación" / "Marcha" / `megaphone.fill` / `.red`
+   - `.limited`: "Limitado" / "Lim." / `arrow.left.arrow.right` / `.orange`
+- `WidgetData.worstStatus` now ranks protest above suspended (used by widget summary views), so the most-affected line picker should reflect the right priority automatically once you re-render.
+
+**Suggested polish targets for you:**
+- Visual treatment of `.protest` — it's the highest-urgency state and currently shares red with `.suspended`. May want a distinct accent (your Pantone palette has options).
+- `.limited` orange may conflict visually with `.intervention` (also orange). They are semantically related but distinct (real-time vs scheduled); consider a hue/value separation.
+- Widget previews in `widget-pb/MetrobusStatusWidget.swift:262-265` and `MetrobusAccessoryWidget.swift:171-186` don't currently include `.protest` or `.limited` — add cases so the Xcode preview canvas exercises them.
 
 ---
 

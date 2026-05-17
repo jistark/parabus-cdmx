@@ -57,20 +57,36 @@ struct WidgetLineStatus: Codable, Identifiable {
     }
 }
 
-/// Simplified status enum for widget
+/// Status enum surfaced to the widget extension. Mirrors the full set in
+/// `ServiceStatus` (main app) so widget rendering doesn't squash semantically
+/// distinct states.
+///
+/// History: previously this enum lacked `.protest` and `.limited`; the
+/// converter in CacheManager mapped `protest → suspended` and `limited →
+/// delayed`, so a protest (highest severity in the main app — triggers urgent
+/// notifications) appeared in the widget as a generic "Suspendido" pill.
+/// Re-aligned in REVIEW HIGH-17.
+///
+/// Visual values (displayText/shortText/icon/color) for the new `.protest`
+/// and `.limited` cases are reasonable defaults; the UX/UI session is
+/// expected to refine them as part of widget polish.
 enum WidgetServiceStatus: String, Codable, CaseIterable {
     case regular
-    case intervention
-    case suspended
-    case delayed
     case unknown
+    case intervention
+    case limited
+    case delayed
+    case suspended
+    case protest
 
     var displayText: String {
         switch self {
         case .regular: return "Normal"
         case .intervention: return "Obra"
-        case .suspended: return "Suspendido"
+        case .limited: return "Limitado"
         case .delayed: return "Retraso"
+        case .suspended: return "Suspendido"
+        case .protest: return "Manifestación"
         case .unknown: return "?"
         }
     }
@@ -79,8 +95,10 @@ enum WidgetServiceStatus: String, Codable, CaseIterable {
         switch self {
         case .regular: return "OK"
         case .intervention: return "Obra"
-        case .suspended: return "Susp."
+        case .limited: return "Lim."
         case .delayed: return "Retraso"
+        case .suspended: return "Susp."
+        case .protest: return "Marcha"
         case .unknown: return "?"
         }
     }
@@ -89,8 +107,10 @@ enum WidgetServiceStatus: String, Codable, CaseIterable {
         switch self {
         case .regular: return "checkmark.circle.fill"
         case .intervention: return "wrench.and.screwdriver.fill"
-        case .suspended: return "exclamationmark.octagon.fill"  // Octagon = stop sign
-        case .delayed: return "clock.badge.exclamationmark"     // Time + urgency
+        case .limited: return "arrow.left.arrow.right"          // partial-service indicator
+        case .delayed: return "clock.badge.exclamationmark"     // time + urgency
+        case .suspended: return "exclamationmark.octagon.fill"  // stop sign
+        case .protest: return "megaphone.fill"                  // protest signal
         case .unknown: return "questionmark.circle.fill"
         }
     }
@@ -98,20 +118,28 @@ enum WidgetServiceStatus: String, Codable, CaseIterable {
     var color: Color {
         switch self {
         case .regular: return .green
-        case .intervention: return .orange  // Orange for scheduled maintenance
-        case .suspended: return .red
-        case .delayed: return .red  // Red for delays (urgent real-time issue)
+        case .intervention: return .orange  // scheduled maintenance
+        case .limited: return .orange       // partial service — same family as intervention
+        case .delayed: return .red          // urgent real-time issue
+        case .suspended: return .red        // no service
+        case .protest: return .red          // most urgent — UX may upgrade to a distinct accent
         case .unknown: return .secondary
         }
     }
 
+    /// Ranks aligned with `ServiceStatus.severity` in the main app so the
+    /// widget's `WidgetData.worstStatus` agrees with the main app's view of
+    /// "which line is most affected". Order: protest > suspended > delayed >
+    /// limited > intervention > unknown > regular.
     var severity: Int {
         switch self {
         case .regular: return 0
         case .unknown: return 1
-        case .delayed: return 2
-        case .intervention: return 3
-        case .suspended: return 4
+        case .intervention: return 2
+        case .limited: return 3
+        case .delayed: return 4
+        case .suspended: return 5
+        case .protest: return 6
         }
     }
 }
