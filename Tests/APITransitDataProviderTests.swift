@@ -5,6 +5,10 @@ import Testing
 @Suite("APITransitDataProvider Tests", .serialized)
 struct APITransitDataProviderTests {
 
+    // Each test resets only its own path-prefix handlers, so suites running
+    // in parallel (RealtimeServiceTests, etc.) don't clobber each other.
+    private static let path = "/status"
+
     // MARK: - fetchStatus
 
     @Test("decodes a happy-path /status response")
@@ -125,22 +129,22 @@ struct APITransitDataProviderTests {
 
     @Test("fetchAll forwards forceRefresh=true as ?refresh=true query param")
     func fetchAllForceRefreshURL() async throws {
-        MockURLProtocol.reset()
-        MockURLProtocol.handler = { request in
-            let json = """
-            {"lastUpdated":"2026-05-17T20:00:00.000Z","sourceTimestamp":null,
-             "sources":{"incidentes":{"available":true},"mantenimiento":{"available":true}},
-             "lines":[],"scheduledMaintenance":[],"elevators":[]}
-            """
-            return (MockSession.okJSON(for: request.url!), Data(json.utf8))
+        let provider = APITransitDataProvider(session: makeSession(json: """
+        {
+          "lastUpdated": "2026-05-17T20:00:00.000Z",
+          "sourceTimestamp": null,
+          "sources": {"incidentes": {"available": true}, "mantenimiento": {"available": true}},
+          "lines": [],
+          "scheduledMaintenance": [],
+          "elevators": []
         }
-        let provider = APITransitDataProvider(session: MockSession.make())
+        """))
 
         _ = try await provider.fetchAll(forceRefresh: true)
 
-        #expect(MockURLProtocol.requestedURLs.count == 1)
-        let url = MockURLProtocol.requestedURLs[0]
-        #expect(url.absoluteString.contains("refresh=true"))
+        let urls = MockURLProtocol.requestedURLs(matching: Self.path)
+        #expect(urls.count >= 1)
+        #expect(urls.last?.absoluteString.contains("refresh=true") == true)
     }
 
     // MARK: - HTTP status mapping
@@ -195,16 +199,16 @@ struct APITransitDataProviderTests {
     // MARK: - Helpers
 
     private func makeSession(json: String) -> URLSession {
-        MockURLProtocol.reset()
-        MockURLProtocol.handler = { request in
+        MockURLProtocol.clearHandlers(path: Self.path)
+        MockURLProtocol.register(path: Self.path) { request in
             (MockSession.okJSON(for: request.url!), Data(json.utf8))
         }
         return MockSession.make()
     }
 
     private func makeSession(status: Int, body: String) -> URLSession {
-        MockURLProtocol.reset()
-        MockURLProtocol.handler = { request in
+        MockURLProtocol.clearHandlers(path: Self.path)
+        MockURLProtocol.register(path: Self.path) { request in
             (MockSession.response(for: request.url!, status: status), Data(body.utf8))
         }
         return MockSession.make()
