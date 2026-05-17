@@ -15,14 +15,12 @@ let package = Package(
             targets: ["ParabusCore"]
         ),
     ],
-    dependencies: [
-        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.7.0"),
-    ],
+    dependencies: [],
     targets: [
         // Shared core: Models, Services, ViewModels, Theme, Core (DI/Protocols)
         .target(
             name: "ParabusCore",
-            dependencies: ["SwiftSoup"],
+            dependencies: [],
             path: ".",
             exclude: [
                 "Sources/App",
