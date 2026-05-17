@@ -283,12 +283,24 @@ class Reader {
 
   readBytes(): Uint8Array {
     const len = Number(this.readVarint());
+    // Bounds-check: subarray clamps silently if `pos + len > buf.length`,
+    // returning a truncated slice while still advancing `pos` past the end.
+    // Without this check, a single corrupt varint upstream produces
+    // arbitrarily wrong nested-message decodes with no error surfaced.
+    if (len < 0 || this.pos + len > this.buf.length) {
+      throw new Error(
+        `truncated length-delimited field: pos=${this.pos} len=${len} buf=${this.buf.length}`,
+      );
+    }
     const slice = this.buf.subarray(this.pos, this.pos + len);
     this.pos += len;
     return slice;
   }
 
   readFloat(): number {
+    if (this.pos + 4 > this.buf.length) {
+      throw new Error(`truncated fixed32: pos=${this.pos} buf=${this.buf.length}`);
+    }
     const v = this.view.getFloat32(this.pos, true);
     this.pos += 4;
     return v;
@@ -300,14 +312,25 @@ class Reader {
         this.readVarint();
         return;
       case 1:
+        if (this.pos + 8 > this.buf.length) {
+          throw new Error(`truncated fixed64: pos=${this.pos} buf=${this.buf.length}`);
+        }
         this.pos += 8;
         return;
       case 2: {
         const len = Number(this.readVarint());
+        if (len < 0 || this.pos + len > this.buf.length) {
+          throw new Error(
+            `truncated length-delimited skip: pos=${this.pos} len=${len} buf=${this.buf.length}`,
+          );
+        }
         this.pos += len;
         return;
       }
       case 5:
+        if (this.pos + 4 > this.buf.length) {
+          throw new Error(`truncated fixed32 skip: pos=${this.pos} buf=${this.buf.length}`);
+        }
         this.pos += 4;
         return;
       default:

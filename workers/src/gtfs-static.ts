@@ -297,6 +297,14 @@ async function extractZipFiles(
   const cdEntries = view.getUint16(eocdOffset + 10, true);
   const cdOffset = view.getUint32(eocdOffset + 16, true);
 
+  // ZIP64 sentinel: when the 32-bit field is 0xFFFFFFFF or the 16-bit count
+  // is 0xFFFF, the real value is in the ZIP64 EOCD record (not parsed here).
+  // GTFS archives are small today, but failing loudly beats walking garbage
+  // offsets if Sinoptico ever switches encoding or the archive grows past 4GB.
+  if (cdOffset === 0xffffffff || cdEntries === 0xffff) {
+    throw new Error('zip: ZIP64 archives not supported');
+  }
+
   // 2. Walk Central Directory entries. CD entry signature is 0x02014b50.
   const cdSig = 0x02014b50;
   let p = cdOffset;

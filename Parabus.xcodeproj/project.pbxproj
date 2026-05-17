@@ -52,8 +52,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Resources/GTFS/stop_times.txt,
-				Shared/LiveActivityTypes.swift,
-				Shared/SharedTypes.swift,
 			);
 			target = 082136342EE3CC4100315865 /* widget-pbExtension */;
 		};
