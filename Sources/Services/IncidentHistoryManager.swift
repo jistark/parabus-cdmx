@@ -213,7 +213,7 @@ actor IncidentHistoryManager {
 
     private func save() async {
         do {
-            let data = try JSONEncoder().encode(history)
+            let data = try SharedCoders.plainEncoder.encode(history)
             try data.write(to: fileURL, options: .atomic)
         } catch {
             print("Failed to save incident history: \(error)")
@@ -227,7 +227,7 @@ actor IncidentHistoryManager {
 
         do {
             let data = try Data(contentsOf: url)
-            return try JSONDecoder().decode(IncidentHistory.self, from: data)
+            return try SharedCoders.plainDecoder.decode(IncidentHistory.self, from: data)
         } catch {
             print("Failed to load incident history: \(error)")
             return IncidentHistory()

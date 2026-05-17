@@ -67,11 +67,7 @@ actor CacheManager {
             sourceURL: result.source.absoluteString
         )
 
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
-
-        let data = try encoder.encode(cached)
+        let data = try SharedCoders.isoEncoder.encode(cached)
         try data.write(to: fileURL, options: .atomic)
 
         // Also update widget data
@@ -101,10 +97,7 @@ actor CacheManager {
         }
 
         let data = try Data(contentsOf: fileURL)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        return try decoder.decode(CachedData.self, from: data)
+        return try SharedCoders.isoDecoder.decode(CachedData.self, from: data)
     }
 
     /// Carga datos solo si son válidos (no expirados)
