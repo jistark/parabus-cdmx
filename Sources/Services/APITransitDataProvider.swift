@@ -126,6 +126,32 @@ actor APITransitDataProvider: TransitDataProviding {
         )
     }
 
+    /// Override of the default parallel-fetch: /status already returns both
+    /// `lines` and `scheduledMaintenance` in one payload. Decoding once cuts
+    /// the per-refresh network + decode cost in half and guarantees the two
+    /// halves come from the same source snapshot (so `scrapedAt` agrees).
+    func fetchAll(forceRefresh: Bool) async throws -> (ScrapingResult, MaintenanceResult) {
+        var url = APIConfiguration.baseURL.appendingPathComponent("status")
+        if forceRefresh {
+            url = url.appending(queryItems: [URLQueryItem(name: "refresh", value: "true")])
+        }
+        let response = try await fetchAPIResponse(from: url)
+        let scrapedAt = parseDate(response.lastUpdated) ?? Date()
+        let source = APIConfiguration.baseURL.appendingPathComponent("status")
+
+        let status = ScrapingResult(
+            lines: response.lines.map { convertToLineStatus($0) },
+            scrapedAt: scrapedAt,
+            source: source
+        )
+        let maintenance = MaintenanceResult(
+            closures: response.scheduledMaintenance.map { convertToScheduledClosure($0) },
+            scrapedAt: scrapedAt,
+            source: source
+        )
+        return (status, maintenance)
+    }
+
     // MARK: - Force Refresh
 
     /// Fetch with cache bypass
