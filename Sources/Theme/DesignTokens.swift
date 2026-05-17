@@ -75,6 +75,37 @@ enum Layout {
 
     /// Alert row minimum height
     static let alertRowMinHeight: CGFloat = 64
+
+    // MARK: - Semantic Spacing Aliases (A6)
+    //
+    // Use these for layout decisions; reach for Spacing.* only when you need a
+    // raw value off the 8pt grid. The matrix below documents how surfaces and
+    // padding pair up at every level of the visual hierarchy.
+    //
+    //  ┌─────────────────┬──────────────┬─────────────────┐
+    //  │ Surface         │ Inset (pad)  │ Outer spacing   │
+    //  ├─────────────────┼──────────────┼─────────────────┤
+    //  │ Screen edges    │ —            │ screenMargin 20 │
+    //  │ Between sections│ —            │ sectionSpacing 24│
+    //  │ Inside a card   │ cardInset 16 │ —               │
+    //  │ Between cards   │ —            │ inlineSpacing 12│
+    //  │ Inside a pill   │ pillInset 10 │ —               │
+    //  └─────────────────┴──────────────┴─────────────────┘
+
+    /// Horizontal padding from screen edges to content (`Spacing.lg` = 20pt)
+    static let screenMargin: CGFloat = Spacing.lg
+
+    /// Vertical gap between top-level sections (`Spacing.xl` = 24pt)
+    static let sectionSpacing: CGFloat = Spacing.xl
+
+    /// Interior padding for a card or banner (`Spacing.md` = 16pt)
+    static let cardInset: CGFloat = Spacing.md
+
+    /// Vertical gap between cards or rows in a stack (`Spacing.sm` = 12pt)
+    static let inlineSpacing: CGFloat = Spacing.sm
+
+    /// Horizontal padding inside small pills, chips, capsules (`Spacing.xs` + 2pt)
+    static let pillInset: CGFloat = 10
 }
 
 // MARK: - Status Colors
@@ -168,30 +199,39 @@ enum StatusColors {
     }
 }
 
-// MARK: - Line Brand Colors
+// MARK: - Line Brand Colors (CDMX Movilidad Integrada — OFFICIAL Pantone)
+//
+// Source of truth: ref/manual-mi-mb.pdf section 3 (Metrobús > Pantone), values
+// transcribed in ref/CDMX_PALETTE.md. Hex codes are sRGB from the manual; we
+// render them in Display-P3 color space so they pop on modern iPhone displays
+// while still hitting the same nominal values on legacy sRGB devices.
+//
+// These differ noticeably from the previous approximations:
+//   L1 went from rojo brillante to borgoña, L3 from verde to olivo, L4 from
+//   oro to naranja puro, L5 from cyan to navy, L7 from teal to verde profundo.
 
-/// Official Metrobus CDMX line colors
+/// Official Metrobús CDMX line colors (Pantone-derived, Display-P3).
 enum LineColors {
-    /// Line 1 - Insurgentes (Red)
-    static let line1 = Color(red: 0.83, green: 0.18, blue: 0.18)
+    /// Line 1 - Insurgentes — PANTONE 1807 C / #A4343A
+    static let line1 = Color(.displayP3, red: 164/255, green: 52/255, blue: 58/255, opacity: 1)
 
-    /// Line 2 - Eje 4 Sur (Purple)
-    static let line2 = Color(red: 0.48, green: 0.18, blue: 0.56)
+    /// Line 2 - Eje 4 Sur — PANTONE 2602 C / #87189D
+    static let line2 = Color(.displayP3, red: 135/255, green: 24/255, blue: 157/255, opacity: 1)
 
-    /// Line 3 - Eje 1 Poniente (Green)
-    static let line3 = Color(red: 0.13, green: 0.55, blue: 0.13)
+    /// Line 3 - Eje 1 Poniente — PANTONE 377 C / #7A9A01
+    static let line3 = Color(.displayP3, red: 122/255, green: 154/255, blue: 1/255, opacity: 1)
 
-    /// Line 4 - Buenavista-Aeropuerto (Gold)
-    static let line4 = Color(red: 0.96, green: 0.65, blue: 0.14)
+    /// Line 4 - Buenavista-Aeropuerto — PANTONE Orange 021 C / #FE5000
+    static let line4 = Color(.displayP3, red: 254/255, green: 80/255, blue: 0/255, opacity: 1)
 
-    /// Line 5 - Eje 3 Oriente (Blue)
-    static let line5 = Color(red: 0.00, green: 0.48, blue: 0.65)
+    /// Line 5 - Eje 3 Oriente — PANTONE 2757 C / #001E60
+    static let line5 = Color(.displayP3, red: 0/255, green: 30/255, blue: 96/255, opacity: 1)
 
-    /// Line 6 - Aragon-El Rosario (Magenta)
-    static let line6 = Color(red: 0.80, green: 0.00, blue: 0.47)
+    /// Line 6 - Aragón-El Rosario — PANTONE Rhodamine Red C / #E10098
+    static let line6 = Color(.displayP3, red: 225/255, green: 0/255, blue: 152/255, opacity: 1)
 
-    /// Line 7 - Indios Verdes-Campo Marte (Teal)
-    static let line7 = Color(red: 0.00, green: 0.60, blue: 0.40)
+    /// Line 7 - Indios Verdes-Campo Marte — PANTONE 349 C / #046A38
+    static let line7 = Color(.displayP3, red: 4/255, green: 106/255, blue: 56/255, opacity: 1)
 
     /// Fallback gray for unknown lines
     static let unknown = Color.gray
@@ -209,6 +249,59 @@ enum LineColors {
         default: return unknown
         }
     }
+}
+
+// MARK: - Brand Corporate Colors (Metrobús + Movilidad Integrada)
+
+/// Metrobús corporate identity and CDMX Movilidad Integrada neutrals.
+/// Source: ref/manual-mi-mb.pdf (Pantone Coated → sRGB transcription).
+enum BrandColors {
+    /// Metrobús corporate red — PANTONE 186 C / #C8102E
+    /// Use for branded headers, primary actions, hero accents.
+    static let metrobusRed = Color(.displayP3, red: 200/255, green: 16/255, blue: 46/255, opacity: 1)
+
+    /// PANTONE Cool Gray 5 C / #B1B3B3 — soft neutral for backgrounds.
+    static let neutralLight = Color(.displayP3, red: 177/255, green: 179/255, blue: 179/255, opacity: 1)
+
+    /// PANTONE Cool Gray 10 C / #63666A — complementary text/icons in maps
+    /// (per manual line 240).
+    static let neutralMedium = Color(.displayP3, red: 99/255, green: 102/255, blue: 106/255, opacity: 1)
+
+    /// PANTONE Cool Gray 11 C / #53565A — emphasized text on light surfaces.
+    static let neutralDark = Color(.displayP3, red: 83/255, green: 86/255, blue: 90/255, opacity: 1)
+
+    /// Process Black / #231F20 — body text, primary content.
+    static let neutralAbsolute = Color(.displayP3, red: 35/255, green: 31/255, blue: 32/255, opacity: 1)
+}
+
+// MARK: - Transport Modal Colors (CDMX Movilidad Integrada — multimodal)
+
+/// Placeholders for future intermodal transfer UI (Metro icons, Trolebús,
+/// Cablebús, RTP, etc.). The manual section pages for these modes embed colors
+/// as images that `pdftotext` couldn't extract — values will be filled in when
+/// the actual UI need arises. Until then these resolve to neutral so missing
+/// data doesn't masquerade as a real branded color.
+enum TransportModalColors {
+    /// STC Metro (CDMX heavy rail) — TODO: extract from manual section 2.
+    static let metro = BrandColors.neutralMedium
+
+    /// Cablebús (aerial cable transit) — TODO: extract from manual section 4.
+    static let cablebus = BrandColors.neutralMedium
+
+    /// Trolebús (Servicio de Transportes Eléctricos) — TODO: section 5.
+    static let trolebus = BrandColors.neutralMedium
+
+    /// RTP (Red de Transporte de Pasajeros) — TODO: section 7.
+    static let rtp = BrandColors.neutralMedium
+
+    /// Tren Ligero (light rail) — TODO: section 5 (STE).
+    static let trenLigero = BrandColors.neutralMedium
+
+    /// Suburbano/Tren Interurbano — TODO: section 10.
+    static let suburbano = BrandColors.neutralMedium
+
+    /// Ecobici (bike share) — TODO: section 6.
+    static let ecobici = BrandColors.neutralMedium
 }
 
 // MARK: - Surface & Material Opacities
@@ -291,16 +384,168 @@ extension ServiceStatus {
     }
 }
 
-// MARK: - View Modifiers
+// MARK: - Liquid Glass Primitives (A5)
+//
+// Single source of truth for translucent surfaces. iOS 26 uses real
+// `.glassEffect(...)` with refraction; iOS 18-25 fall back to `.ultraThinMaterial`
+// equivalents. Both honor `accessibilityReduceTransparency` by collapsing to a
+// solid neutral fill.
+//
+// The legacy `glassCard()` and `statusGlass()` extensions now delegate to
+// `.surface(_:)`, so existing call sites continue to work unchanged.
 
-/// Applies standard card styling with glass effect
+/// Visual hierarchy of a glass surface. Higher levels stand out more from the
+/// background and grab more attention.
+enum SurfaceLevel {
+    /// Subtle inline tile — line cards, list rows, info blocks.
+    case base
+
+    /// Prominent banner — active incident alerts, status callouts.
+    case elevated
+
+    /// Pulled-out element — sheets, toolbars, content over a map.
+    case floating
+
+    /// Tint applied on iOS 26 to give each level distinct depth.
+    var iOS26Tint: Color {
+        switch self {
+        case .base: return .clear
+        case .elevated: return Color.primary.opacity(0.04)
+        case .floating: return Color.primary.opacity(0.08)
+        }
+    }
+
+    /// Fallback material used on iOS 18-25.
+    @available(iOS 15.0, *)
+    var legacyMaterial: Material {
+        switch self {
+        case .base: return .ultraThinMaterial
+        case .elevated: return .thinMaterial
+        case .floating: return .regularMaterial
+        }
+    }
+}
+
+/// Applies a Liquid-Glass-aware surface to any view. Use through `.surface(_:)`.
+struct SurfaceModifier: ViewModifier {
+    let level: SurfaceLevel
+    let cornerRadius: CGFloat
+    let tint: Color?
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(level: SurfaceLevel, cornerRadius: CGFloat, tint: Color? = nil) {
+        self.level = level
+        self.cornerRadius = cornerRadius
+        self.tint = tint
+    }
+
+    func body(content: Content) -> some View {
+        if reduceTransparency {
+            content
+                .background(solidFallback)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        } else if #available(iOS 26.0, macOS 26.0, *) {
+            content
+                .background(glassBackground)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        } else {
+            content
+                .background(legacyBackground)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
+    }
+
+    private var solidFallback: some View {
+        let base = Color(white: colorScheme == .dark ? 0.15 : 0.95)
+        return ZStack {
+            base
+            if let tint {
+                tint.opacity(SurfaceOpacity.tintSubtle)
+            } else {
+                level.iOS26Tint
+            }
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    @ViewBuilder
+    private var glassBackground: some View {
+        let resolvedTint = tint ?? level.iOS26Tint
+        Color.clear
+            .glassEffect(.regular.tint(resolvedTint), in: .rect(cornerRadius: cornerRadius))
+    }
+
+    @ViewBuilder
+    private var legacyBackground: some View {
+        let resolvedTint = tint ?? level.iOS26Tint
+        ZStack {
+            Rectangle().fill(level.legacyMaterial)
+            if resolvedTint != .clear {
+                resolvedTint.opacity(SurfaceOpacity.tintLight)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Apply a Liquid Glass surface. Use this for any translucent card, banner,
+    /// or floating element across the app — it's the single switchpoint between
+    /// iOS 26 `.glassEffect` and the iOS 18-25 material fallback.
+    ///
+    /// - Parameters:
+    ///   - level: Visual hierarchy. `.base` = subtle, `.elevated` = banner,
+    ///            `.floating` = sheets/toolbars.
+    ///   - cornerRadius: Corner rounding. Defaults to `Layout.cornerRadiusMedium`.
+    ///   - tint: Optional brand tint (e.g. status color). When nil, uses the
+    ///           level's neutral tint.
+    func surface(
+        _ level: SurfaceLevel = .base,
+        cornerRadius: CGFloat = Layout.cornerRadiusMedium,
+        tint: Color? = nil
+    ) -> some View {
+        modifier(SurfaceModifier(level: level, cornerRadius: cornerRadius, tint: tint))
+    }
+}
+
+// MARK: - Liquid Glass Container
+
+/// On iOS 26, groups multiple `.surface(_:)` siblings so their glass effects
+/// morph together (e.g. when one transitions in/out, the surrounding glass
+/// flows around it). On older OS versions it's a transparent passthrough.
+///
+/// Wrap a group of related glass cards (e.g. the alerts list) to get unified
+/// refraction behavior.
+struct LiquidGlassContainer<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            GlassEffectContainer { content }
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - View Modifiers (Legacy Facades)
+//
+// `glassCard()` and `statusGlass()` are kept as façades so existing call sites
+// don't need to change. New code should reach for `.surface(_:)` directly.
+
+/// Applies standard card styling with glass effect.
+///
+/// Façade over `.surface(.base)`. Kept for backward compatibility — new code
+/// should prefer `.surface(_:)` directly for clarity.
 struct GlassCardModifier: ViewModifier {
     let cornerRadius: CGFloat
     let hasBorder: Bool
     let borderColor: Color
-
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var colorScheme
 
     init(
         cornerRadius: CGFloat = Layout.cornerRadiusMedium,
@@ -314,18 +559,8 @@ struct GlassCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(backgroundView)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .surface(.base, cornerRadius: cornerRadius)
             .overlay(borderOverlay)
-    }
-
-    @ViewBuilder
-    private var backgroundView: some View {
-        if reduceTransparency {
-            Color(white: colorScheme == .dark ? 0.15 : 0.95)
-        } else {
-            Color.clear.background(.ultraThinMaterial)
-        }
     }
 
     @ViewBuilder
@@ -338,7 +573,7 @@ struct GlassCardModifier: ViewModifier {
 }
 
 extension View {
-    /// Applies glass card styling appropriate for iOS 26
+    /// Applies glass card styling. Façade over `.surface(.base)`.
     func glassCard(
         cornerRadius: CGFloat = Layout.cornerRadiusMedium,
         hasBorder: Bool = true,
@@ -352,43 +587,29 @@ extension View {
     }
 }
 
-/// Applies status-tinted glass background
+/// Applies status-tinted glass background. Façade over `.surface(_:tint:)`.
 struct StatusGlassModifier: ViewModifier {
     let status: ServiceStatus
     let cornerRadius: CGFloat
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var colorScheme
-
     func body(content: Content) -> some View {
-        content
-            .background(backgroundView)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        let tint: Color? = status.isNormal ? nil : StatusColors.color(for: status)
+        let level: SurfaceLevel = status.isNormal ? .base : .elevated
+        let borderColor = StatusColors.color(for: status).opacity(
+            status.isNormal ? SurfaceOpacity.border : SurfaceOpacity.borderStrong
+        )
+
+        return content
+            .surface(level, cornerRadius: cornerRadius, tint: tint)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(
-                        StatusColors.color(for: status).opacity(
-                            status.isNormal ? SurfaceOpacity.border : SurfaceOpacity.borderStrong
-                        ),
-                        lineWidth: status.isNormal ? 0.5 : 1.5
-                    )
+                    .strokeBorder(borderColor, lineWidth: status.isNormal ? 0.5 : 1.5)
             )
-    }
-
-    @ViewBuilder
-    private var backgroundView: some View {
-        if reduceTransparency {
-            Color(white: colorScheme == .dark ? 0.15 : 0.95)
-        } else {
-            StatusColors.color(for: status)
-                .opacity(status.isNormal ? 0 : SurfaceOpacity.tintSubtle)
-                .background(.ultraThinMaterial)
-        }
     }
 }
 
 extension View {
-    /// Applies status-colored glass background
+    /// Applies status-colored glass background. Façade over `.surface(_:tint:)`.
     func statusGlass(for status: ServiceStatus, cornerRadius: CGFloat = Layout.cornerRadiusMedium) -> some View {
         modifier(StatusGlassModifier(status: status, cornerRadius: cornerRadius))
     }
