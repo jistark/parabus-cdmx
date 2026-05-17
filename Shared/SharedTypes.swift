@@ -10,6 +10,44 @@ enum ParabusConstants {
     static let accessoryWidgetKind = "MetrobusAccessoryWidget"
 }
 
+// MARK: - Shared Coders
+
+/// Cached encoder/decoder/formatter instances. Allocating these per-call is
+/// surprisingly expensive on iOS — JSONDecoder is ~100s of µs, DateFormatter
+/// can be ~1ms (locale loading). Reuse them everywhere persistence happens.
+enum SharedCoders {
+    /// Default JSON encoder. No date strategy — use `isoEncoder` if you need one.
+    static let plainEncoder = JSONEncoder()
+
+    /// Default JSON decoder. No date strategy — use `isoDecoder` if you need one.
+    static let plainDecoder = JSONDecoder()
+
+    /// JSON encoder with ISO8601 date encoding.
+    static let isoEncoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
+
+    /// JSON decoder with ISO8601 date decoding.
+    static let isoDecoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }()
+
+    /// ISO8601 with fractional seconds + internet date time. Matches the
+    /// worker's `Date().toISOString()` output.
+    static let iso8601Fractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    /// ISO8601 without fractional seconds — fallback for upstreams that omit them.
+    static let iso8601Plain = ISO8601DateFormatter()
+}
+
 // MARK: - Widget Data Types
 
 /// Lightweight line status for widget display

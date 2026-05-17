@@ -207,14 +207,14 @@ enum CommuteStorage {
 
     static func load() -> CommuteSchedule {
         guard let data = UserDefaults.standard.data(forKey: key),
-              let schedule = try? JSONDecoder().decode(CommuteSchedule.self, from: data) else {
+              let schedule = try? SharedCoders.plainDecoder.decode(CommuteSchedule.self, from: data) else {
             return CommuteSchedule()
         }
         return schedule
     }
 
     static func save(_ schedule: CommuteSchedule) {
-        guard let data = try? JSONEncoder().encode(schedule) else { return }
+        guard let data = try? SharedCoders.plainEncoder.encode(schedule) else { return }
         UserDefaults.standard.set(data, forKey: key)
     }
 }
