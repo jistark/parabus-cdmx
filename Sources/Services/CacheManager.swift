@@ -122,32 +122,6 @@ actor CacheManager {
         FileManager.default.fileExists(atPath: fileURL.path)
     }
 
-    // MARK: - Widget Integration
-
-    /// Saves scraping result and updates widget data
-    func saveAndUpdateWidget(_ result: ScrapingResult) throws {
-        // Save main cache
-        try save(result)
-
-        // Convert to widget format and save
-        let widgetLines = result.lines.map { line in
-            WidgetLineStatus(
-                id: line.lineNumber,
-                lineNumber: line.lineNumber,
-                status: WidgetServiceStatus(from: line.status),
-                affectedStationsCount: line.affectedStations.count,
-                incidentCount: line.incidentCount
-            )
-        }
-
-        let widgetData = WidgetData(
-            lines: widgetLines,
-            updatedAt: result.scrapedAt,
-            isStale: false
-        )
-
-        try WidgetCacheReader.save(widgetData)
-    }
 }
 
 // MARK: - WidgetServiceStatus Conversion
