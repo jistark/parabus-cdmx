@@ -172,7 +172,7 @@ struct RealtimeMapView: View {
             HStack(spacing: 4) {
                 if let line = viewModel.selectedLine {
                     Circle()
-                        .fill(LineColor.color(for: line))
+                        .fill(LineColors.color(for: line))
                         .frame(width: 10, height: 10)
                     Text(line)
                         .font(.subheadline.weight(.semibold))
@@ -209,7 +209,7 @@ private struct BusMarker: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(LineColor.color(for: line).gradient)
+                .fill(LineColors.color(for: line).gradient)
                 .frame(width: 26, height: 26)
                 .overlay(Circle().stroke(.white, lineWidth: 2))
                 .shadow(color: .black.opacity(0.25), radius: 2, y: 1)

@@ -225,7 +225,7 @@ struct LineBadgeMini: View {
     }
 
     private var lineColor: Color {
-        LineColor.color(for: lineNumber)
+        LineColors.color(for: lineNumber)
     }
 }
 

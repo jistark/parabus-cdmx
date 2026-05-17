@@ -98,7 +98,7 @@ struct StationPicker: View {
             HStack(spacing: 4) {
                 if let num = lineNumber {
                     Circle()
-                        .fill(LineColor.color(for: num).gradient)
+                        .fill(LineColors.color(for: num).gradient)
                         .frame(width: 16, height: 16)
                 }
 
@@ -109,7 +109,7 @@ struct StationPicker: View {
             .padding(.vertical, Spacing.xs)
             .background(
                 isSelected
-                    ? (lineNumber != nil ? LineColor.color(for: lineNumber!).opacity(0.15) : Color.accentColor.opacity(0.15))
+                    ? (lineNumber != nil ? LineColors.color(for: lineNumber!).opacity(0.15) : Color.accentColor.opacity(0.15))
                     : Color.secondary.opacity(0.1),
                 in: Capsule()
             )
@@ -117,7 +117,7 @@ struct StationPicker: View {
                 Capsule()
                     .strokeBorder(
                         isSelected
-                            ? (lineNumber != nil ? LineColor.color(for: lineNumber!) : Color.accentColor)
+                            ? (lineNumber != nil ? LineColors.color(for: lineNumber!) : Color.accentColor)
                             : Color.clear,
                         lineWidth: 1.5
                     )
@@ -140,7 +140,7 @@ struct StationPicker: View {
                     if selectedLineNumber == nil {
                         HStack(spacing: Spacing.xs) {
                             Circle()
-                                .fill(LineColor.color(for: group.lineNumber).gradient)
+                                .fill(LineColors.color(for: group.lineNumber).gradient)
                                 .frame(width: 12, height: 12)
 
                             Text("Linea \(group.lineNumber)")
@@ -162,7 +162,7 @@ struct StationPicker: View {
                 // Line badge (small)
                 ZStack {
                     Circle()
-                        .fill(LineColor.color(for: station.lineNumber).gradient)
+                        .fill(LineColors.color(for: station.lineNumber).gradient)
                         .frame(width: 28, height: 28)
 
                     Text(station.lineNumber)

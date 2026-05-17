@@ -248,7 +248,7 @@ private struct CommuteLegRow: View {
     private func lineBadge(_ lineNumber: String) -> some View {
         ZStack {
             Circle()
-                .fill(LineColor.color(for: lineNumber).gradient)
+                .fill(LineColors.color(for: lineNumber).gradient)
                 .frame(width: 20, height: 20)
 
             Text(lineNumber)
@@ -314,7 +314,7 @@ private struct CommutePreviewCard: View {
                     ForEach(schedule.involvedLines.sorted(), id: \.self) { lineNumber in
                         ZStack {
                             Circle()
-                                .fill(LineColor.color(for: lineNumber).gradient)
+                                .fill(LineColors.color(for: lineNumber).gradient)
                                 .frame(width: 24, height: 24)
 
                             Text(lineNumber)
@@ -557,7 +557,7 @@ struct CommuteLegSetupView: View {
     private func lineBadge(_ lineNumber: String) -> some View {
         ZStack {
             Circle()
-                .fill(LineColor.color(for: lineNumber).gradient)
+                .fill(LineColors.color(for: lineNumber).gradient)
                 .frame(width: 20, height: 20)
 
             Text(lineNumber)

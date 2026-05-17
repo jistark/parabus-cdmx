@@ -10,10 +10,10 @@ struct IncidentAlertBanner: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     // Dynamic Type support - unified badge size
-    @ScaledMetric(relativeTo: .body) private var badgeSize: CGFloat = BadgeSize.regular.dimension
+    @ScaledMetric(relativeTo: .body) private var badgeSize: CGFloat = Layout.badgeRegular
 
     private var statusColor: Color {
-        StatusColor.color(for: line.status)
+        StatusColors.color(for: line.status)
     }
 
     var body: some View {
@@ -53,7 +53,7 @@ struct IncidentAlertBanner: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(statusColor.opacity(MaterialOpacity.border), lineWidth: 1)
+                    .strokeBorder(statusColor.opacity(SurfaceOpacity.border), lineWidth: 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: 14))
         }
@@ -73,7 +73,7 @@ struct IncidentAlertBanner: View {
         } else {
             ZStack {
                 Circle()
-                    .fill(LineColor.color(for: line.lineNumber).gradient)
+                    .fill(LineColors.color(for: line.lineNumber).gradient)
 
                 Text(line.lineNumber)
                     .font(.subheadline.weight(.bold))
@@ -86,7 +86,7 @@ struct IncidentAlertBanner: View {
 
     private var statusBadge: some View {
         HStack(spacing: 4) {
-            Image(systemName: StatusColor.icon(for: line.status))
+            Image(systemName: StatusColors.icon(for: line.status))
                 .font(.caption2.weight(.semibold))
                 .symbolEffect(.pulse, options: .repeating, isActive: line.status == .suspended && !reduceMotion)
 
@@ -96,7 +96,7 @@ struct IncidentAlertBanner: View {
         .foregroundStyle(statusColor)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(statusColor.opacity(MaterialOpacity.light), in: Capsule())
+        .background(statusColor.opacity(SurfaceOpacity.tintLight), in: Capsule())
     }
 
     private var statusText: String {
@@ -136,7 +136,7 @@ struct IncidentAlertBanner: View {
         if reduceTransparency {
             Color(white: colorScheme == .dark ? 0.15 : 0.95)
         } else {
-            statusColor.opacity(MaterialOpacity.subtle)
+            statusColor.opacity(SurfaceOpacity.tintSubtle)
                 .background(.ultraThinMaterial)
         }
     }

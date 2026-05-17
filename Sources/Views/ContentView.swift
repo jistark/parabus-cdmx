@@ -129,7 +129,7 @@ struct ContentView: View {
             // Section header
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(StatusColor.alert)
+                    .foregroundStyle(StatusColors.critical)
                 Text("Incidentes activos")
                     .font(.headline)
             }
@@ -155,7 +155,7 @@ struct ContentView: View {
             // Section header
             HStack {
                 Image(systemName: "wrench.and.screwdriver.fill")
-                    .foregroundStyle(StatusColor.warning)
+                    .foregroundStyle(StatusColors.warning)
                 Text("Estaciones cerradas")
                     .font(.headline)
             }
