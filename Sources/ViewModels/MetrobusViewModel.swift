@@ -21,83 +21,29 @@ final class MetrobusViewModel {
     private(set) var isLoadingMaintenance = false
     private(set) var maintenanceLastUpdated: Date?
 
+    // MARK: - Derived State (cached)
+    //
+    // These used to be computed properties — `allLines` rebuilt a Dictionary
+    // on every access, `deduplicatedTodaysClosures` did O(lines × incidents
+    // × stations) work plus a filter pass over `maintenanceClosures`, both
+    // accessed multiple times per SwiftUI render. Now stored properties
+    // recomputed once per data refresh in `recomputeDerivedState()`.
+
+    /// All 7 lines, filling in missing ones with regular status.
+    private(set) var allLines: [LineStatus] = []
+
+    /// Lines that currently have any reported issue.
+    private(set) var linesWithIssues: [LineStatus] = []
+
+    /// Today's closures, filtered to avoid showing scheduled maintenance at
+    /// stations that already have a more severe real-time incident
+    /// (suspended/delayed). Intervention closures are always included.
+    private(set) var deduplicatedTodaysClosures: [ScheduledClosure] = []
+
     // MARK: - Constants
 
     /// All Metrobús line numbers (1-7)
     private static let allLineNumbers = ["1", "2", "3", "4", "5", "6", "7"]
-
-    // MARK: - Computed Properties (Incidents)
-
-    /// All 7 lines, filling in missing ones with regular status
-    var allLines: [LineStatus] {
-        let existingByNumber = Dictionary(uniqueKeysWithValues: lines.map { ($0.lineNumber, $0) })
-
-        return Self.allLineNumbers.map { lineNumber in
-            if let existing = existingByNumber[lineNumber] {
-                return existing
-            }
-            // Create placeholder for missing line with regular status
-            return LineStatus(
-                lineNumber: lineNumber,
-                transportType: .metrobus,
-                status: .regular
-            )
-        }
-    }
-
-    var linesWithIssues: [LineStatus] {
-        lines.filter { $0.hasIssues }
-    }
-
-    /// Stations with non-intervention incidents (suspended, delayed)
-    /// These take priority over scheduled maintenance closures
-    private var nonInterventionIncidentStations: [String: Set<String>] {
-        var result: [String: Set<String>] = [:]
-        for line in linesWithIssues {
-            for incident in line.incidents {
-                // Only track suspended/delayed incidents, not intervention
-                // (intervention closures are shown separately in the closures section)
-                guard incident.status == .suspended || incident.status == .delayed else {
-                    continue
-                }
-                for station in incident.affectedStations {
-                    let normalized = normalizeStationName(station)
-                    result[line.lineNumber, default: []].insert(normalized)
-                }
-            }
-        }
-        return result
-    }
-
-    /// Today's closures, filtered to avoid showing scheduled maintenance at stations
-    /// that have more severe real-time incidents (suspended/delayed)
-    /// Intervention incidents are always shown since they represent station closures
-    var deduplicatedTodaysClosures: [ScheduledClosure] {
-        let severeIncidentStations = nonInterventionIncidentStations
-
-        // Filter scheduled closures to remove overlap with severe incidents
-        let filteredScheduled = scheduledTodaysClosures.filter { closure in
-            let lineIncidents = severeIncidentStations[closure.lineNumber] ?? []
-
-            // If no severe incidents on this line, keep the closure
-            guard !lineIncidents.isEmpty else {
-                return true
-            }
-
-            // Check if this closure's station has a severe incident
-            let normalizedStation = normalizeStationName(closure.stationName)
-            let hasSevereIssue = lineIncidents.contains { incidentStation in
-                normalizedStation == incidentStation ||
-                normalizedStation.contains(incidentStation) ||
-                incidentStation.contains(normalizedStation)
-            }
-
-            return !hasSevereIssue
-        }
-
-        // Combine filtered scheduled closures with intervention closures
-        return filteredScheduled + interventionClosures
-    }
 
 
     /// Normalize station name for comparison
@@ -283,6 +229,55 @@ final class MetrobusViewModel {
         error = nil
     }
 
+    // MARK: - Derived State Recomputation
+
+    /// Recompute `allLines`, `linesWithIssues`, `deduplicatedTodaysClosures`
+    /// from the just-updated source data. Call after any assignment to
+    /// `lines` or `maintenanceClosures`. One pass through each input,
+    /// instead of multiple passes per SwiftUI render.
+    private func recomputeDerivedState() {
+        // allLines: 7-element array with placeholders for missing lines.
+        let existing = Dictionary(uniqueKeysWithValues: lines.map { ($0.lineNumber, $0) })
+        allLines = Self.allLineNumbers.map { num in
+            existing[num] ?? LineStatus(
+                lineNumber: num,
+                transportType: .metrobus,
+                status: .regular
+            )
+        }
+
+        // linesWithIssues: simple filter; cached so SwiftUI doesn't re-run
+        // the filter on every property read.
+        linesWithIssues = lines.filter { $0.hasIssues }
+
+        // Build the suspended/delayed station map once for the dedup pass.
+        var severeStations: [String: Set<String>] = [:]
+        for line in linesWithIssues {
+            for incident in line.incidents
+                where incident.status == .suspended || incident.status == .delayed {
+                for station in incident.affectedStations {
+                    severeStations[line.lineNumber, default: []]
+                        .insert(normalizeStationName(station))
+                }
+            }
+        }
+
+        // Filter scheduled closures whose station already shows a severe incident,
+        // then append intervention-as-closure rows so they always appear.
+        let scheduledToday = maintenanceClosures.filter { $0.isActive() }
+        let filteredScheduled = scheduledToday.filter { closure in
+            let stations = severeStations[closure.lineNumber] ?? []
+            guard !stations.isEmpty else { return true }
+            let normalized = normalizeStationName(closure.stationName)
+            return !stations.contains { existing in
+                normalized == existing
+                    || normalized.contains(existing)
+                    || existing.contains(normalized)
+            }
+        }
+        deduplicatedTodaysClosures = filteredScheduled + interventionClosures
+    }
+
     // MARK: - Private (Incidents)
 
     private func loadFromCache() async {
@@ -291,6 +286,7 @@ final class MetrobusViewModel {
                 lines = sortLines(cached.lines)
                 lastUpdated = cached.cachedAt
                 isStale = cached.isStale
+                recomputeDerivedState()
             }
         } catch {
             // Cache corrupto, ignorar silenciosamente
@@ -315,6 +311,8 @@ final class MetrobusViewModel {
 
             maintenanceClosures = maintenance.closures
             maintenanceLastUpdated = maintenance.scrapedAt
+
+            recomputeDerivedState()
 
             try? await cache.save(status)
             WidgetService.reloadAfterDataUpdate()
