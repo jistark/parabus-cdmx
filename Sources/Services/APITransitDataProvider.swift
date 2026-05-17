@@ -93,13 +93,20 @@ actor APITransitDataProvider: TransitDataProviding {
         return decoder
     }()
 
-    private lazy var session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = APIConfiguration.timeoutInterval
-        config.timeoutIntervalForResource = APIConfiguration.timeoutInterval * 2
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
-        return URLSession(configuration: config)
-    }()
+    private let session: URLSession
+
+    /// Production initializer uses a sensible default URLSession. Tests pass
+    /// an ephemeral session with a MockURLProtocol in its protocolClasses to
+    /// stub network responses without touching the wire.
+    init(session: URLSession? = nil) {
+        self.session = session ?? {
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = APIConfiguration.timeoutInterval
+            config.timeoutIntervalForResource = APIConfiguration.timeoutInterval * 2
+            config.requestCachePolicy = .reloadIgnoringLocalCacheData
+            return URLSession(configuration: config)
+        }()
+    }
 
     // MARK: - TransitDataProviding Implementation
 
