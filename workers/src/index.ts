@@ -56,9 +56,12 @@ const CORS_HEADERS: Record<string, string> = {
 
 export default {
   /**
-   * Handle incoming HTTP requests
+   * Handle incoming HTTP requests. The third argument is the runtime's
+   * ExecutionContext; we pass it to handlers so they can wrap non-critical
+   * writes (cache puts, KV puts) in ctx.waitUntil — letting the response
+   * return before those writes complete.
    */
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -99,21 +102,21 @@ export default {
       if (path.startsWith('/trip/')) {
         const tripId = decodeURIComponent(path.slice('/trip/'.length));
         if (!tripId) return jsonResponse({ error: 'trip_id required' }, 400);
-        return await handleTrip(request, env, tripId);
+        return await handleTrip(request, env, ctx, tripId);
       }
 
       switch (path) {
         case '/status':
-          return await handleStatus(request, env);
+          return await handleStatus(request, env, ctx);
 
         case '/health':
           return await handleHealth(env);
 
         case '/vehicles':
-          return await handleVehicles(request, env);
+          return await handleVehicles(request, env, ctx);
 
         case '/etas':
-          return await handleEtas(request, env);
+          return await handleEtas(request, env, ctx);
 
         case '/static/routes':
           return await handleStaticRoutes(env);
@@ -231,7 +234,7 @@ export default {
  *   - refresh=true: Bypass cache and fetch fresh data
  *   - lines=1,3,5: Filter to specific lines
  */
-async function handleStatus(request: Request, env: Env): Promise<Response> {
+async function handleStatus(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const forceRefresh = url.searchParams.get('refresh') === 'true';
   const linesParam = url.searchParams.get('lines');
@@ -274,8 +277,13 @@ async function handleStatus(request: Request, env: Env): Promise<Response> {
         elevators: result.mantenimiento.elevators,
       };
 
-      // Store in cache
-      await saveToCache(env, response);
+      // Store in cache off the hot path — the response can return immediately
+      // and KV write completes in the background. Only write on full success;
+      // partial-failure responses (one source down) shouldn't evict a healthy
+      // cached snapshot.
+      if (result.incidentes.success && result.mantenimiento.success) {
+        ctx.waitUntil(saveToCache(env, response));
+      }
     } catch (error) {
       // Try to serve stale cache on error
       const staleCache = await getFromCache(env);

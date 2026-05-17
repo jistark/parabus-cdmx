@@ -30,8 +30,12 @@ interface CachedFeedPayload {
 /**
  * Get the decoded feed, using Cache API if fresh. `null` means the operator's
  * tracking system is offline (pre-service hours or outage).
+ *
+ * The optional `ctx` lets callers defer the cache write off the hot path via
+ * ctx.waitUntil — cron-side callers (prewarmRealtime) don't have it so the
+ * write awaits inline. HTTP request callers always pass it.
  */
-async function getDecodedFeed(env: Env): Promise<CachedFeedPayload> {
+async function getDecodedFeed(env: Env, ctx?: ExecutionContext): Promise<CachedFeedPayload> {
   const cache = caches.default;
   const cacheKey = new Request(FEED_CACHE_URL, { method: 'GET' });
 
@@ -66,28 +70,33 @@ async function getDecodedFeed(env: Env): Promise<CachedFeedPayload> {
     feed,
   };
 
-  // Only cache when we got real data. Caching null (service inactive or
-  // upstream error) traps subsequent callers in the same negative state for
-  // the full TTL; we'd rather retry quickly than serve stale "off" signals.
+  // Build the cache response (or null if nothing worth caching).
+  // We cache real data with the full TTL; on hard failures, cache briefly so
+  // we don't hammer upstream. Null+no-error (service inactive) isn't cached
+  // so the next request retries immediately.
+  let cacheResp: Response | null = null;
   if (feed) {
-    const cacheResp = new Response(JSON.stringify(payload), {
+    cacheResp = new Response(JSON.stringify(payload), {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': `public, max-age=${FEED_CACHE_TTL}`,
       },
     });
-    await cache.put(cacheKey, cacheResp);
   } else if (fetchFailed) {
-    // Brief negative cache on hard failures only — avoid hammering upstream
-    // if the partner API is throwing 5xx, but keep it short enough that
-    // recovery is fast.
-    const cacheResp = new Response(JSON.stringify(payload), {
+    cacheResp = new Response(JSON.stringify(payload), {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, max-age=5',
       },
     });
-    await cache.put(cacheKey, cacheResp);
+  }
+
+  if (cacheResp) {
+    if (ctx) {
+      ctx.waitUntil(cache.put(cacheKey, cacheResp));
+    } else {
+      await cache.put(cacheKey, cacheResp);
+    }
   }
 
   return payload;
@@ -97,11 +106,11 @@ async function getDecodedFeed(env: Env): Promise<CachedFeedPayload> {
 // GET /vehicles  /  /vehicles?line=1
 // ============================================================================
 
-export async function handleVehicles(request: Request, env: Env): Promise<Response> {
+export async function handleVehicles(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const lineFilter = url.searchParams.get('line');
 
-  const { decodedAt, feed } = await getDecodedFeed(env);
+  const { decodedAt, feed } = await getDecodedFeed(env, ctx);
 
   if (!feed) {
     return jsonResponse({
@@ -172,8 +181,8 @@ export async function prewarmRealtime(env: Env): Promise<void> {
 // GET /trip/{trip_id}
 // ============================================================================
 
-export async function handleTrip(_request: Request, env: Env, tripId: string): Promise<Response> {
-  const { feed } = await getDecodedFeed(env);
+export async function handleTrip(_request: Request, env: Env, ctx: ExecutionContext, tripId: string): Promise<Response> {
+  const { feed } = await getDecodedFeed(env, ctx);
 
   if (!feed) {
     return jsonResponse({ serviceActive: false, vehicle: null });
@@ -204,7 +213,7 @@ export async function handleTrip(_request: Request, env: Env, tripId: string): P
  *
  * Requires static GTFS loaded. Returns 503 with a clear message if not.
  */
-export async function handleEtas(request: Request, env: Env): Promise<Response> {
+export async function handleEtas(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const stopId = url.searchParams.get('stop');
 
@@ -212,7 +221,7 @@ export async function handleEtas(request: Request, env: Env): Promise<Response> 
     return jsonResponse({ error: 'stop query param required' }, 400);
   }
 
-  const { feed } = await getDecodedFeed(env);
+  const { feed } = await getDecodedFeed(env, ctx);
   if (!feed) {
     return jsonResponse({ serviceActive: false, etas: [] });
   }
