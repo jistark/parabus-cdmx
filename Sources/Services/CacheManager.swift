@@ -5,9 +5,6 @@ actor CacheManager {
 
     // MARK: - Constants
 
-    /// Identificador del App Group (configurar en Xcode)
-    static let appGroupIdentifier = "group.starkji.parabus-cdmx.app"
-
     private let fileName = "metrobus_status.json"
     private let cacheValiditySeconds: TimeInterval = 300 // 5 minutos
 
@@ -45,7 +42,7 @@ actor CacheManager {
 
     private var cacheURL: URL? {
         FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: Self.appGroupIdentifier)?
+            .containerURL(forSecurityApplicationGroupIdentifier: ParabusConstants.appGroupIdentifier)?
             .appendingPathComponent(fileName)
     }
 

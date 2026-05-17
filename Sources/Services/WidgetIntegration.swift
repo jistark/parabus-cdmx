@@ -19,14 +19,13 @@ actor WidgetDataWriter {
 
     // MARK: - Configuration
 
-    private let appGroupIdentifier = "group.starkji.parabus-cdmx.app"
     private let statusFileName = "metrobus_status.json"
 
     // MARK: - File URL
 
     private var fileURL: URL? {
         FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
+            .containerURL(forSecurityApplicationGroupIdentifier: ParabusConstants.appGroupIdentifier)?
             .appendingPathComponent(statusFileName)
     }
 

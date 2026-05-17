@@ -12,9 +12,13 @@ actor IncidentHistoryManager {
     private var activeSignatures: Set<String> = []
 
     private init() {
-        // Use App Group for widget access
+        // Use App Group for widget access. Bug history: this used the literal
+        // "group.app.parabus" which doesn't match the entitlement
+        // "group.starkji.parabus-cdmx.app", so containerURL returned nil and
+        // every history write silently fell back to the per-process caches
+        // directory (which iOS may purge and the widget can't read).
         if let containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: "group.app.parabus"
+            forSecurityApplicationGroupIdentifier: ParabusConstants.appGroupIdentifier
         ) {
             fileURL = containerURL.appendingPathComponent("incident_history.json")
         } else {
