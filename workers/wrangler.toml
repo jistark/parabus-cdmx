@@ -1,0 +1,79 @@
+# Metrobus CDMX Status API - Wrangler Configuration
+# https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "metrobus-status"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Workers Paid plan is required for cron triggers
+# https://developers.cloudflare.com/workers/platform/cron-triggers/
+
+# ============================================================================
+# Cron Triggers
+# ============================================================================
+# Mexico City is UTC-6 winter, UTC-5 summer (DST). Times target winter offset;
+# in summer they fire 1h earlier in local time — still within our windows.
+# Multiplex inside scheduled() based on event.cron.
+#
+#   30 10 * * *  →  04:30 CDMX winter — pre-warm /status before 05:00 service
+#   0 6 * * *    →  00:00 CDMX winter — refresh static GTFS after Sinoptico's
+#                   nightly regen at midnight
+#   */2 * * * *  →  every 2 min — keep Cache API warm so first user request
+#                   to /vehicles never pays partner-API + decoder cold start
+
+[triggers]
+crons = [
+  "30 10 * * *",
+  "0 6 * * *",
+  "*/2 * * * *",
+]
+
+# ============================================================================
+# KV Namespace Bindings
+# ============================================================================
+# Create the namespace first:
+#   wrangler kv:namespace create "METROBUS_CACHE"
+#
+# Then add the ID below after creation
+
+[[kv_namespaces]]
+binding = "METROBUS_CACHE"
+id = "b69bcf3d451e4515b06ab17eaf28eeeb"
+
+# ============================================================================
+# Environment Variables (Optional)
+# ============================================================================
+# Add environment-specific variables here
+
+[vars]
+ENVIRONMENT = "production"
+
+# ============================================================================
+# Required Secrets (set via `wrangler secret put`, NEVER commit values)
+# ============================================================================
+#   JDV_BOT_URL       — Base URL of jdv-bot (e.g. https://jdv-bot.onrender.com)
+#   JDV_BOT_SECRET    — Bearer token shared with jdv-bot's /fetch endpoint
+#   METROBUS_USUARIO  — Sinoptico Plus partner API username
+#   METROBUS_SENHA    — Sinoptico Plus partner API password
+#
+# For local dev with `wrangler dev`, create workers/.dev.vars (gitignored).
+
+# ============================================================================
+# Development Environment
+# ============================================================================
+
+[env.dev]
+name = "metrobus-status-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+
+# ============================================================================
+# Staging Environment
+# ============================================================================
+
+[env.staging]
+name = "metrobus-status-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
