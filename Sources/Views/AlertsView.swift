@@ -42,11 +42,9 @@ struct AlertsView: View {
             #endif
             .refreshable {
                 await viewModel.refresh()
-                await syncIncidentHistory()
             }
             .task {
                 await viewModel.loadStatus()
-                await syncIncidentHistory()
             }
             .sheet(item: $selectedLine) { line in
                 LineDetailSheet(line: line)
@@ -309,12 +307,6 @@ struct AlertsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.xl)
-    }
-
-    // MARK: - Sync Incident History
-
-    private func syncIncidentHistory() async {
-        await IncidentHistoryManager.shared.syncWithCurrentStatus(viewModel.allLines)
     }
 
     // MARK: - Empty State
