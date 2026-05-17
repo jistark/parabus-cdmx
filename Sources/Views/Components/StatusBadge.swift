@@ -42,15 +42,7 @@ struct StatusBadge: View {
     }
 
     private var backgroundColor: Color {
-        switch status {
-        case .regular: .green
-        case .intervention: .orange
-        case .limited: .orange
-        case .delayed: Color(red: 0.85, green: 0.55, blue: 0.0) // Ámbar WCAG
-        case .suspended: .red
-        case .protest: .red
-        case .unknown: .secondary
-        }
+        StatusColors.color(for: status)
     }
 
     private var shouldPulse: Bool {

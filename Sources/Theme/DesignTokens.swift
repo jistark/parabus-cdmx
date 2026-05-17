@@ -110,19 +110,51 @@ enum Layout {
 
 // MARK: - Status Colors
 
-/// Semantic colors for service status indicators
+/// Semantic colors for service status indicators.
+///
+/// Hue progression encodes severity: green → yellow → orange → amber → red → pink.
+/// Each step changes hue (not just intensity) so users with color-vision
+/// deficiencies can still distinguish them; icons (`StatusColors.icon(for:)`)
+/// reinforce the signal.
+///
+/// We use SwiftUI's semantic colors (`.green`, `.red`, …) instead of Pantone
+/// brand colors because:
+///   - System colors auto-adapt to dark mode, accessibility contrast settings,
+///     and platform conventions
+///   - Pantone palette is reserved for brand identity (line badges, corporate
+///     header) — mixing the two would conflate "this is L4" with "this is a
+///     warning"
+/// One exception: `delay` is a custom amber tuned for WCAG AA contrast on
+/// white backgrounds, which the system orange doesn't always meet.
 enum StatusColors {
     /// Green - service operating normally
     /// Light: #34C759 | Dark: #30D158
     static let good = Color.green
 
-    /// Orange - partial service / intervention / scheduled maintenance
+    /// Yellow - real-time partial service (limited between stations).
+    /// Distinct from `warning` because limited is *currently happening*, not
+    /// scheduled — lower commitment than orange but still attention-worthy.
+    static let attention = Color.yellow
+
+    /// Orange - scheduled disruption (planned intervention / maintenance).
+    /// Predictable, calmer urgency than `attention` or `delay`.
     /// Light: #FF9500 | Dark: #FF9F0A
     static let warning = Color.orange
 
-    /// Red - service suspended or major delays
+    /// Amber - service degraded but flowing (delayed).
+    /// Custom hex tuned for WCAG AA contrast against white; sits between
+    /// `warning` and `critical` to signal "moving, but slowly".
+    static let delay = Color(red: 0.85, green: 0.55, blue: 0.0)
+
+    /// Red - service stopped (suspended).
     /// Light: #FF3B30 | Dark: #FF453A
     static let critical = Color.red
+
+    /// Pink - external urgent event (manifestación / protest).
+    /// Highest severity and visually distinct from `critical` so users
+    /// instantly recognize "this is not a maintenance issue, it's an
+    /// external disruption".
+    static let urgent = Color.pink
 
     /// Gray - unknown status or stale data
     static let unknown = Color.secondary
@@ -130,20 +162,13 @@ enum StatusColors {
     /// Returns the appropriate color for a service status
     static func color(for status: ServiceStatus) -> Color {
         switch status {
-        case .regular:
-            return good
-        case .intervention:
-            return warning
-        case .limited:
-            return warning  // Limited service is a warning
-        case .delayed:
-            return critical
-        case .suspended:
-            return critical
-        case .protest:
-            return critical  // Protest is urgent/critical
-        case .unknown:
-            return unknown
+        case .regular:      return good
+        case .intervention: return warning
+        case .limited:      return attention
+        case .delayed:      return delay
+        case .suspended:    return critical
+        case .protest:      return urgent
+        case .unknown:      return unknown
         }
     }
 
