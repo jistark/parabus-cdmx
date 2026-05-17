@@ -178,14 +178,15 @@ struct CommuteTabView: View {
     // MARK: - Route Status Banner
 
     private var routeStatusBanner: some View {
-        HStack(spacing: Spacing.sm) {
+        let accent: Color = hasRouteIssues ? StatusColors.critical : .green
+        return HStack(spacing: Layout.inlineSpacing) {
             Image(systemName: hasRouteIssues ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                 .font(.title2)
-                .foregroundStyle(hasRouteIssues ? StatusColors.critical : .green)
+                .foregroundStyle(accent)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(hasRouteIssues ? "Incidentes en tu ruta" : "Tu ruta está despejada")
-                    .font(.subheadline.weight(.semibold))
+                    .font(BrandTypography.lineLabel)
 
                 Text(schedule.isActiveToday ? "Activo hoy" : "Inactivo hoy")
                     .font(.caption)
@@ -194,32 +195,19 @@ struct CommuteTabView: View {
 
             Spacer()
 
-            // Involved line badges
+            // Involved line badges — stacked LineBadge components with overlap
             HStack(spacing: -8) {
                 ForEach(schedule.involvedLines.sorted(), id: \.self) { lineNumber in
-                    ZStack {
-                        Circle()
-                            .fill(LineColors.color(for: lineNumber).gradient)
-                            .frame(width: 28, height: 28)
-
-                        Text(lineNumber)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                    }
+                    LineBadge(number: lineNumber, transportType: .metrobus, size: .small)
+                        .frame(width: 28, height: 28)
                 }
             }
         }
-        .padding(Spacing.md)
-        .background(
-            (hasRouteIssues ? StatusColors.critical : Color.green).opacity(0.1),
-            in: RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium)
-        )
+        .padding(Layout.cardInset)
+        .surface(.elevated, cornerRadius: Layout.cornerRadiusMedium, tint: accent)
         .overlay(
             RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium)
-                .strokeBorder(
-                    (hasRouteIssues ? StatusColors.critical : Color.green).opacity(0.3),
-                    lineWidth: 1
-                )
+                .strokeBorder(accent.opacity(0.3), lineWidth: 1)
         )
     }
 
@@ -263,7 +251,7 @@ struct CommuteTabView: View {
                 Image(systemName: "calendar")
                     .foregroundStyle(.secondary)
                 Text("Días activos")
-                    .font(.subheadline.weight(.medium))
+                    .font(BrandTypography.lineLabel)
                 Spacer()
             }
 
@@ -286,6 +274,8 @@ struct CommuteTabView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(day.shortName)
+                    .accessibilityValue(schedule.activeDays.contains(day) ? "Activo" : "Inactivo")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -294,8 +284,8 @@ struct CommuteTabView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-        .padding(Spacing.md)
-        .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium))
+        .padding(Layout.cardInset)
+        .surface(.base, cornerRadius: Layout.cornerRadiusMedium)
     }
 
     private func toggleDay(_ day: Weekday) {
@@ -315,7 +305,7 @@ struct CommuteTabView: View {
                 Image(systemName: "bell.fill")
                     .foregroundStyle(.secondary)
                 Text("Ventana de notificación")
-                    .font(.subheadline.weight(.medium))
+                    .font(BrandTypography.lineLabel)
                 Spacer()
             }
 
@@ -336,8 +326,8 @@ struct CommuteTabView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-        .padding(Spacing.md)
-        .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium))
+        .padding(Layout.cardInset)
+        .surface(.base, cornerRadius: Layout.cornerRadiusMedium)
     }
 
     // MARK: - Affected Lines Section
@@ -348,7 +338,7 @@ struct CommuteTabView: View {
                 Image(systemName: "exclamationmark.circle")
                     .foregroundStyle(StatusColors.critical)
                 Text("Líneas afectadas")
-                    .font(.subheadline.weight(.medium))
+                    .font(BrandTypography.lineLabel)
                 Spacer()
             }
 
@@ -357,15 +347,8 @@ struct CommuteTabView: View {
                     selectedLine = line
                 } label: {
                     HStack(spacing: Spacing.sm) {
-                        ZStack {
-                            Circle()
-                                .fill(LineColors.color(for: line.lineNumber).gradient)
-                                .frame(width: 32, height: 32)
-
-                            Text(line.lineNumber)
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(.white)
-                        }
+                        LineBadge(number: line.lineNumber, transportType: line.transportType, size: .small)
+                            .frame(width: 32, height: 32)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(line.lineName)
@@ -384,16 +367,14 @@ struct CommuteTabView: View {
                             .foregroundStyle(.tertiary)
                     }
                     .padding(Spacing.sm)
-                    .background(
-                        StatusColors.color(for: line.status).opacity(0.08),
-                        in: RoundedRectangle(cornerRadius: Layout.cornerRadiusSmall)
-                    )
+                    .surface(.base, cornerRadius: Layout.cornerRadiusSmall, tint: StatusColors.color(for: line.status))
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint("Toca para ver detalles de \(line.lineName)")
             }
         }
-        .padding(Spacing.md)
-        .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium))
+        .padding(Layout.cardInset)
+        .surface(.base, cornerRadius: Layout.cornerRadiusMedium)
     }
 
     // MARK: - Empty State
@@ -538,11 +519,11 @@ private struct CommuteLegCard: View {
                         .foregroundStyle(iconColor)
                 }
             }
-            .padding(Spacing.md)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium))
+            .padding(Layout.cardInset)
+            .surface(.base, cornerRadius: Layout.cornerRadiusMedium)
             .overlay(
                 RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium)
-                    .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                    .strokeBorder(Color.secondary.opacity(SurfaceOpacity.border), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
@@ -559,6 +540,8 @@ private struct CommuteLegCard: View {
         )
     }
 
+    /// Tiny 18pt badge for inline route preview. LineBadge's smallest size is
+    /// 32pt — this is intentionally smaller to fit in the dense leg card row.
     private func lineBadge(_ lineNumber: String) -> some View {
         ZStack {
             Circle()
@@ -568,6 +551,7 @@ private struct CommuteLegCard: View {
             Text(lineNumber)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.white)
+                .monospacedDigit()
         }
     }
 }

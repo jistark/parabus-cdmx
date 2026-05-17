@@ -110,7 +110,7 @@ struct AlertsView: View {
     }
 
     private var activeIncidentsSummary: some View {
-        HStack(spacing: Spacing.sm) {
+        HStack(spacing: Layout.inlineSpacing) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.title3)
                 .foregroundStyle(StatusColors.critical)
@@ -118,23 +118,23 @@ struct AlertsView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(activeIncidentCount) incidente\(activeIncidentCount == 1 ? "" : "s") activo\(activeIncidentCount == 1 ? "" : "s")")
-                    .font(.subheadline.weight(.semibold))
+                    .font(BrandTypography.lineLabel)
 
-                Text(showFavoritesOnly ? "en tus lineas favoritas" : "en todas las lineas")
+                Text(showFavoritesOnly ? "en tus líneas favoritas" : "en todas las líneas")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
         }
-        .padding(Spacing.md)
-        .background(StatusColors.critical.opacity(0.1), in: RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium))
+        .padding(Layout.cardInset)
+        .surface(.elevated, cornerRadius: Layout.cornerRadiusMedium, tint: StatusColors.critical)
         .overlay(
             RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium)
-                .strokeBorder(StatusColors.critical.opacity(0.3), lineWidth: 1)
+                .strokeBorder(StatusColors.critical.opacity(SurfaceOpacity.borderStrong - 0.1), lineWidth: 1)
         )
-        .padding(.horizontal, Spacing.md)
-        .padding(.bottom, Spacing.md)
+        .padding(.horizontal, Layout.cardInset)
+        .padding(.bottom, Layout.cardInset)
     }
 
     // MARK: - Current Incidents Section
@@ -144,10 +144,10 @@ struct AlertsView: View {
             // Section header
             HStack {
                 Text("Incidentes actuales")
-                    .font(.headline)
+                    .font(BrandTypography.lineLabel)
                 Spacer()
             }
-            .padding(.horizontal, Spacing.lg)
+            .padding(.horizontal, Layout.screenMargin)
 
             // Grouped by severity
             VStack(spacing: Spacing.xs) {
@@ -210,31 +210,30 @@ struct AlertsView: View {
                 Image(systemName: "clock")
                     .foregroundStyle(.secondary)
                 Text("Historial de hoy")
-                    .font(.subheadline.weight(.semibold))
+                    .font(BrandTypography.lineLabel)
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.md)
+            .padding(.horizontal, Layout.screenMargin)
+            .padding(.top, Layout.cardInset)
 
-            // Timeline entries would come from IncidentHistoryManager
-            // For now, show a placeholder if no history
-            VStack(spacing: 8) {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 8) {
-                        Image(systemName: "clock.badge.checkmark")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                        Text("El historial se actualiza con cada consulta")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    Spacer()
+            // Placeholder card — real timeline data was deleted in Phase 2
+            // cleanup (IncidentHistoryManager). See ref/UX_UI_CONTEXT.md.
+            HStack {
+                Spacer()
+                VStack(spacing: Spacing.xs) {
+                    Image(systemName: "clock.badge.checkmark")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("El historial se actualiza con cada consulta")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
-                .padding(.vertical, Spacing.lg)
+                Spacer()
             }
-            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Layout.screenMargin)
+            .surface(.base, cornerRadius: Layout.cornerRadiusSmall + 4)
+            .padding(.horizontal, Layout.cardInset)
         }
     }
 
@@ -351,10 +350,6 @@ struct TimelineEntryCard: View {
     let isActive: Bool
     let onTap: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
     private var statusColor: Color {
         StatusColors.color(for: line.status)
     }
@@ -378,10 +373,10 @@ struct TimelineEntryCard: View {
                             .foregroundStyle(.green)
                     }
                 }
-                .frame(width: 44)
+                .frame(width: Layout.minTouchTarget)
 
-                // Line badge
-                lineBadgeView
+                // Line badge — uses the canonical component
+                LineBadge(number: line.lineNumber, transportType: line.transportType, size: .small)
                     .frame(width: 36, height: 36)
 
                 // Content
@@ -392,13 +387,13 @@ struct TimelineEntryCard: View {
 
                         Spacer()
 
-                        // Status badge
+                        // Status pill
                         Text(StatusColors.shortText(for: line.status))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(statusColor)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, Spacing.xs)
                             .padding(.vertical, 4)
-                            .background(statusColor.opacity(0.15), in: Capsule())
+                            .background(statusColor.opacity(SurfaceOpacity.tintMedium), in: Capsule())
                     }
 
                     if !line.affectedStations.isEmpty {
@@ -420,54 +415,25 @@ struct TimelineEntryCard: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, Spacing.md)
+            .padding(.horizontal, Layout.cardInset)
             .padding(.vertical, Spacing.sm)
-            .background(cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium))
-            .overlay(cardBorder)
+            .surface(
+                isActive ? .elevated : .base,
+                cornerRadius: Layout.cornerRadiusMedium,
+                tint: isActive ? statusColor : nil
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium)
+                    .strokeBorder(
+                        isActive ? statusColor.opacity(0.3) : Color.secondary.opacity(0.15),
+                        lineWidth: isActive ? 1 : 0.5
+                    )
+            )
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(line.lineName), \(line.status.rawValue)")
+        .accessibilityLabel("\(line.lineName), \(line.status.accessibilityLabel)")
         .accessibilityHint("Toca para ver detalles")
-    }
-
-    @ViewBuilder
-    private var lineBadgeView: some View {
-        if let image = TransitImageLoader.loadOfficialImage(for: line) {
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-        } else {
-            ZStack {
-                Circle()
-                    .fill(LineColors.color(for: line.lineNumber).gradient)
-
-                Text(line.lineNumber)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var cardBackground: some View {
-        if reduceTransparency {
-            Color(white: colorScheme == .dark ? 0.15 : 0.95)
-        } else if isActive {
-            statusColor.opacity(0.08)
-                .background(.ultraThinMaterial)
-        } else {
-            Color.clear.background(.ultraThinMaterial)
-        }
-    }
-
-    private var cardBorder: some View {
-        RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium)
-            .strokeBorder(
-                isActive ? statusColor.opacity(0.3) : Color.secondary.opacity(0.15),
-                lineWidth: isActive ? 1 : 0.5
-            )
     }
 }
 
@@ -485,7 +451,7 @@ struct MaintenanceAlertSection: View {
                     .font(.subheadline.weight(.semibold))
 
                 Text("Cierres programados")
-                    .font(.subheadline.weight(.semibold))
+                    .font(BrandTypography.lineLabel)
                     .foregroundStyle(.secondary)
 
                 Spacer()
@@ -493,11 +459,12 @@ struct MaintenanceAlertSection: View {
                 Text("\(closures.count)")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 8)
+                    .monospacedDigit()
+                    .padding(.horizontal, Spacing.xs)
                     .padding(.vertical, 4)
-                    .background(Color.secondary.opacity(0.1), in: Capsule())
+                    .background(Color.secondary.opacity(SurfaceOpacity.tintLight), in: Capsule())
             }
-            .padding(.horizontal, Spacing.lg)
+            .padding(.horizontal, Layout.screenMargin)
 
             // Maintenance cards
             MaintenanceSection(
