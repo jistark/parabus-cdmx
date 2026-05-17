@@ -115,14 +115,19 @@ enum WidgetServiceStatus: String, Codable, CaseIterable {
         }
     }
 
+    /// Mirrors `StatusColors.color(for:)` in DesignTokens.swift so the widget
+    /// and main app render identical status colors. Hue progression encodes
+    /// severity: green → yellow → orange → amber → red → pink. Each step
+    /// changes hue (not just intensity) so users with color-vision
+    /// deficiencies can still distinguish them.
     var color: Color {
         switch self {
         case .regular: return .green
-        case .intervention: return .orange  // scheduled maintenance
-        case .limited: return .orange       // partial service — same family as intervention
-        case .delayed: return .red          // urgent real-time issue
-        case .suspended: return .red        // no service
-        case .protest: return .red          // most urgent — UX may upgrade to a distinct accent
+        case .limited: return .yellow                                 // real-time partial
+        case .intervention: return .orange                            // scheduled disruption
+        case .delayed: return Color(red: 0.85, green: 0.55, blue: 0.0) // WCAG-amber
+        case .suspended: return .red                                  // service stopped
+        case .protest: return .pink                                   // urgent external event
         case .unknown: return .secondary
         }
     }
@@ -224,17 +229,22 @@ enum WidgetCacheReader {
 }
 
 // MARK: - Line Colors for Widget
+//
+// Mirrors `LineColors` in Sources/Theme/DesignTokens.swift. Display-P3 with
+// the official Pantone-derived hex from ref/CDMX_PALETTE.md. Kept as a
+// separate enum here (instead of importing LineColors) so the widget can
+// resolve colors without pulling in the full DesignTokens module.
 
 enum WidgetLineColor {
     static func color(for lineNumber: String) -> Color {
         switch lineNumber {
-        case "1": return Color(red: 0.83, green: 0.18, blue: 0.18)
-        case "2": return Color(red: 0.48, green: 0.18, blue: 0.56)
-        case "3": return Color(red: 0.13, green: 0.55, blue: 0.13)
-        case "4": return Color(red: 0.96, green: 0.65, blue: 0.14)
-        case "5": return Color(red: 0.00, green: 0.48, blue: 0.65)
-        case "6": return Color(red: 0.80, green: 0.00, blue: 0.47)
-        case "7": return Color(red: 0.00, green: 0.60, blue: 0.40)
+        case "1": return Color(.displayP3, red: 164/255, green: 52/255,  blue: 58/255,  opacity: 1) // PANTONE 1807 C
+        case "2": return Color(.displayP3, red: 135/255, green: 24/255,  blue: 157/255, opacity: 1) // PANTONE 2602 C
+        case "3": return Color(.displayP3, red: 122/255, green: 154/255, blue: 1/255,   opacity: 1) // PANTONE 377 C
+        case "4": return Color(.displayP3, red: 254/255, green: 80/255,  blue: 0/255,   opacity: 1) // PANTONE 021 C
+        case "5": return Color(.displayP3, red: 0/255,   green: 30/255,  blue: 96/255,  opacity: 1) // PANTONE 2757 C
+        case "6": return Color(.displayP3, red: 225/255, green: 0/255,   blue: 152/255, opacity: 1) // PANTONE Rhodamine Red C
+        case "7": return Color(.displayP3, red: 4/255,   green: 106/255, blue: 56/255,  opacity: 1) // PANTONE 349 C
         default: return .gray
         }
     }

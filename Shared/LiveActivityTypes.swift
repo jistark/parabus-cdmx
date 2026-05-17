@@ -26,23 +26,41 @@ struct MetrobusDisruptionAttributes: ActivityAttributes {
 }
 
 // MARK: - Live Activity Colors
+//
+// `statusSeverity` mirrors `ServiceStatus.severity` from the main app
+// (LiveActivityService passes it through as `line.status.severity`):
+//   protest=6 > suspended=5 > delayed=4 > limited=3 > intervention=2 >
+//   unknown=1 > regular=0
+//
+// Previously this switch only handled 2/3/4 and bucketed everything else
+// as "regular" — protest and suspended disruptions rendered with a green
+// checkmark. Aligned in REVIEW HIGH-17.
+//
+// Colors mirror `StatusColors.color(for:)` in DesignTokens.swift and
+// `WidgetServiceStatus.color` in SharedTypes.swift.
 
 @available(iOS 16.1, *)
 extension MetrobusDisruptionAttributes.ContentState {
     var statusColor: Color {
         switch statusSeverity {
-        case 4: return .red          // suspended
-        case 3: return .orange       // intervention
-        case 2: return Color(red: 0.85, green: 0.55, blue: 0.0) // delayed
-        default: return .green       // regular/unknown
+        case 6: return .pink                                       // protest
+        case 5: return .red                                        // suspended
+        case 4: return Color(red: 0.85, green: 0.55, blue: 0.0)    // delayed (WCAG-amber)
+        case 3: return .yellow                                     // limited
+        case 2: return .orange                                     // intervention
+        case 1: return .secondary                                  // unknown
+        default: return .green                                     // regular
         }
     }
 
     var statusIcon: String {
         switch statusSeverity {
-        case 4: return "xmark.circle.fill"
-        case 3: return "wrench.and.screwdriver.fill"
-        case 2: return "clock.fill"
+        case 6: return "megaphone.fill"
+        case 5: return "exclamationmark.octagon.fill"
+        case 4: return "clock.badge.exclamationmark"
+        case 3: return "arrow.left.arrow.right"
+        case 2: return "wrench.and.screwdriver.fill"
+        case 1: return "questionmark.circle.fill"
         default: return "checkmark.circle.fill"
         }
     }

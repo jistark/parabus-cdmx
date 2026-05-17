@@ -183,7 +183,9 @@ struct InlineAccessoryView: View {
         lines: [
             WidgetLineStatus(id: "1", lineNumber: "1", status: .regular, affectedStationsCount: 0, incidentCount: 0),
             WidgetLineStatus(id: "2", lineNumber: "2", status: .intervention, affectedStationsCount: 2, incidentCount: 1),
+            WidgetLineStatus(id: "3", lineNumber: "3", status: .limited, affectedStationsCount: 3, incidentCount: 1),
             WidgetLineStatus(id: "4", lineNumber: "4", status: .suspended, affectedStationsCount: 1, incidentCount: 1),
+            WidgetLineStatus(id: "5", lineNumber: "5", status: .protest, affectedStationsCount: 4, incidentCount: 1),
         ],
         updatedAt: Date(),
         isStale: false
