@@ -113,8 +113,15 @@ struct Incident: Codable, Hashable {
 }
 
 /// Representa el estado de una linea de transporte (puede tener multiples incidentes)
-struct LineStatus: Identifiable, Codable {
-    let id: UUID
+struct LineStatus: Identifiable, Codable, Hashable {
+    /// Identity derived from the natural key (line number). Was `let id: UUID`
+    /// regenerated on every init, which broke SwiftUI animation/sheet identity
+    /// because `APITransitDataProvider.convertToLineStatus` built fresh
+    /// instances on every fetch — every line appeared to be a brand-new entity
+    /// each refresh, churning the diff in `ForEach(lines)` and dismissing any
+    /// presented sheet keyed on a stale UUID.
+    var id: String { lineNumber }
+
     let lineNumber: String
     let lineName: String
     let transportType: TransportType
@@ -128,7 +135,6 @@ struct LineStatus: Identifiable, Codable {
         incidents: [Incident] = [],
         lastUpdated: Date = Date()
     ) {
-        self.id = UUID()
         self.lineNumber = lineNumber
         self.lineName = lineName.isEmpty ? "Linea \(lineNumber)" : lineName
         self.transportType = transportType
