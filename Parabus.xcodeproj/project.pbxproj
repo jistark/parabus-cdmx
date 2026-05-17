@@ -90,6 +90,11 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		F10000000000000000000200 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -129,6 +134,7 @@
 				082136B32EE3CE7A00315865 /* widget-pbExtension.entitlements */,
 				082136B22EE3CE4E00315865 /* Parabus.entitlements */,
 				F10000000000000000000040 /* Sources */,
+				F10000000000000000000200 /* Shared */,
 				0821363B2EE3CC4100315865 /* widget-pb */,
 				082136362EE3CC4100315865 /* Frameworks */,
 				F10000000000000000000070 /* Products */,
@@ -161,6 +167,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				0821363B2EE3CC4100315865 /* widget-pb */,
+				F10000000000000000000200 /* Shared */,
 			);
 			name = "widget-pbExtension";
 			packageProductDependencies = (
@@ -185,6 +192,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				F10000000000000000000040 /* Sources */,
+				F10000000000000000000200 /* Shared */,
 			);
 			name = Parabus;
 			packageProductDependencies = (
