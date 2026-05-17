@@ -1,0 +1,125 @@
+import SwiftUI
+
+struct LineBadge: View {
+    let number: String
+    let transportType: TransportType
+    var size: Size = .regular
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    enum Size {
+        case small, regular, large
+
+        var dimension: CGFloat {
+            switch self {
+            case .small: 32
+            case .regular: 40
+            case .large: 56
+            }
+        }
+
+        /// Minimum touch target (44pt)
+        var touchTarget: CGFloat {
+            max(dimension, 44)
+        }
+    }
+
+    var body: some View {
+        Group {
+            if let image = TransitImageLoader.loadOfficialImage(
+                for: number,
+                transportType: transportType
+            ) {
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size.dimension, height: size.dimension)
+            } else {
+                fallbackBadge
+            }
+        }
+        .frame(minWidth: size.touchTarget, minHeight: size.touchTarget)
+        .accessibilityLabel("\(transportType.displayName) linea \(number)")
+    }
+
+    /// Fallback badge for lines without official icons
+    private var fallbackBadge: some View {
+        ZStack {
+            Circle()
+                .fill(lineColor.gradient)
+
+            Text(number)
+                .font(fallbackFont)
+                .fontWeight(.bold)
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.5)
+        }
+        .frame(width: size.dimension, height: size.dimension)
+        .shadow(color: lineColor.opacity(colorScheme == .dark ? 0.5 : 0.3), radius: 4, y: 2)
+    }
+
+    private var fallbackFont: Font {
+        switch size {
+        case .small: .subheadline
+        case .regular: .headline
+        case .large: .title
+        }
+    }
+
+    private var lineColor: Color {
+        // Fallback colors for non-Metrobus or unknown lines
+        switch number {
+        case "1": return Color(red: 0.83, green: 0.18, blue: 0.18)
+        case "2": return Color(red: 0.48, green: 0.18, blue: 0.56)
+        case "3": return Color(red: 0.13, green: 0.55, blue: 0.13)
+        case "4": return Color(red: 0.96, green: 0.65, blue: 0.14)
+        case "5": return Color(red: 0.00, green: 0.48, blue: 0.65)
+        case "6": return Color(red: 0.80, green: 0.00, blue: 0.47)
+        case "7": return Color(red: 0.00, green: 0.60, blue: 0.40)
+        default: return Color.gray
+        }
+    }
+}
+
+#Preview("Official Icons - All Sizes") {
+    VStack(spacing: 24) {
+        HStack(spacing: 16) {
+            ForEach(1...7, id: \.self) { num in
+                LineBadge(number: "\(num)", transportType: .metrobus, size: .small)
+            }
+        }
+
+        HStack(spacing: 16) {
+            ForEach(1...7, id: \.self) { num in
+                LineBadge(number: "\(num)", transportType: .metrobus, size: .regular)
+            }
+        }
+
+        HStack(spacing: 16) {
+            ForEach(1...7, id: \.self) { num in
+                LineBadge(number: "\(num)", transportType: .metrobus, size: .large)
+            }
+        }
+    }
+    .padding()
+}
+
+#Preview("Fallback Badge") {
+    HStack(spacing: 16) {
+        LineBadge(number: "A", transportType: .metro, size: .regular)
+        LineBadge(number: "8", transportType: .metrobus, size: .regular)
+    }
+    .padding()
+}
+
+#Preview("Dark Mode") {
+    VStack(spacing: 16) {
+        HStack(spacing: 12) {
+            ForEach(1...7, id: \.self) { num in
+                LineBadge(number: "\(num)", transportType: .metrobus, size: .regular)
+            }
+        }
+    }
+    .padding()
+    .preferredColorScheme(.dark)
+}
