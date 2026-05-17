@@ -260,30 +260,23 @@ final class MetrobusViewModel {
 
     // MARK: - Actions
 
-    /// Carga todos los datos: incidentes en tiempo real y mantenimientos programados
+    /// Carga todos los datos: incidentes en tiempo real y mantenimientos programados.
+    /// Single network round-trip via dataProvider.fetchAll — /status returns
+    /// both payloads in one response.
     func loadStatus() async {
         guard !isLoading else { return }
 
         // Cargar cache primero para UI inmediata
         await loadFromCache()
-
-        // Refrescar ambos en paralelo
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.refreshIncidents() }
-            group.addTask { await self.refreshMaintenance() }
-        }
+        await refreshAll(forceRefresh: false)
     }
 
-    /// Fuerza refresh de incidentes y mantenimientos (bypasses cache)
-    /// Sets isRefreshing for UI feedback during pull-to-refresh
+    /// Fuerza refresh (bypasses cache). Sets isRefreshing for UI feedback during
+    /// pull-to-refresh.
     func refresh() async {
         isRefreshing = true
         defer { isRefreshing = false }
-
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.refreshIncidents(forceRefresh: true) }
-            group.addTask { await self.refreshMaintenance() }
-        }
+        await refreshAll(forceRefresh: true)
     }
 
     func clearError() {
@@ -304,55 +297,42 @@ final class MetrobusViewModel {
         }
     }
 
-    private func refreshIncidents(forceRefresh: Bool = false) async {
+    /// Single unified fetch path. Replaced the old refreshIncidents +
+    /// refreshMaintenance pair which each hit /status independently (one
+    /// payload, two decodes). Now both `lines` and `maintenanceClosures`
+    /// come from one decoded response with a consistent `scrapedAt`.
+    private func refreshAll(forceRefresh: Bool) async {
         isLoading = true
+        isLoadingMaintenance = true
         error = nil
 
         do {
-            let result = try await dataProvider.fetchStatus(forceRefresh: forceRefresh)
-            lines = sortLines(result.lines)
-            lastUpdated = result.scrapedAt
+            let (status, maintenance) = try await dataProvider.fetchAll(forceRefresh: forceRefresh)
+
+            lines = sortLines(status.lines)
+            lastUpdated = status.scrapedAt
             isStale = false
 
-            // Guardar en cache y actualizar widget
-            try? await cache.save(result)
+            maintenanceClosures = maintenance.closures
+            maintenanceLastUpdated = maintenance.scrapedAt
 
-            // Update widgets
+            try? await cache.save(status)
             WidgetService.reloadAfterDataUpdate()
 
-            // Update Live Activities (iOS 16.2+)
             #if os(iOS)
             if #available(iOS 16.2, *) {
                 await LiveActivityService.shared.processStatusUpdate(lines)
             }
             #endif
-
         } catch {
-            // Solo mostrar error si no hay datos en cache
+            // Solo mostrar error si no hay datos en cache.
             if lines.isEmpty {
                 self.error = error
             }
-            // Si hay datos del cache, mantenerlos y marcar como stale
             isStale = true
         }
 
         isLoading = false
-    }
-
-    // MARK: - Private (Maintenance)
-
-    private func refreshMaintenance() async {
-        isLoadingMaintenance = true
-
-        do {
-            let result = try await dataProvider.fetchMaintenanceClosures()
-            maintenanceClosures = result.closures
-            maintenanceLastUpdated = result.scrapedAt
-        } catch {
-            // Silently fail - maintenance is secondary info
-            print("Failed to fetch maintenance: \(error)")
-        }
-
         isLoadingMaintenance = false
     }
 

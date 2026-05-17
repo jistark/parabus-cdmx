@@ -6,6 +6,11 @@ protocol TransitDataProviding: Sendable {
     func fetchStatus() async throws -> ScrapingResult
     func fetchStatus(forceRefresh: Bool) async throws -> ScrapingResult
     func fetchMaintenanceClosures() async throws -> MaintenanceResult
+    /// Fetch both incident status and scheduled maintenance in one call.
+    /// The default implementation runs the two separate fetches in parallel;
+    /// the worker-backed provider overrides this with a single HTTP round-trip
+    /// since /status returns both payloads in one response.
+    func fetchAll(forceRefresh: Bool) async throws -> (ScrapingResult, MaintenanceResult)
 }
 
 // MARK: - Default Implementation
@@ -14,6 +19,14 @@ extension TransitDataProviding {
     /// Default implementation: forceRefresh has no effect for scrapers
     func fetchStatus(forceRefresh: Bool) async throws -> ScrapingResult {
         try await fetchStatus()
+    }
+
+    /// Default parallel-fetch implementation. Providers that can return both
+    /// payloads from a single response should override.
+    func fetchAll(forceRefresh: Bool) async throws -> (ScrapingResult, MaintenanceResult) {
+        async let status = fetchStatus(forceRefresh: forceRefresh)
+        async let maintenance = fetchMaintenanceClosures()
+        return try await (status, maintenance)
     }
 }
 
