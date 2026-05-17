@@ -39,7 +39,7 @@ struct MetrobusViewModelTests {
         // Arrange
         let cache = InMemoryCacheStorage()
         try await cache.save(ScrapingResult(
-            lines: MetrobusScraper.mockData,
+            lines: MockTransitData.lines,
             scrapedAt: Date().addingTimeInterval(-600), // 10 min old
             source: URL(string: "https://test")!
         ))

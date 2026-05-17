@@ -256,14 +256,13 @@ final class MetrobusViewModel {
 
     // MARK: - Initialization
 
-    /// Production initializer - uses configured data source
+    /// Production initializer — always uses the worker API.
+    /// The previous TransitDataSource switch had a `.scraper` case backed by
+    /// `MetrobusScraper` (HTML scrape via SwiftSoup) that was statically
+    /// unreachable (`TransitDataSource.current = .api` was hardcoded) and
+    /// has since been deleted along with its dependency.
     init() {
-        switch TransitDataSource.current {
-        case .scraper:
-            self.dataProvider = MetrobusScraper()
-        case .api:
-            self.dataProvider = APITransitDataProvider()
-        }
+        self.dataProvider = APITransitDataProvider()
         self.cache = CacheManager()
     }
 
