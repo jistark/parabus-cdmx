@@ -65,7 +65,6 @@
 		F10000000000000000000020 /* Exceptions for "Sources" folder in "Parabus" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				GTFS/Metrobus_GTFS_RT.proto,
 				Resources/GTFS/stop_times.txt,
 				Resources/Info.plist,
 			);
