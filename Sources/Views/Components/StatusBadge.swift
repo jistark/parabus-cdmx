@@ -10,43 +10,27 @@ struct StatusBadge: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: iconName)
+        HStack(spacing: Spacing.xxs) {
+            Image(systemName: StatusColors.icon(for: status))
                 .font(style == .compact ? .footnote : .subheadline)
-                .symbolEffect(.pulse, options: .repeating, isActive: shouldPulse)
+                .symbolEffect(.pulse, options: .repeating, isActive: StatusColors.shouldPulse(for: status))
 
             if style == .expanded {
-                Text(status.rawValue)
-                    .font(.subheadline.weight(.medium))
+                Text(StatusColors.displayText(for: status))
+                    .font(BrandTypography.statusLabel)
             }
         }
-        .padding(.horizontal, style == .compact ? 10 : 14)
-        .padding(.vertical, style == .compact ? 6 : 10)
-        .frame(minHeight: 44) // Ensure 44pt touch target
-        .background(backgroundColor.opacity(0.15), in: Capsule())
+        .padding(.horizontal, style == .compact ? Layout.pillInset : Spacing.sm + 2)
+        .padding(.vertical, style == .compact ? Spacing.xxs + 2 : Spacing.xs + 2)
+        .frame(minHeight: Layout.minTouchTarget)
+        .background(backgroundColor.opacity(SurfaceOpacity.tintMedium), in: Capsule())
         .foregroundStyle(backgroundColor)
-        .accessibilityLabel(status.rawValue)
+        .accessibilityLabel(status.accessibilityLabel)
         .contentTransition(.symbolEffect(.replace))
-    }
-
-    private var iconName: String {
-        switch status {
-        case .regular: "checkmark.circle.fill"
-        case .intervention: "wrench.and.screwdriver.fill"
-        case .limited: "arrow.left.arrow.right"
-        case .delayed: "clock.fill"
-        case .suspended: "xmark.circle.fill"
-        case .protest: "megaphone.fill"
-        case .unknown: "questionmark.circle.fill"
-        }
     }
 
     private var backgroundColor: Color {
         StatusColors.color(for: status)
-    }
-
-    private var shouldPulse: Bool {
-        status == .suspended || status == .delayed || status == .protest
     }
 }
 

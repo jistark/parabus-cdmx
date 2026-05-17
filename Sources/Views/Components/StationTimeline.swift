@@ -11,9 +11,6 @@ struct CompactStationTimeline: View {
     let incidents: [Incident]
     let lineColor: Color
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
     // Dynamic Type support
     @ScaledMetric(relativeTo: .body) private var statusBadgeSize: CGFloat = 28
 
@@ -23,13 +20,8 @@ struct CompactStationTimeline: View {
                 compactIncidentRow(incident, index: index + 1, isLast: index == incidents.count - 1)
             }
         }
-        .padding(12)
-        .background(
-            reduceTransparency
-                ? AnyShapeStyle(Color(white: colorScheme == .dark ? 0.15 : 0.92))
-                : AnyShapeStyle(Color.secondary.opacity(SurfaceOpacity.tintSubtle)),
-            in: RoundedRectangle(cornerRadius: 12)
-        )
+        .padding(Spacing.sm)
+        .surface(.base, cornerRadius: Layout.cornerRadiusSmall + 4)
     }
 
     private func compactIncidentRow(_ incident: Incident, index: Int, isLast: Bool) -> some View {
