@@ -15,11 +15,11 @@ final class LiveActivityService {
 
     // MARK: - State
 
-    /// Currently active Live Activities by line number
+    /// Currently active Live Activities by line number. The keyset is the
+    /// authoritative source of "which lines have an activity right now" —
+    /// a previous parallel `trackedLines: Set<String>` was prone to drift
+    /// (only inserted, never removed when activities ended externally).
     private var activeActivities: [String: Activity<MetrobusDisruptionAttributes>] = [:]
-
-    /// Lines that had activities started (to track what to end)
-    private var trackedLines: Set<String> = []
 
     // MARK: - Public API
 
@@ -57,22 +57,19 @@ final class LiveActivityService {
         )
 
         do {
+            // pushType: nil — we don't have a server to register tokens with,
+            // so requesting .token spawned a `for await activity.pushTokenUpdates`
+            // observer Task that was never stored or cancelled. Each new
+            // activity leaked another iterator that kept the activity alive
+            // and collected tokens that went nowhere (handlePushToken was a
+            // TODO print). Re-enable when there's a push backend.
             let activity = try Activity.request(
                 attributes: attributes,
                 content: activityContent,
-                pushType: .token // Enable push updates
+                pushType: nil
             )
 
             activeActivities[line.lineNumber] = activity
-            trackedLines.insert(line.lineNumber)
-
-            // Observe push token for server registration
-            Task {
-                for await tokenData in activity.pushTokenUpdates {
-                    let token = tokenData.map { String(format: "%02x", $0) }.joined()
-                    await handlePushToken(token, for: line.lineNumber, activityId: activity.id)
-                }
-            }
 
         } catch {
             print("Failed to start Live Activity: \(error)")
@@ -188,10 +185,12 @@ final class LiveActivityService {
             }
         }
 
-        // End activities for lines that are now normal
-        for lineNumber in trackedLines.subtracting(affectedLineNumbers) {
+        // End activities for lines that are now normal. Iterate over a
+        // snapshot of the keys so the mutation inside endActivity (which
+        // removes the key) doesn't break the loop.
+        let staleKeys = Set(activeActivities.keys).subtracting(affectedLineNumbers)
+        for lineNumber in staleKeys {
             await endActivity(for: lineNumber, dismissImmediately: false)
-            trackedLines.remove(lineNumber)
         }
     }
 
@@ -207,20 +206,8 @@ final class LiveActivityService {
         )
     }
 
-    private func handlePushToken(_ token: String, for lineNumber: String, activityId: String) async {
-        // TODO: Send token to your server for push updates
-        // This enables remote Live Activity updates via APNs
-        print("Live Activity push token for line \(lineNumber): \(token.prefix(20))...")
-
-        // Example: Send to server
-        // let tokenInfo = LiveActivityTokenInfo(
-        //     lineNumber: lineNumber,
-        //     pushToken: token,
-        //     activityId: activityId,
-        //     createdAt: Date()
-        // )
-        // try await APIClient.shared.registerLiveActivityToken(tokenInfo)
-    }
+    // handlePushToken removed alongside pushType: .token (see startActivity).
+    // Restore both together when a push backend exists.
 }
 
 // MARK: - Convenience Extension for ViewModel
@@ -234,7 +221,6 @@ extension LiveActivityService {
         Task {
             for activity in Activity<MetrobusDisruptionAttributes>.activities {
                 activeActivities[activity.attributes.lineNumber] = activity
-                trackedLines.insert(activity.attributes.lineNumber)
             }
         }
     }
