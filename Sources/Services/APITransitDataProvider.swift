@@ -114,15 +114,6 @@ actor APITransitDataProvider: TransitDataProviding {
         )
     }
 
-    func fetchStatus(forLine lineNumber: String) async throws -> LineStatus? {
-        // Use filtered endpoint for efficiency
-        let url = APIConfiguration.baseURL
-            .appendingPathComponent("status")
-            .appending(queryItems: [URLQueryItem(name: "lines", value: lineNumber)])
-
-        let response = try await fetchAPIResponse(from: url)
-        return response.lines.first.map { convertToLineStatus($0) }
-    }
 
     func fetchMaintenanceClosures() async throws -> MaintenanceResult {
         let response = try await fetchAPIResponse()
@@ -302,47 +293,6 @@ actor APITransitDataProvider: TransitDataProviding {
         if let d = formatter.date(from: string) { return d }
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: string)
-    }
-}
-
-// MARK: - Health Check
-
-extension APITransitDataProvider {
-
-    struct HealthStatus: Sendable {
-        let isHealthy: Bool
-        let cacheAge: Int?
-        let timestamp: Date
-    }
-
-    /// Check if the API is healthy
-    func checkHealth() async -> HealthStatus {
-        let url = APIConfiguration.baseURL.appendingPathComponent("health")
-
-        do {
-            let (data, response) = try await session.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                return HealthStatus(isHealthy: false, cacheAge: nil, timestamp: Date())
-            }
-
-            // Parse health response
-            struct HealthResponse: Codable {
-                let status: String
-                let cacheAge: Int?
-            }
-
-            let health = try? decoder.decode(HealthResponse.self, from: data)
-
-            return HealthStatus(
-                isHealthy: health?.status == "ok",
-                cacheAge: health?.cacheAge,
-                timestamp: Date()
-            )
-        } catch {
-            return HealthStatus(isHealthy: false, cacheAge: nil, timestamp: Date())
-        }
     }
 }
 

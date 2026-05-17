@@ -194,4 +194,3 @@ export const URLS = {
   servicioMB: 'https://www.metrobus.cdmx.gob.mx/ServicioMB',
 } as const;
 
-export const USER_AGENT = 'ParabusBot/1.0 (+https://parabus.app; transit-status-checker)';

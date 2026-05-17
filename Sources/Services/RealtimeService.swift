@@ -49,11 +49,6 @@ actor RealtimeService {
         return response
     }
 
-    /// Force the next fetchStaticRoutes to re-hit the network.
-    func invalidateStaticRoutesCache() {
-        staticRoutesCache = nil
-    }
-
     // MARK: - Private
 
     private func get<T: Decodable>(_ url: URL, as: T.Type) async throws -> T {

@@ -14,6 +14,7 @@ import {
   MetrobusResponse,
   HealthResponse,
   CachedData,
+  ScheduledEvent,
   CACHE_KEY,
   CACHE_TTL_SECONDS,
 } from './types';
@@ -407,12 +408,3 @@ function jsonResponse(data: unknown, status = 200): Response {
   });
 }
 
-// ============================================================================
-// Type Declaration for Scheduled Events
-// ============================================================================
-
-interface ScheduledEvent {
-  cron: string;
-  type: string;
-  scheduledTime: number;
-}
