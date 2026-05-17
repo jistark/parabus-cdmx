@@ -72,15 +72,15 @@ struct MetrobusViewModelTests {
         #expect(viewModel.error != nil)
     }
 
-    @Test("Status summary shows correct message for all normal")
+    @Test("Status summary shows all-normal when no issues and no closures")
     @MainActor
     func statusSummaryAllNormal() async {
-        // Arrange
+        // Arrange — empty closures alongside normal lines.
         let normalLines = [
             LineStatus(lineNumber: "1", transportType: .metrobus, status: .regular, affectedStations: []),
             LineStatus(lineNumber: "2", transportType: .metrobus, status: .regular, affectedStations: [])
         ]
-        let provider = MockTransitDataProvider(lines: normalLines)
+        let provider = MockTransitDataProvider(lines: normalLines, closures: [])
         let cache = InMemoryCacheStorage()
         let viewModel = MetrobusViewModel(dataProvider: provider, cache: cache)
 
@@ -91,16 +91,19 @@ struct MetrobusViewModelTests {
         #expect(viewModel.statusSummary == "Todas las lineas operando normal")
     }
 
-    @Test("Status summary shows incident count")
+    @Test("Status summary shows incident count when no closures")
     @MainActor
     func statusSummaryWithIncidents() async {
-        // Arrange
+        // Arrange — 2 non-intervention issues. Intervention statuses are
+        // converted to synthetic ScheduledClosures by the viewmodel (so they
+        // can render in the closures section), so use delayed/suspended here
+        // to keep closureCount at 0.
         let mixedLines = [
             LineStatus(lineNumber: "1", transportType: .metrobus, status: .regular, affectedStations: []),
-            LineStatus(lineNumber: "2", transportType: .metrobus, status: .intervention, affectedStations: ["La Joya"]),
+            LineStatus(lineNumber: "2", transportType: .metrobus, status: .delayed, affectedStations: ["La Joya"]),
             LineStatus(lineNumber: "3", transportType: .metrobus, status: .suspended, affectedStations: ["Buenavista"])
         ]
-        let provider = MockTransitDataProvider(lines: mixedLines)
+        let provider = MockTransitDataProvider(lines: mixedLines, closures: [])
         let cache = InMemoryCacheStorage()
         let viewModel = MetrobusViewModel(dataProvider: provider, cache: cache)
 
