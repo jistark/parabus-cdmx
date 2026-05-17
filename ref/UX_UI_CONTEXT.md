@@ -2,7 +2,65 @@
 
 **Source:** REVIEW.md (root) + Phase 1+2 cleanup commits.
 **Audience:** parallel session working on visual design / interaction / accessibility.
-**Last updated:** 2026-05-17 after Phase 2 deploy (worker `ab24f4bf`, commit `1c31a1f`).
+**Last updated:** 2026-05-17 after Foundation Phase A (UX polish session).
+
+---
+
+## ⚡ Update 2026-05-17 — Foundation Phase A complete
+
+Reference plan: `~/.claude/plans/hola-claude-hay-un-sparkling-orbit.md`. Reference palette doc: `ref/CDMX_PALETTE.md`.
+
+**Done (uncommitted, awaiting Phase B polish):**
+
+1. **Theme consolidation (MED-03)**: deleted `Sources/Theme/TransitColors.swift` (~192 LoC). Migrated 30+ call sites:
+   - `StatusColor.*` → `StatusColors.*` (note: `.alert` → `.critical`)
+   - `LineColor.*` → `LineColors.*`
+   - `MaterialOpacity.{subtle,light,medium,...}` → `SurfaceOpacity.{tintSubtle,tintLight,tintMedium,...}`
+   - `BadgeSize.X.dimension` → `Layout.badgeX`
+   - Killed hard-coded hex dict in `LineBadge.swift` — now uses `LineColors.color(for:)`
+   - **RealtimeMapView touched only for token migration**, no visual polish per coordination rules.
+
+2. **Official Pantone palette extracted** from `ref/manual-mi-mb.pdf` → documented in `ref/CDMX_PALETTE.md`. **Material visual change**: L1-L7 colors now match the brand manual exactly (Display-P3 color space). Notable shifts vs prior values:
+   - L1: rojo brillante → borgoña (Pantone 1807 C / `#A4343A`)
+   - L3: verde → olivo (Pantone 377 C / `#7A9A01`)
+   - L4: oro → naranja puro (Pantone 021 C / `#FE5000`)
+   - L5: cyan → navy (Pantone 2757 C / `#001E60`)
+   - L7: teal → verde profundo (Pantone 349 C / `#046A38`)
+
+   ⚠️ If any of these conflict with worker `/static/routes` color metadata, the iOS side is now the source of truth per REVIEW MED-Colors (we agreed iOS owns colors).
+
+3. **Tipo Movin CDMX registered** as brand typography:
+   - 6 OTF files in `Sources/Resources/Fonts/` (app bundle via xcodeproj synchronized folder) + `widget-pb/Fonts/` (widget bundle)
+   - `Parabus-Info.plist` and `widget-pb/Info.plist` now have `UIAppFonts` entries
+   - New `Sources/Theme/BrandTypography.swift` with `UIFontMetrics`-scaled presets (Dynamic Type safe)
+   - **Programmatic registration via `Bundle.module`** only runs in `swift build` (guarded by `#if SWIFT_PACKAGE`) — actual app/widget use `UIAppFonts`
+
+4. **New design tokens in `Sources/Theme/DesignTokens.swift`:**
+   - `enum BrandColors` — Metrobús corporate red + Cool Gray neutrals
+   - `enum TransportModalColors` — placeholders for future multimodal (Metro/Cablebús/Trolebús/RTP/Tren Ligero) — all resolve to neutral until per-section colors are extracted from PDF images
+   - `enum SurfaceLevel { case base, elevated, floating }` + `.surface(_:)` view extension — single switchpoint between iOS 26 `.glassEffect` and `.ultraThinMaterial` fallback. Honors `accessibilityReduceTransparency`.
+   - `struct LiquidGlassContainer` — wraps `GlassEffectContainer` on iOS 26, plain passthrough on older
+   - `Layout.{screenMargin, sectionSpacing, cardInset, inlineSpacing, pillInset}` — semantic aliases over `Spacing.*`
+   - Legacy `glassCard()` and `statusGlass()` extensions now delegate to `.surface(_:)` internally — **call sites unchanged**
+
+5. **ContentView pilot (A7)**: tokenized all paddings, swapped `.font(.headline)` → `BrandTypography.lineLabel` for section headers, swapped `.regularMaterial` → `.surface(.base)` for the "Sin cierres" empty card, wrapped main VStack in `LiquidGlassContainer`. Stays as the visual reference for Phase B component polish.
+
+**Verification done:**
+- `swift build` clean (multiple iterations)
+- `swift test` — 30/30 tests pass
+- `rg "(StatusColor|LineColor|MaterialOpacity|BadgeSize)\." Sources/` → zero matches
+- One inline hex remains: `StatusBadge.swift:49` (WCAG-amber for delayed status, colorblindness-safe — deliberate, will formalize in B1)
+
+**Still pending (Phase B — not started):**
+- Component polish: `LineBadge`, `StatusBadge`, `IncidentAlertBanner`, `LinesCarousel`, `MaintenanceSection` apply BrandTypography for numerals/line names + `.surface(_:)` consistently
+- Screen polish: `AlertsView` (material consistency), `CommuteTabView` (kill `Color.secondary.opacity(0.1)` repetition), `LineDetailSheet` (parallax header), `SettingsView` (section header typography), `MainTabView` (glass tab bar)
+- Widget + Live Activity polish — including coordinating HIGH-17 (severity gap: `WidgetServiceStatus` misses `protest` and `limited`; `CacheManager:172-173` currently squashes them). **Proposal: I do Live Activity visual polish; can you take the data-side severity alignment?**
+- Accessibility cleanup: remove hardcoded `sizeCategory` from previews, add `@ScaledMetric` to hard-coded badge dimensions (e.g. `CommuteTabView.swift:203` `width: 28`), better VoiceOver labels combining line name + status
+
+**Coordination notes:**
+- Files I touched in this pass (avoid concurrent edits): `Sources/Theme/DesignTokens.swift`, `Sources/Theme/BrandTypography.swift` (NEW), `Sources/Views/ContentView.swift`, `Sources/Views/LineDetailSheet.swift`, `Sources/Views/AlertsView.swift`, `Sources/Views/SettingsView.swift`, `Sources/Views/MainTabView.swift`, `Sources/Views/CommuteSetupView.swift`, `Sources/Views/RealtimeMapView.swift` (tokens only), all `Sources/Views/Components/*.swift`, `Package.swift`, `Parabus-Info.plist`, `widget-pb/Info.plist`
+- No changes to `Sources/Services/`, `Sources/ViewModels/`, `Sources/Core/`, `Sources/Models/`, `Shared/` — those remain yours
+- The new Foundation API is documented inline in `DesignTokens.swift` and `BrandTypography.swift`; the polish doc to read is the plan file linked above
 
 ---
 

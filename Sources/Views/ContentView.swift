@@ -56,47 +56,50 @@ struct ContentView: View {
 
     private var mainContent: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                // 1. Lines Carousel (all lines at a glance)
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Lineas")
-                            .font(.headline)
-                        Spacer()
+            LiquidGlassContainer {
+                VStack(spacing: Layout.sectionSpacing) {
+                    // 1. Lines Carousel (all lines at a glance)
+                    VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
+                        HStack {
+                            Text("Líneas")
+                                .font(BrandTypography.lineLabel)
+                            Spacer()
 
-                        // Show refreshing indicator or last updated time
-                        if viewModel.isRefreshing {
-                            RefreshingIndicator()
-                        } else if let description = viewModel.lastUpdatedDescription {
-                            Text(description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            // Show refreshing indicator or last updated time
+                            if viewModel.isRefreshing {
+                                RefreshingIndicator()
+                            } else if let description = viewModel.lastUpdatedDescription {
+                                Text(description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                        }
+                        .padding(.horizontal, Layout.screenMargin)
+
+                        LinesCarousel(lines: viewModel.allLines) { line in
+                            triggerHaptic()
+                            selectedLine = line
                         }
                     }
-                    .padding(.horizontal, 20)
 
-                    LinesCarousel(lines: viewModel.allLines) { line in
-                        triggerHaptic()
-                        selectedLine = line
+                    // 2. Active Incidents (real-time urgent issues: delays, suspensions)
+                    if !urgentIncidents.isEmpty {
+                        urgentIncidentsSection
+                    }
+
+                    // 3. Station Interventions (maintenance/obras at specific stations)
+                    if !interventionIncidents.isEmpty {
+                        stationInterventionsSection
+                    }
+
+                    // 4. Scheduled closures (from maintenance calendar, filtered for deduplication)
+                    if viewModel.hasMaintenanceToday {
+                        scheduledClosuresSection
                     }
                 }
-
-                // 2. Active Incidents (real-time urgent issues: delays, suspensions)
-                if !urgentIncidents.isEmpty {
-                    urgentIncidentsSection
-                }
-
-                // 3. Station Interventions (maintenance/obras at specific stations)
-                if !interventionIncidents.isEmpty {
-                    stationInterventionsSection
-                }
-
-                // 4. Scheduled closures (from maintenance calendar, filtered for deduplication)
-                if viewModel.hasMaintenanceToday {
-                    scheduledClosuresSection
-                }
+                .padding(.vertical, Layout.cardInset)
             }
-            .padding(.vertical, 16)
         }
         .animation(
             reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8),
@@ -125,18 +128,18 @@ struct ContentView: View {
     // MARK: - Urgent Incidents Section
 
     private var urgentIncidentsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
             // Section header
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(StatusColors.critical)
                 Text("Incidentes activos")
-                    .font(.headline)
+                    .font(BrandTypography.lineLabel)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Layout.screenMargin)
 
             // Alert banners
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.xs) {
                 ForEach(urgentIncidents) { line in
                     IncidentAlertBanner(line: line) {
                         triggerHaptic()
@@ -144,25 +147,25 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Layout.cardInset)
         }
     }
 
     // MARK: - Station Interventions Section
 
     private var stationInterventionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
             // Section header
             HStack {
                 Image(systemName: "wrench.and.screwdriver.fill")
                     .foregroundStyle(StatusColors.warning)
                 Text("Estaciones cerradas")
-                    .font(.headline)
+                    .font(BrandTypography.lineLabel)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Layout.screenMargin)
 
             // Intervention banners
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.xs) {
                 ForEach(interventionIncidents) { line in
                     IncidentAlertBanner(line: line) {
                         triggerHaptic()
@@ -170,7 +173,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Layout.cardInset)
         }
     }
 
@@ -182,7 +185,7 @@ struct ContentView: View {
     }
 
     private var scheduledClosuresSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
             // Section header
             HStack {
                 Image(systemName: "calendar.badge.clock")
@@ -190,19 +193,19 @@ struct ContentView: View {
                     .foregroundStyle(.orange)
 
                 Text("Cierres programados")
-                    .font(.subheadline.weight(.semibold))
+                    .font(BrandTypography.lineLabel)
                     .foregroundStyle(.secondary)
 
                 Spacer()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Layout.screenMargin)
 
             // Closures content
             if filteredClosures.isEmpty {
                 // No closures for favorite lines
                 HStack {
                     Spacer()
-                    VStack(spacing: 8) {
+                    VStack(spacing: Spacing.xs) {
                         Image(systemName: "checkmark.circle")
                             .font(.title2)
                             .foregroundStyle(.green)
@@ -210,11 +213,11 @@ struct ContentView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    .padding(.vertical, 20)
+                    .padding(.vertical, Layout.screenMargin)
                     Spacer()
                 }
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal)
+                .surface(.base, cornerRadius: Layout.cornerRadiusSmall + 4)
+                .padding(.horizontal, Layout.screenMargin)
             } else {
                 MaintenanceSection(
                     closures: filteredClosures,
