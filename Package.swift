@@ -41,7 +41,8 @@ let package = Package(
                 "Shared"
             ],
             resources: [
-                .copy("Sources/Resources/GTFS")
+                .copy("Sources/Resources/GTFS"),
+                .copy("Sources/Resources/Fonts")
             ]
         ),
         .testTarget(

@@ -7,5 +7,14 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Tipo Movin CDMX Light.otf</string>
+		<string>Tipo Movin CDMX Regular.otf</string>
+		<string>Tipo Movin CDMX Bold.otf</string>
+		<string>Tipo Movin CDMX Italic.otf</string>
+		<string>Tipo Movin CDMX Light Italic.otf</string>
+		<string>Tipo Movin CDMX Bold Italic.otf</string>
+	</array>
 </dict>
 </plist>

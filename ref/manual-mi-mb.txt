@@ -1,0 +1,1474 @@
+                      01. Movilidad Integrada
+                                02. STC Metro
+                                03. Metrobús
+                                 04. Cablebús
+  05. Servicio de Transportes Eléctricos (STE)
+                                    06. Ecobici
+     07. Red de Transporte de Pasajeros (RTP)
+                                     08. RUTA
+09. Centros de Transferencia Modal (CETRAM)
+                         10. Tren Interurbano
+                                  11. Créditos
+                                        ANEXO
+
+
+
+
+03
+3. Metrobús
+                                                                                                     3. Metrobús
+                                                                              Concepto y construcción geométrica
+
+
+
+
+Metrobús es un modo de                urbana de manera rápida y segura
+transporte BRT (Bus Rapid             por medio de la integración de
+Transit) que combina estaciones,      una infraestructura preferente,
+vehículos, servicios y alta           operaciones rápidas y frecuentes,
+tecnología en un sistema integral     sistema de pago automatizado y
+con una identidad positiva. Tiene     excelencia en calidad en el
+diversos componentes distintivos      servicio
+que juntos conforman un sistema       (www.metrobus.cdmx.gob.mx). El
+integral. Estos componentes son       logotipo de Metrobús consiste en
+los siguientes: 1) infraestructura,   las siglas MB, estilizadas con el fin
+2) organización, 3) operación y 4)    de crear una “hermandad” gráfica
+tecnología. Es un sistema de          y visual con el logotipo del STC
+transporte, basado en autobuses       Metro.
+de capacidad y tecnología de
+punta, que brinda movilidad
+                       3. Metrobús
+Concepto y construcción geométrica
+                                               3. Metrobús
+                        Concepto y construcción geométrica
+
+
+
+
+    B   C   B   C   B
+
+
+
+B
+
+
+
+
+                                     A
+D
+
+
+
+
+                A
+             3. Metrobús
+Integración iconográfica
+                                                                                                                                                3. Metrobús
+                                                                                                                                   Integración iconográfica
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                                                                                                                             3. Metrobús
+                                                                                                                Integración iconográfica
+
+
+
+
+Esta aplicación de color solo se debe usar en la cromática al exterior de las unidades de transporte público.
+                                                                                                                                                3. Metrobús
+                                                                                                                                   Integración iconográfica
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                                                                                                                                                3. Metrobús
+                                                                                                                                   Integración iconográfica
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+             3. Metrobús
+Integración iconográfica
+                                                                                                                                                3. Metrobús
+                                                                                                                                   Integración iconográfica
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                                                                                                                                               3. Metrobús
+                                                                                                                                  Integración iconográfica
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                                                                                                                                               3. Metrobús
+                                                                                                                                  Integración iconográfica
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                                                                                                                                               3. Metrobús
+                                                                                                                                  Integración iconográfica
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                     3. Metrobús
+                         Pantone
+
+
+
+
+Metrobús
+Pantone: 186 C
+R:200 G:16 B:46
+HEX/HTML: C8102E
+C:0 M:100 Y:80 K:5
+                     3. Metrobús
+                         Pantone
+
+
+
+
+Línea 1
+Pantone: 1807 C
+R:164 G:52 B:58
+HEX/HTML: A4343A
+C:3 M:90 Y:65 K:28
+                    3. Metrobús
+                        Pantone
+
+
+
+
+Línea 2
+Pantone: 2602 C
+R:135 G:24 B:157
+HEX/HTML: 87189D
+C:58 M:99 Y:0 K:0
+                      3. Metrobús
+                          Pantone
+
+
+
+
+Línea 3
+Pantone: 377 C
+R:122 G:154 B:1
+HEX/HTML: 7A9A01
+C:41 M:0 Y:100 K:22
+                     3. Metrobús
+                         Pantone
+
+
+
+
+Línea 4
+Pantone: 021 C
+R:254 G:80 B:0
+HEX/HTML: FE5000
+C:0 M:74 Y:100 K:0
+                      3. Metrobús
+                          Pantone
+
+
+
+
+Línea 5
+Pantone: 2757 C
+R:0 G:30 B:96
+HEX/HTML: 001E60
+C:100 M:81 Y:0 K:51
+                           3. Metrobús
+                               Pantone
+
+
+
+
+Línea 6
+Pantone: Rhodamine Red C
+R:225 G:0 B:152
+HEX/HTML: E10098
+C:5 M:92 Y:0 K:0
+                     3. Metrobús
+                         Pantone
+
+
+
+
+Línea 7
+Pantone: 349 C
+R:4 G:106 B:56
+HEX/HTML: 046A38
+C:85 M:3 Y:91 K:44
+3. Metrobús
+Iconografía
+3. Metrobús
+Iconografía
+                                                                                                                                                   2. STC Metro
+                                                                                                                                                 Mapas de línea
+
+
+
+
+                                      1X                         1X                          1X                         1X
+                        10X                        10X                        10X                         10X                        10X
+
+
+
+
+1X
+
+
+
+
+     El Pantone Cool Gray 10 C debe ser utilizado únicamente para textos e íconos complementarios en mapas de línea, mapas de barrio y mapas de ruta.
+  3. Metrobús
+Mapas de línea
+  3. Metrobús
+Mapas de línea
+  3. Metrobús
+Mapas de línea
+                                                                                                                                                                                                                                                                                                                                                                               3. Metrobús
+                                                                                                                                                                                                                                                                                                                                                                             Mapa de barrio
+
+
+
+
+                                                                                   Av. Hid                                                                                                                                                      Zarco
+                                                                                                  algo                                                                                                                                                                   I N D I O S VE R D E S - C A M PO M A RTE
+
+
+
+
+                                                                                                                                                                                        TA S Q U E Ñ A          U N IVE R S I D A D
+                                                                                                                                                                                   C U AT R O C A M I N O S   I N D I O S VE R D E S
+
+
+
+
+                                                                                                                       Av. Hid
+                                                                                                                                     algo
+                                                                                    Sombrerero
+H I D A LG O
+U STE D E STÁ A Q U Í                                                                                                                                                                                                                                                                                                                        Av. Hid
+                                                                                                                                                                                                                                                                                                                                                                    algo
+DIRECCIÓN:
+SAN LÁZARO / PANTITLÁN
+                                                                          Dr. Basili
+                                                                                          o Badillo
+P R ÓXI M A E STA C I Ó N :                                                                                                                                                                                                                                                                                          B U E N AVI STA - S A N L Á Z A R O - PA NT I T L Á N
+
+
+
+BELLAS ARTES
+                                                                                                                                              a
+                                                                                                              a                     fo   rm                                     I N D I O S VE R D E S - C A M PO M A RTE
+
+
+
+                                                                                                          m                      Re
+                                                                                                      for                   la
+                                                                                                 Re                    de
+TRANSBORDO:
+                                                                                           la                                                                                                                                                                                                        Laboratorio
+                                                                                      e                           eo
+                                                                                                                                                                                                                          TA S Q U E Ñ A          U N IVE R S I D A D
+                                                                                                                                                                                                                     C U AT R O C A M I N O S   I N D I O S VE R D E S
+
+
+
+
+                                                                                   od
+                                                                                                                                                                                                                                                                                                    Arte Alameda
+                                                                                                             s
+                                                                                                          Pa
+                 TA S Q U E Ñ A              U N IVE R S I D A D       SAT
+                                                                              se                                                                                                                                                                                                                                                                        Alameda
+                                                                                                                                                                                                                                                                                                                             Dr. Mora
+                                                                                                                                                                                                                                                                                                                                                        Alameda Central
+                                                                         Pa
+                 C U AT R O C A M I N O S    I N D I O S VE R D E S                                                                                           s
+
+                 TE N A Y U C A              I N D I O S VE R D E S                                                                                     Baldera                                                                                                                                                                                          Central
+                 ET I O P Í A                C A M PO M A RTE
+                                                                                                                                                                                  Museo Mural
+                                                                                                                                                                                  Diego Rivera
+                                                                                                                   Cr is tobal Co
+                                                                                                         oldt                            lón
+ ACCESIBILIDAD:
+                                                                                                       H umb                                      TE N A Y U C A - ET I O PÍA
+                                                                                                                                                                                                                                                Cr istobal Colón
+               CRUCE SEGURO
+
+
+
+                                                                      HORARIO DE SERVICIO:
+                                                                      LUNES A SÁBADO DE 4:30 A 00:00 H
+                                                                      DOMINGO Y DÍAS FESTIVOS DE 5:00 A 00:00 H
+    B A N CO                  PA R Q U E                                                                                                                                                                                                                @METROBUSCDMX
+
+                                                                      ATENCIÓN CIUDADANA:
+    CINE                      I G LE S I A                                                                                                                                                                                                              / M ET R O B U S C D MX
+                                                                        HAMBURGO 213, PISO 19
+                                                                        COL. JUÁREZ, ALCALDÍA CUAUHTÉMOC
+    GOBIERNO                  MUSEO
+                                                                        ATENCION_USUARIOS@METROBUS.CDMX.GOB.MX                                                                                                                                          M ET R O B U S . C D MX. G O B . MX
+                                                                        55 5578 2140
+    H OTE L                                                             55 5761 6860 EXT. 121 Y 136                                                                                                                                                     M ET R O B U S D E L _ C D MX
+                                                                        @METROBUSCDMX
+                                                                        /METROBUSCDMX
+                                                                        METROBUS.CDMX.GOB.MX
+ 3. Metrobús
+Plano de ruta
+                                                        3. Metrobús
+                                                  Señalética exterior
+
+
+
+
+  N U EVO LE Ó N
+
+              ET I O P Í A
+     P L A Z A D E L A T R A N S PA R E N C I A
+
+
+
+
+     PA NT I T L Á N
+
+R Í O D E LO S R E M E D I O S
+
+
+SAN JUAN DE ARAGÓN
+
+
+    C A M PO M A RTE
+
+
+            C I R C U I TO
+                   3. Metrobús
+             Señalética interior
+
+
+
+
+N O PA S E
+                                                                                                                                                                                                                                                                                                                                                                                                                                        3. Metrobús
+                                                                                                                                                                                                                                                                                                                                                                                                                                  Señalética interior
+
+
+
+
+                  I N G R E S O G R AT U I TO                                                                                                                                                                                  I N G R E S O G R AT U I TO
+                                                                                                                                                                                                                           E N A U TO B U S E S D I R E C C I Ó N A E R O PU E RTO T 1 Y T2
+                                                                                                                                                                                                                                   L A G R AT U I D A D A P L I C A Ú N I C A M E NTE
+                                                                                                                     Adultos mayores de 70 años                                                                                      A PE R S O N A S CO N D I S C A PA C I D A D
+                                                                                                                     Se acreditan con documento oficial original
+                                                                                                                     (ejemplo: INAPAM e INE)
+                                                                                                                                                                                                                                                                                                                                        Adultos mayores de 70 años
+                                                                                                                     Personas con discapacidad                                                                                                                                                                                          Se acreditan con documento oficial original
+                                                                                                                     evidente o que...                                                                                                                                                                                                  (ejemplo: INAPAM e INE)
+                                                                                                                     Se acrediten con documento oficial original
+                                                                                                                     (ejemplo: DIF, INDISCAPACIDAD o Institución de Salud                                                                                                                                                               Personas con discapacidad
+
+
+
+$6
+                                                                                                                     que acredite la discapacidad)                                                                                                                                                                                      evidente o que...
+                                                                                                                                                                                                                                                                                                                                        Se acrediten con documento oficial original
+                                                                                                                                                                                                                                                                                                                                        (ejemplo: DIF, INDISCAPACIDAD o Institución de Salud
+                                                                                                                                                                                                                                                                                                                                        que acredite la discapacidad)
+                                                                                                                     Niñas y niños menores
+                                                                                                                     de 5 años de edad
+                                                                                                                     Ingresan por torniquete.                                                                                                                                                                                           Niñas y niños menores
+                                                                                                                                                                                                                                                                                                                                        de 5 años de edad
+                                                                                                                                                                                                                                                                                                                                        Ingresan por torniquete.
+
+                                                               Nombre Nombre
+                                                               Apellido Apellido
+
+
+
+
+                           PERSONAL E INTRANSFERIBLE
+                                                                                                      1A2B3C4D5E6F
+
+
+                                                                                                                     Ingresa con la Tarjeta de Gratuidad
+
+
+$21
+                                                                       FOTO                                                                                                                                                                                                       Nombre Nombre
+                                                                                                                                                                                                                                                                                  Apellido Apellido
+
+
+
+
+                                                             Firma del director del organismo
+
+                                                       Nombre y apellido del director del organismo
+                                                                       Organismo
+                                                                                                                                                                                                                                              PERSONAL E INTRANSFERIBLE
+                                                                                                                                                                                                                                                                                          FOTO
+                                                                                                                                                                                                                                                                                                                         1A2B3C4D5E6F
+
+
+                                                                                                                                                                                                                                                                                                                                        Ingresa con la Tarjeta de Gratuidad                                                                     000
+                                                                                                                                                                                                                                                                                Firma del director del organismo
+
+                                                                                                                                                                                                                                                                          Nombre y apellido del director del organismo
+                                                                                                                                                                                                                                                                                          Organismo
+
+
+
+
+          HORARIO DE SERVICIO:
+          LUNES A SÁBADO DE 4:30 A 00:00 H                                                                                                                                            M Á S I N FO R M A C I Ó N       HORARIO DE SERVICIO:
+                                                                                                                                                                                                                       LUNES A SÁBADO DE 4:30 A 00:00 H                                                                                                                                              M Á S I N FO R M A C I Ó N
+          DOMINGO Y DÍAS FESTIVOS DE 5:00 A 00:00 H
+                                                                                                                                                @METROBUSCDMX                                                          DOMINGO Y DÍAS FESTIVOS DE 5:00 A 00:00 H
+                                                                                                                                                                                                                                                                                                                                                               @METROBUSCDMX
+          ATENCIÓN CIUDADANA:                                                                                                                                                                                          ATENCIÓN CIUDADANA:
+                                                                                                                                                / M ET R O B U S C D MX                                                                                                                                                                                        / M ET R O B U S C D MX
+            AV. CUAUHTÉMOC 16, PISO 5,                                                                                                                                                                                   AV. CUAUHTÉMOC 16, PISO 5,
+            COL. DOCTORES, ALCALDÍA CUAUHTÉMOC                                                                                                                                                                           COL. DOCTORES, ALCALDÍA CUAUHTÉMOC
+            ATENCION_USUARIOS@METROBUS.CDMX.GOB.MX                                                                                              M ET R O B U S . C D MX. G O B . MX                                      ATENCION_USUARIOS@METROBUS.CDMX.GOB.MX                                                                                                M ET R O B U S . C D MX. G O B . MX
+            55 5578 2140                                                                                                                                                                                                 55 5578 2140
+            55 5761 6860 EXT. 121 Y 136                                                                                                                                                                                  55 5761 6860 EXT. 121 Y 136                                                                                                           M ET R O B U S D E L _ C D MX
+                                                                                                                                                M ET R O B U S D E L _ C D MX                                            @METROBUSCDMX
+            @METROBUSCDMX                                                                                                                                                                                                /METROBUSCDMX
+            /METROBUSCDMX                                                                                                                                                                                                METROBUS.CDMX.GOB.MX
+            METROBUS.CDMX.GOB.MX
+
+
+
+
+      Para Líneas 1, 2, 3, 5, 6 y 7                                                                                                                                                                                Para Línea 4
+                                                                                                                                                 3. Metrobús
+                                                                                                                                    Señalética de transbordo
+
+
+
+
+                              TE PA LC ATE S                                                       I N D I O S VE R D E S
+                               TA C U B A Y A                                                        U N IVE R S I D A D
+
+
+
+
+               S A L I D A AV. XO L A
+                                                                                                          DIRECCIÓN
+
+                                                                                                   TE PA LC ATE S
+
+
+
+                                   DIRECCIÓN
+                          PU E B LO S A NTA                                                               DIRECCIÓN
+
+                          C R U Z ATO Y A C                                                      I N D I O S VE R D E S
+
+
+
+                                                                                                           DIRECCIÓN
+                         S Ó LO D E S C E N S O                                                    TE PA LC ATE S
+
+
+
+                                   DIRECCIÓN                                                              DIRECCIÓN
+
+                            TE PA LC ATE S                                                           TE N A Y U C A
+
+
+
+                                   DIRECCIÓN
+                          PU E B LO S A NTA                                                        I N FO R M A C I Ó N
+                          C R U Z ATO Y A C
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                                                                                                                         3. Metrobús
+                                                                     Señalética de estaciones: espacios exclusivos - espacios mixtos
+
+
+
+
+                                                     BOTÓN DE USO EXCLUSIVO
+                                                    PARA EL ACCESO SEGURO DE
+A C C E S O PE R M I T I D O CO N                   PERSONAS CON DISCAPACIDAD
+ PE R R O D E A S I STE N C I A                    TODO ABUSO SERÁ SANCIONADO
+
+
+
+
+                                                                                                                    Para Líneas 3, 5 y 6
+
+
+
+
+                                                                                                                           Para línea 1
+
+
+
+
+                                     Para Línea 4 y 7                                    ÁREA
+                                                                                         M IXTA
+
+
+
+                                     Para Línea 4 y 7                                      Permita
+                                                                                          salir antes
+                                                                                           de entrar
+
+
+
+
+                 Para Líneas 3, 5 y 6                                                      No cruce
+                                                                                           la línea
+                                                                                           amarilla
+
+
+
+
+                                                                                               ZO N A L I B R E
+                                                                                           D E A CO S O S EXU A L
+
+
+
+
+                                    Para Línea 1
+                                                                                       3. Metrobús
+                                                                                   Tipos de estelas
+
+
+
+
+                       0.40 cm       0.40 cm
+
+ Espaciado: 3.4 cm                                             Espaciado: 3.4 cm
+
+
+      Estación                                                 Metrobús
+     34 x 34 cm                                                34 x 34 cm
+ Espaciado: 3.4 cm                                             Espaciado: 3.4 cm
+
+                                   175 M
+
+   Transbordos                                                 Línea
+     34 x 34 cm                                                34 x 34 cm
+                                  I N D I O S VE R D E S
+                                                               Espaciado: 3.4 cm
+
+                                   60 M
+                                                               Estación
+                                                               34 x 34 cm
+                                  C A M PO M A RTE
+
+                                                                Espaciado: 15 cm
+                                   140 M
+
+
+
+
+                     HIDALGO
+                                          N O M B R E CO RTO
+                                     TE N A Y U C A
+                                      - ET I O P I A
+
+
+
+
+                                   30 M
+
+
+                                                  2
+                                      TA S Q U E Ñ A
+                                 - C U AT R O C A M I N O S
+
+
+                                                  3            Nombre
+                                   I N D I O S VE R D E S
+                                     - U N IVE R S I D A D
+                                                               138 cm
+
+
+
+
+ MI + Metrobús
+     15 x 15 cm                                                 Espaciado: 35 cm
+
+
+Espaciado: 20 cm
+
+
+                     REVERSO           ANVERSO
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            3. Metrobús
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Tipos de estelas
+
+
+
+
+                                      DIRECCIÓN
+                                       - SAN LÁZARO
+                                       - A E R O PU E RTO
+                                       - PA NT I T L Á N
+
+
+                                      AAEERROOPU
+                                               PUEERTO
+                                                    RTOT2T2
+
+                                      A E R O PU E RTO T 1
+
+                                      ARCH IVO GENERAL DE LA NACIÓN
+
+
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  D O CTO R VÉ RT I Z
+                                      SAN LÁZARO
+
+                                      M O R E LO S
+
+                                      FE R R O C A R R I L D E C I NT U R A
+
+                                      M IXC A LCO
+                                                                                                                                                                 z
+                                      TE AT R O D E L PU E B LO                                                                                           Día                                                                                              n                                                                                                                                         ista
+                                                                                                                                                                                                                                                     agú                                                                                                                   ista
+                                                                                                                                                  nal                                                                                                                                                                                                                                         nav
+                                                                                                                                                                                                                                              Sah                                                                                                                        nav
+                                                                                                                                            Ber                                                                                                                                                                                                                                            Bue
+                                                                                                                                                                                                                                                                                                                                                            Bue
+                                      R E P Ú B L I C A D E A R G E NT I N A                                                                                                                                                          B. de
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       Oroz
+                                                                                                                                     Av.                                                                                                                                                                                                                                                                                                                                                                                                                                                 co y Berr
+                                                                                                                                                     México                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   a
+                                                                                                                                                                                                 - Ten
+                                      R E P Ú B L I C A D E C H I LE                                             Av.
+                                                                                                                                                                                                                      och
+                                                                                                                                                                                                                                      titlan
+                                                                                                                       Mé                                                                                                                                                                                                                                                                                                                                                                                                    ma
+                                                                                                                            xic
+                                                                                                                                     o-
+                                                                                                                                                  Ten                                          TAXQ U E Ñ A - C U AT R O C AM I NOS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      Alda
+                                      TE AT R O B L A N Q U I TA                                                     sias
+                                                                                                                                                                      och
+                                                                                                                                                                                               titl
+                                                                                                                                                                                                                                                                                                                             B U E N AVI STA - S A N L Á Z A R O
+
+
+                                                                                                                                                                                                          an                                                                                                                                                                                                                                                                                                     Juan
+                                                                                                                a Igle
+                                      B E L L A S A RTE S                                                      Mar í
+                                                                                                                                                                                                                                                                                                                                                                                                                                                Av. Méxic
+                                                                                                              José                                                                                                                                                                                                                                                                                                                                                                            o - Teno
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       chtitl
+                                      H I D A LG O                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    an
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 e
+                                                                                                                                                                                                                                                                                                 a                                                                                                                                                                   r izp
+                                      M U S E O S A N C A R LO S                                                            Igna
+                                                                                                                                         cio Mar                                                                                                                                           Arriag                                                                                                                                                           os A
+                                                                                                                                                                                 isca
+                                                                                                                                                                                                        l
+                                                                                                                                                                                                                                                                                                                                                                                                                                                     Ram
+                                      M ÉXI CO TE N O C H T I T L A N                                                                                                                                                                                                       ciano
+                                                                                                                                                                                                                                                                                                              Ignacio                                                                                                                      uel
+                                                                                                                                                                                                                                                                      Pon                                                                              Mar
+                                                                                                                                                                                                                                                                                                                                                                           isca
+                                                                                                                                                                                                                                                                                                                                                                                                                                      Mig
+                                                                                                                                                                                                                                                                                                                                                                                            l
+                                      ALCALDÍA CUAUHTÉMOC
+
+                                      B U E N AVI STA
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         R U TA PA NT I T L Á N
+
+
+
+
+                                                                                                                                                              R U TA N O RTE / R U TA A E R O PU E RTO                                                                                                                                                                                                                                                                                  R U TA N O RTE                                                 R U TA A E R O PU E RTO
+                                                                                                                                                                   USTE D
+                                                                                                                                                                 ESTÁ AQU Í
+
+
+
+                                                                                                                                                                                                                                                          MUSEO             H I D A LG O      BELLAS        TE AT R O          REPÚBLICA            REPÚBLICA            TE AT R O D E L    M IXC A LCO    FE R R O C A R R I L       M O R E LO S   A R C H IVO G E N E R A L
+                                                                                                                                                                                                                                                      S A N C A R LO S                        A RTE S     B L A N Q U I TA      D E C H I LE      D E A R G E NT I N A     PU E B LO                        D E C I NT U R A                            DE LA NACIÓN
+
+
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       SAN LÁZARO        A E R O PU E RTO                  A E R O PU E RTO
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 T1                                T2
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           S E RV I C I O A L A E R O P U E R T O I NTE R N A C I O N A L
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         D E L A C I U D A D D E M ÉXICO
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                TAR IFA E S PE C I A L PO R R U TA N O RTE
+
+
+                                                                                                                              B U E N AVI STA    D E LE G A C I Ó N        M ÉXI CO
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              I N G. E D U A R D O
+                                                                                                                                                C U A U H TÉ M O C    TE N O C H T I T L A N                                                                                                                                                                                               LAS CRUCES     C I R C U NVA L A C I Ó N                                                                MOLINA
+
+
+
+
+                                                                                                                                                          R U TA S U R
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       R U TA S U R
+                                                                                                                                                                                                PLAZA DE LA         G LO R I ETA         EXPO        VO C A C I O N A L 5   JUÁREZ           MERCADOS         EJE             E L S A LVA D O R        ISABEL             MUSEO DE                                                    LA MERCED            MERCADO               CECILIO                             M O CTE Z U M A                                                                                        PA NT I T L Á N
+                                                                                                                                                                                                 REPÚBLICA          D E CO LÓ N       R E FO R M A                                          DE SAN JUAN    C E NT R A L                            L A C ATÓ L I C A      LA CIUDAD                                                                        SONORA                R O B E LO
+
+                                                                                                                                                                                                                                                                                                                                                                                           PINO SUÁREZ       LAS CRUCES                                                                         H O S P I TA L
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                BALBUENA
+
+
+
+
+                                                                                                                                                                                                                                                                                                                                                     MÉXICO
+                                                                                                                                                                                                                                                                                                                                                  TENOCHTITLAN
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        DIRECCIÓN
+                                                                                                                                                                                                                                   DIRECCIÓN                                                                                                                                                                                                                                            - SAN LÁZARO
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        - A E R O PU E RTO
+                                                                                                                                                                                                                                                                                                                                                                                                      MUSEO                              HIDALGO
+                                                                                                                                                                                                                                   B U E N AVI STA                                                                                                                                                  SAN CARLOS
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        - PA NT I T L Á N
+                                                                                                                                                                                                                                                                                                   BUENAVISTA                  DELEGACIÓN
+                                                                                                                                                                                                                                                                                                                              CUAUHTÉMOC
+
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                    PLAZA DE LA                        GLORIETA
+                                                                                                                                                                                                                                                                                                                                                                                                     REPÚBLICA                         DE COLÓN
+
+
+
+
+                                                                                                                                                                                                                  TE R M I N A L 2
+PA G O S Ó LO CO N TA R J ETA
+D E M OVI L I D A D I NTE G R A D A
+
+
+I N C LU Y E 1 VI A J E
+
+TA R I FA A E R O PU E RTO : $ 3 0 . 0 0
+A I R PO RT FA R E
+                                                                 CO N S U LTA PU NTO S
+TA R I FA R E G U L A R : $ 6 . 0 0                              DE RECARGA
+
+R E G U L A R FA R E                                               M ET R O B U S . C D MX. G O B . MX/
+                                                                   PO RTA L - C I U D A D A N O /
+                                                                   R E D - D E - R E C A R G A - EXTE R N A
+                  3. Metrobús
+             Banners interiores
+
+
+
+
+CO Y U Y A
+       3. Metrobús
+Aplicaciones varias
+       3. Metrobús
+Aplicaciones varias
+                                            3. Metrobús
+                                     Aplicaciones varias
+
+
+
+
+Nombre Nombre Apellido Apellido
+Puesto
+
+
+  Calle y número
+  Colonia
+  Ciudad, alcaldía y código postal
+  Teléfono
+  Correo
+  WEB
+  Facebook
+  X
+       3. Metrobús
+Aplicaciones varias
+                                                                                                                                                                         Ficha Técnica
+                                                                                                                                                                            Credencial
+
+
+
+                                                          Frente                                                                                     Atrás
+
+              0.24 cm                                          3.04 cm                0.64 cm
+                                                                                                 0.31 cm
+                                                                                                 0.24 cm
+
+
+0.24 cm                                                                                                                    0.24 cm
+0.56 cm
+
+0.41 cm                                        DIRECTORA GENERAL                                                       1
+
+
+0.82 cm                                        María del Rosario                                                       2
+                                                Castro Escorcia
+0.44 cm
+
+
+
+
+                                                                                                50 000000094157B8E
+                                                                                                                       4
+
+          3
+
+
+
+
+                   PERSONAL E INTRANSFERIBLE
+                                                                                                                           3.34 cm
+3.47 cm
+
+
+
+
+                                                                                                                           0.92 cm
+                                                 María del Rosario Castro Escorcia
+                                                  Directora General de Metrobús
+                                                                                                                           0.33 cm
+                                                                                                                           0.49 cm
+0.24 cm                                                                                                                    0.24 cm
+
+
+
+              0.24 cm                                                                                        0.24 cm
+
+
+
+
+              Tipografías                                                            Paleta de pantone                                               Paleta de pantone
+               1                    Movilidad Integrada                                         Process Black                        7420 C              Process Black
+               2                    Source Sans Pro Bold                                         Cool Gray 5C                        Cool Gray 11C       186 C
+               3                    Source Sans Pro Regular                                      186 C                               Black C
+               4                    Arial Narrow                                                 465 C                               424C
+                                                                                                                            3. Metrobús
+                                                                                                 Sticker para máquina de venta y recarga
+
+
+
+
+                      Selecciona    Deposita            Recoge
+COMPRA                opción de     billetes            tu tarjeta
+                      compra        o monedas
+                                                                                                  Puedes aclararlo en un módulo de atención
+                                                                                                  Ubica el más cercano en
+                       Selecciona   Inserta             Deposita                                  www.metrobus.cdmx.gob.mx/modulos-de-atencion
+RECARGA                opción de    para                billetes               SI TIENES ALGÚN
+                                                                                                  Presenta tu tarjeta y/o ticket que emite la máquina
+                       recarga      recarga             o monedas              PROBLEMA CON
+                                                                                  TU COMPRA       PARA LEVANTAR TU REPORTE DEBES REGISTRAR:
+                       Espera                                                     O RECARGA
+                                    Retira                                                         1   Fecha y hora de la compra o recarga
+                       y verifica                                                                      Número de máquina
+                                    tu tarjeta                                                     2
+            RECARGA
+            EXITOSA    el monto                                                                    3   Estación y línea de la compra o recarga
+
+
+
+
+                                                                        ESTA MÁQUINA NO DA CAMBIO
+
+
+
+                                                                     INSERTA                 E STA M Á Q U I N A A C E PTA
+                                                                     MONEDAS
+                                                                                              M O N E D A S Y B I L LETE S
+
+
+
+
+                                                                     RECOGE
+
+                                                                     MONEDAS                      RECOGE
+                                                 PARA ORIENTACIÓN
+                                                                                                  TARJETA
+                                                   COMUNICATE A                                    NUEVA
+                                                   (55) 5578 2140
+                                                  @MetrobusCDMX
+                                                  /MetrobusCDMX                   $1
+                                                                                                                                                 INSERTA
+                                                                                                                                                 BILLETES
+  INSERTA TARJETA                                                                 $2
+    PARA RECARGA
+                                                                                                                                           $ 20         $200
+                                                                                  $5
+
+                                    TOMA TU TICKET                                                                                         $ 50         $500
+                                                                                 $10                                                      RECOGE
+                                                                                                                                          TARJETA
+                                                                                                                                          $100
+                                                                                                                                          NUEVA
+                                                                                                                                                              3. Metrobús
+                                                                                                                                   Sticker para máquina de venta y recarga
+
+
+                                                                                                   S O L A M E NTE PA G O
+                                                                                                CO N TA R J ETA B A N C A R I A
+
+
+
+
+                                                                                                      TA R J ETA B A N C A R I A
+                                                                                                      S I N CO NTA CTO
+
+
+
+
+                 PRESIONA
+                 EL BOTÓN
+               CON LA OPCIÓN
+                 DESEADA
+
+                                                                                                    TE C LE A M O NTO
+                                                                                                    A PA G A R Y / O N I P
+
+
+
+
+                                                                                                        I N S E RTA TA R J ETA
+                                                                                                        BANCARIA
+
+                 CO M P R A     RECARGA
+                                                                                                    PARA ORIENTACIÓN
+                                                                                                      COMUNÍCATE A
+                                                                                                       (55) 5578 2140
+                                                                                                       @MetrobusCDMX
+                                                                                                       /MetrobusCDMX
+
+
+                                     SI TIENES ALGÚN PROBLEMA CON TU COMPRA O RECARGA
+                                       Puedes aclararlo en un módulo de atención.
+                                       Ubica el más cercano en
+                                       www.metrobus.cdmx.gob.mx/modulos-de-atencion
+
+                                       Presenta tu tarjeta y/o ticket que emite la máquina
+
+                                       Para levantar tu reporte debes registrar:
+                                        1 Fecha y hora de la compra o recarga
+                                        2 Número de máquina
+                                        3 Estación y línea de la compra o recarga
+
+
+
+
+I N S E RTA TA R J ETA              S O L A M E NTE PA G O CO N E FE CT IVO
+   PA R A R E C A R G A               E STA M Á Q U I N A N O D A C A M B I O
+
+                                        Esta máquina acepta
+                                       monedas y billetes
+
+                                                                                    TO M A T U T I C K ET
+
+
+
+
+                                                                         I N S E RTA
+                                                                         MONED S
+                                                                                                        I N S E RTA
+                                                                                                        B I L LETE S
+
+
+
+
+                              R E CO G E
+                              TA R J ETA
+                              N U EVA
+                                                                                                                                                              3. Metrobús
+                                                                                                                                   Sticker para máquina de venta y recarga
+
+
+
+
+       RECARGA
+                  Selecciona
+                  opción de
+                  recarga
+                                        Inserta
+                                        para
+                                        recarga
+                                                        Deposita
+                                                        monedas            S Ó LO PA R A R E C A R G A
+
+                  Espera
+                                        Retira
+                                                                           Y USO DE MONEDAS
+                  y verifica
+                                        tu tarjeta
+        RECARGA
+        EXITOSA   el monto
+
+
+
+
+                    PRESIONA
+                    PA R A CO M P R A
+                    RECARGA
+
+
+
+
+I N S E RTA TA R J ETA
+   PA R A R E C A R G A
+
+
+
+                                                                              TO M A T U T I C K ET
+
+
+
+                                                          I N S E RTA
+                                                          MONEDAS
+                                                                                    Para orientación
+                                                                                     comunícate a
+
+                                                                                       (55) 5578 2140
+
+                                                     Esta máquina acepta               @MetrobusCDMX
+                                                                                       /MetrobusCDMX
+                                                       solo monedas
+
+                                                                                    ¿PROBLEMAS CON
+                                                                                 TU TARJETA O RECARGA?
+                                                                             Puedes aclararlo en un módulo de atención
+                                                                             Ubica el más cercano:
+                                                                             www.metrobus.cdmx.gob.mx/modulos-de-atencion
+
+                                                                             Presenta tu tarjeta y/o ticket que emite la máquina
+
+                                                                             Para levantar tu reporte debes registrar:
+                                                          R E CO G E         1   Fecha y hora de la compra o recarga
+                                                                             2   Número de máquina
+                                                          MONEDAS            3   Estación y línea de la compra o recarga
+
+
+
+
+                               E STA M Á Q U I N A N O D A C A M B I O
+                                                                                                                                                                                  3. Metrobús
+                                                                                                                                                                       Módulo de información
+
+
+
+
+                                                                                                                        A Q U Í TE PO D E M O S
+                                                                                                                                AYUDAR
+
+
+                                                                                                                                            Si tienes algún problema
+                                                                                                                                            con tu compra o recarga
+                                                                                                                                            aquí puedes aclararlo
+
+
+                                                                                                                                      Presenta tarjeta y/o ticket
+                                                                                                                                      que emite la máquina.
+                                                                                                                                                                                                      C E NT R O
+                                                                                        A Q U Í TE PO D E M O S
+                                                                                                                                      Para levantar tu reporte
+                                                                                                                                      debes registrar:                                                D E ATE N C I Ó N
+                  A Q U Í TE PO D E M O S                                                                                              1 Fecha y hora
+
+                                                                                                                                         de la compra o recarga                                       A USUARIOS
+                                                                                                AYUDAR                                 2 Número de máquina
+
+
+                          AYUDAR                                                                                                       3 Estación y línea de la
+
+                                                                                                                                         compra o recarga
+
+                                                                                                                                                                                                      EL CAMINERO
+ TODO MONTO RECLAMADO SERÁ RECARGADO
+  EN TU TARJETA DE MOVILIDAD INTEGRADA
+
+
+
+
+                                                                                                                                                                                               LATERAL DERECHO
+
+
+
+                                                                                                                                                                               A Q U Í TE PO D E M O S
+   HORARIOS DE                      LU N E S A VI E R N E S : 0 6 : 0 0 A 2 0 : 0 0 H
+                                                                                                                                                                                       AYUDAR
+   S E RVI C I O D E
+   E STE M Ó D U LO                 SÁBADOS: 08:00 A 14:00 H
+
+
+
+Localiza el módulo más cercano y su horario
+                                                                                                                                                                              Si tienes algún problema
+                                            metrobus.cdmx.gob.mx                                                                                                              con tu compra o recarga
+                                                                                                                                                                              aquí puedes aclararlo
+
+
+                     QUEJAS O SUGERENCIAS
+                                                                                                                  C E NT R O
+                                                                                                                                                                        Presenta tarjeta y/o ticket
+                                                                                                                                                                        que emite la máquina.
+   atencion_usuarios@metrobus.cdmx.gob.mx                 @MetrobusCDMX
+   55 5578 2140
+   55 5761 6860 ext. 121 y 136
+                                                          /MetrobusCDMX
+                                                          metrobus.cdmx.gob.mx
+                                                                                                                  D E ATE N C I Ó N                                     Para levantar tu reporte
+                                                                                                                                                                        debes registrar:
+
+                                                                                                                  A USUARIOS
+                                                                                                                                                                         1 Fecha y hora
+
+                                                                                                                                                                           de la compra o recarga
+                                                                                                                                                                         2 Número de máquina
+
+                                                                                                                                                                         3 Estación y línea de la
+
+                                                                                                                                                                           compra o recarga
+
+                                             C E NT R O                                                           EL CAMINERO
+                                             D E ATE N C I Ó N
+                                             A USUARIOS
+
+                                             EL CAMINERO
+
+
+
+
+                                 FRENTE                                                      ATRÁS
+                                                                                                                                                                                           LATERAL IZQUIERDO
+
+
+
+
+En aplicaciones con fondos monocromáticos, los logotipos pueden ir en blanco. Se deberá verificar con la Secretaría de Movilidad de la Ciudad de México la
+correcta aplicación de estos casos.
+                                                                                                                                              3. Metrobús
+                                                                                                                                               Uniformes
+
+
+
+
+Las marcas y modelos de los uniformes son únicamente referencias generales y podrán variar de acuerdo con los requerimientos de cada organismo.
+                                                                                                                                              3. Metrobús
+                                                                                                                                               Uniformes
+
+
+
+
+Las marcas y modelos de los uniformes son únicamente referencias generales y podrán variar de acuerdo con los requerimientos de cada organismo.
+                                                                                                                                              3. Metrobús
+                                                                                                                                               Uniformes
+
+
+
+
+Las marcas y modelos de los uniformes son únicamente referencias generales y podrán variar de acuerdo con los requerimientos de cada organismo.
+                                                                                                                                              3. Metrobús
+                                                                                                                                               Uniformes
+
+
+
+
+Las marcas y modelos de los uniformes son únicamente referencias generales y podrán variar de acuerdo con los requerimientos de cada organismo.
+               3. Metrobús
+                Uniformes
+
+
+
+
+SUPERVISIÓN
+DE SEGURIDAD
+                                                                                                                                            3. Metrobús
+                                                                                                                                    Vehículos utilitarios
+
+
+
+
+                                              Este vehículo es para uso oficial.
+                                  Cualquier uso distinto repórtalo al 089 o al (55) 5658 -1111
+
+
+
+
+                                                Este vehículo es para uso oficial.
+                                    Cualquier uso distinto repórtalo l 089 o al (55) 5658 -1111
+
+
+
+
+                                                                   Este vehículo es para uso oficial.
+                                                       Cualquier uso distinto repórtalo al 089 o al (55) 5658 -1111
+
+
+
+
+Las marcas y modelos de los vehículos son únicamente referencias generales y podrán variar de acuerdo con los requerimientos de cada organismo.
+                                                                                                                                              3. Metrobús
+                                                                                                                                      Vehículos utilitarios
+
+
+
+
+                                                    Este vehículo es para uso oficial.
+                                        Cualquier uso distinto repórtalo al 089 o al (55) 5658 -1111
+
+                                                                                                        Al servicio de :
+
+
+
+
+                                                     Este vehículo es para uso oficial.
+                                         Cualquier uso distinto repórtalo al 089 o al (55) 5658 -1111
+
+                                                                                                        Al servicio de :
+
+
+
+
+Las marcas y modelos de los vehículos son únicamente referencias generales y podrán variar de acuerdo con los requerimientos de cada organismo.
+                                                                                                                                                                            3. Metrobús
+                                                                                                                                                                             Cromática
+
+
+
+
+        AÉREO
+
+
+
+
+                                                                         CO N EXI Ó N 1 2 3                                                                                         25 cm
+
+
+
+
+                                               45 cm             45 cm                                                                                con separación de 2.3 cm
+                                                                                                                                                                 48.3 cm
+                                                       94.5 cm                  165 cm                                                                           23    23
+                                         con separación de 4.5 cm
+
+                                                                                                                                             FRENTE                         55 cm
+
+
+         LATERAL DERECHO
+
+
+
+
+                                                                                                                                     23 cm
+                                                                                                                                                                             123
+
+                CO N EXI Ó N
+24 cm           123
+
+
+
+
+                                                                                 45 cm   4.5 45 cm
+                 50 cm
+                                                                                     94.5 cm
+                                                                                                                                                      con separación de 2.5 cm
+                                                                                                                                                                  73.5
+                                                                                                                                                                35     35
+
+                                                                                                     LATERAL IZQUIERDO
+                                                                                                                                              TRAS
+
+
+
+
+                                                                                                              CO N EXI Ó N
+                                                                                                                     123
+                                                                                                                             24 cm
+
+
+
+
+                                                                                                                                                                      123               16 cm
+
+
+
+
+                               45 cm   4.5 45 cm
+                                                                                                              50 cm                                               43 cm
+                                   94.5 cm
+                                                                                                                                                                                                                                                                  3. Metrobús
+                                                                                                                                                                                                                                                                   Crómatica
+
+
+
+
+                                                                                                                                                                                                                FRENTE                                 55 cm
+                                    9 x 45 cm                                                     9 x 45 cm                                                          9 x 60 cm
+
+
+
+LATERAL DERECHO
+
+
+                                   SALIDA                                                        SALIDA                                                            E NT R A D A
+                                                                                                                                                                                                                                                       0123            23 cm
+
+
+
+
+         CO N EXI Ó N                                                                                                                                                                                                                                                          ELIMINAR DE CARROCERÍA
+         0123                                                                                                                                                                                                                                                                     EL TEXTO “SCANIA”
+                                                              E N CO L A B O R A C I Ó N CO N                         SOY                                                                                                              SOY
+                                                                                                                                                                                                                                       ELÉCTRICO
+                                                                                                                                                                                                                                                                       18 cm
+
+                                                                                                              E LÉ CT R I CO
+
+
+
+
+                                                                                                                                                                                                                              23 23        45
+                                                                                                                                                 45 cm 4.5 45 cm                                                            con separación de 2.3 cm
+
+           65 cm                                                  12 x 40 cm                                     25 x 65 cm                           94.5 cm
+
+                                                                                                                                                                                                                         con separación de 4 cm
+                                                                                                                                                                                                                         40 cm 40 cm  32 x 85 cm
+                                                                                                                                                                                                                TRAS
+                                                                                                                                                                                  LATERAL IZQUIERDO
+
+
+
+
+                                                                                                                                                                                                              40 cm                    SOY
+                                                                                                                                                                                 CO N EXI Ó N
+                                                                                                                                                                                                                                       E LÉ CT R I CO
+                                                                                                                                                                                       0123           24 cm
+                                                                              SOY                                   E N CO L A B O R A C I Ó N CO N
+
+
+                                                                              E LÉ CT R I CO                                                                                                                                   0123                            16 cm
+                        BATTERY
+
+
+
+
+                                                45 cm 4.5 45 cm 5.5                 25 x 65 cm                         12 x 40 cm                                                 65 cm
+                                                    94.5 cm
+                           24 cm
+
+                                                                                                                                                                                  SUPERIOR
+
+                                                                                                                                                                                                                                                   36 cm
+                                                                                                                                                                                                                                                                         3. Metrobús
+                                                                                                                                                                                                                                                                          Crómatica
+
+
+
+
+          AÉREO
+
+
+
+
+                                                                                                                       CISA 0123                                                                                     25 cm
+
+
+
+
+                                                                                        50 cm        50 cm
+                                                                                                                           130 cm
+                                                                                               105 cm
+                                                                                  con separación de 5 cm
+                                                                                                                                                                                                                                               con separación de 2.5 cm
+                                                                                                                                                                                                                                                         25        25
+                                                                                                                                                                                                                                     FRENTE
+                                                                                                                                                                                                                                                                                                     55 cm
+
+        LATERAL DERECHO
+                                                                                                                                                                                                                                              FRENTE
+
+
+
+
+                                                                                                                                                                                                                             23 cm                                                                       0123
+
+
+            CISA                                                        S O Y S U STE NTA B LE
+30 cm       0123                                            19 cm
+                                                                    U S O B I O CO M B U ST I B LE
+                                                                                                                                                       E N CO L A B O R A C I Ó N CO N
+                                                                                                                                                                                                                                                                        S O Y S U STE NTA B LE
+                                                                                                                                                                                                                                                                                                                13 cm
+                                                                                                                                                                                                                                                                        U S O B I O CO M B U ST I B LE
+
+
+
+
+                                                                                                                                                                                                                                                                                  66 cm
+                                                                                                                                    55 cm 5.5 55 cm         21 X45 cm
+            50 cm                                                       112 cm
+                                                                                                                                       115.5 cm
+
+
+
+
+                                                                                                                                                                                                                                                con separación de 2 cm
+                                                                                                                                                                                         LATERAL IZQUIERDO                                             42 cm
+                                                                                                                                                                                                                                      TRAS          20        20              66 cm
+
+
+
+
+                                                                                                                                                                                                     CISA
+                                                                                                                                                                                                     0123    30 cm
+                          E N CO L A B O R A C I Ó N CO N
+
+
+                                                                                                                                                  S O Y S U STE NTA B LE                                                                                           S O Y S U STE NTA B LE
+                                                                                                                                                                                                                                                                                                                   13 cm
+                                                                                                                                                  U S O B I O CO M B U ST I B LE                             19 cm                                                 U S O B I O CO M B U ST I B LE
+
+
+
+                                                                                                                                                                                                                                                                                                                    16 cm
+
+
+
+
+                                                                                                     55 cm 5.5 55 cm
+
+                               21 X45 cm
+                                                                                                        115.5 cm                                                       112 cm                       50 cm
+                                                                                                                                                                                                                                                                   43 cm
+                                                                   3. Metrobús
+                             Señalización de espacios exclusivos dentro del bus
+
+
+
+
+U S O P R I O R I TA R I O
+C E D A E L A S I E NTO
+
