@@ -32,8 +32,14 @@ final class RealtimeMapViewModel {
     var selectedLine: String? = nil {
         didSet {
             guard oldValue != selectedLine else { return }
-            // User changed filter — refetch immediately, don't wait for poll tick.
-            Task { await refresh() }
+            // User changed filter — cancel any in-flight refresh and start a
+            // fresh one. Without the cancel, rapid filter toggles produce
+            // concurrent fetches racing to set `vehicles` (last-write-wins,
+            // and `isLoading` flickers).
+            refreshTask?.cancel()
+            refreshTask = Task { [weak self] in
+                await self?.fetchOnce()
+            }
         }
     }
 
@@ -42,6 +48,7 @@ final class RealtimeMapViewModel {
     private let service: RealtimeService
     private let pollInterval: Duration
     private var pollingTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
 
     init(service: RealtimeService = .shared, pollInterval: Duration = .seconds(20)) {
         self.service = service
@@ -54,11 +61,16 @@ final class RealtimeMapViewModel {
     func startPolling() {
         guard pollingTask == nil else { return }
         Task { await self.loadRouteIndex() }
+        // Capture the interval up front; the closure's `self?.pollInterval`
+        // pattern would otherwise keep the loop running after self deallocates
+        // (`Task.isCancelled` stays false until stopPolling explicitly runs,
+        // which won't happen if the view dies without onDisappear firing).
+        let interval = pollInterval
         pollingTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.fetchOnce()
-                // Sleep is cancellable; throws on cancel which we catch via Task.isCancelled.
-                try? await Task.sleep(for: self?.pollInterval ?? .seconds(20))
+                guard let self else { return }
+                await self.fetchOnce()
+                try? await Task.sleep(for: interval)
             }
         }
     }
@@ -79,12 +91,21 @@ final class RealtimeMapViewModel {
     func stopPolling() {
         pollingTask?.cancel()
         pollingTask = nil
+        refreshTask?.cancel()
+        refreshTask = nil
     }
 
     /// Pull-to-refresh entry point. Forces an immediate fetch independent of
     /// the polling cadence.
     func refresh() async {
-        await fetchOnce()
+        // Coalesce against in-flight work so pull-to-refresh during a poll
+        // tick doesn't double-decode.
+        refreshTask?.cancel()
+        let task = Task { [weak self] in
+            await self?.fetchOnce()
+        }
+        refreshTask = task
+        await task.value
     }
 
     // MARK: - Private
