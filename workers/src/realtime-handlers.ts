@@ -37,8 +37,15 @@ async function getDecodedFeed(env: Env): Promise<CachedFeedPayload> {
 
   const hit = await cache.match(cacheKey);
   if (hit) {
-    const payload = (await hit.json()) as CachedFeedPayload;
-    return payload;
+    // Defensive: cached payload schema can drift across deploys, or the entry
+    // can be corrupted. A throw here used to bubble up to the top-level catch
+    // and return 500 to the user; instead, swallow and fall through to a
+    // fresh fetch.
+    try {
+      return (await hit.json()) as CachedFeedPayload;
+    } catch (err) {
+      console.warn('Cache payload parse failed, refetching:', err);
+    }
   }
 
   // Cache miss — fetch + decode + cache
