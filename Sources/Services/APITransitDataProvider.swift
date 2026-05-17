@@ -64,15 +64,20 @@ struct APIElevatorInfo: Codable, Sendable {
 
 // MARK: - API Configuration
 
-/// Configuration for the API provider - set before first use
+/// Configuration for the API provider.
+///
+/// These were previously `nonisolated(unsafe) static var` to "allow env
+/// switching at runtime", but no code path ever wrote to them and the
+/// URLSession config is captured into a `lazy var session` so mutation
+/// would have left a stale session anyway. Making them `let` removes the
+/// Swift 6 strict-concurrency race and the dishonest mutability hint.
+/// If env switching is needed later, inject via initializer instead.
 enum APIConfiguration {
-    /// Base URL for the Cloudflare Worker API
-    /// Set this in your app initialization:
-    /// `APIConfiguration.baseURL = URL(string: "https://your-worker.workers.dev")!`
-    nonisolated(unsafe) static var baseURL: URL = URL(string: "https://metrobus-status.starkji.workers.dev")!
+    /// Base URL for the Cloudflare Worker API.
+    static let baseURL: URL = URL(string: "https://metrobus-status.starkji.workers.dev")!
 
-    /// Timeout for API requests in seconds
-    nonisolated(unsafe) static var timeoutInterval: TimeInterval = 15.0
+    /// Timeout for API requests in seconds.
+    static let timeoutInterval: TimeInterval = 15.0
 }
 
 // MARK: - API Transit Data Provider
