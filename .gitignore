@@ -1,6 +1,5 @@
 # Xcode
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
+**/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcshareddata/
 DerivedData/
 *.hmap
@@ -21,3 +20,6 @@ Package.resolved
 # Secrets
 *.xcconfig
 !*.example.xcconfig
+
+# Claude Code local state
+.claude/
