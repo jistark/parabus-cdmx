@@ -36,16 +36,10 @@ enum SharedCoders {
         return d
     }()
 
-    /// ISO8601 with fractional seconds + internet date time. Matches the
-    /// worker's `Date().toISOString()` output.
-    static let iso8601Fractional: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    /// ISO8601 without fractional seconds — fallback for upstreams that omit them.
-    static let iso8601Plain = ISO8601DateFormatter()
+    // Note: ISO8601DateFormatter is *not* Sendable under Swift 6 strict
+    // concurrency (Foundation hasn't annotated it yet) so we can't host
+    // shared instances here. Allocate at the call site if you need raw
+    // date parsing; for Codable use isoEncoder / isoDecoder above.
 }
 
 // MARK: - Widget Data Types
