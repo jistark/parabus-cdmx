@@ -44,20 +44,35 @@ struct CommuteLeg: Codable, Identifiable, Hashable {
 
 // MARK: - Commute Station
 
-/// Represents a station on a specific line with GPS coordinates
+/// Represents a station on a specific line. Coordinates are optional because
+/// some legacy entries (or hand-typed station picks) lack GPS data.
 struct CommuteStation: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let lineNumber: String
-    let latitude: Double
-    let longitude: Double
+    let latitude: Double?
+    let longitude: Double?
 
-    init(id: String, name: String, lineNumber: String, latitude: Double = 0, longitude: Double = 0) {
+    init(id: String, name: String, lineNumber: String, latitude: Double? = nil, longitude: Double? = nil) {
         self.id = id
         self.name = name
         self.lineNumber = lineNumber
         self.latitude = latitude
         self.longitude = longitude
+    }
+
+    /// Backward-compat decoder: payloads encoded before lat/lon became optional
+    /// used 0.0 as the "no coordinates" sentinel. Treat encoded zeros as nil so
+    /// `hasCoordinates` keeps its original semantics for legacy data.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.lineNumber = try container.decode(String.self, forKey: .lineNumber)
+        let lat = try container.decodeIfPresent(Double.self, forKey: .latitude)
+        let lon = try container.decodeIfPresent(Double.self, forKey: .longitude)
+        self.latitude = (lat == 0) ? nil : lat
+        self.longitude = (lon == 0) ? nil : lon
     }
 
     var displayName: String {
@@ -69,7 +84,7 @@ struct CommuteStation: Codable, Identifiable, Hashable {
     }
 
     var hasCoordinates: Bool {
-        latitude != 0 && longitude != 0
+        latitude != nil && longitude != nil
     }
 }
 

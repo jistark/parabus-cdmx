@@ -8,19 +8,13 @@
  * so worst case is 20s × number of active PoPs of partner-API calls.
  */
 
-import type { Env } from './types';
+import { type Env, CORS_HEADERS } from './types';
 import { fetchRealtimeProto } from './partner-client';
 import { decodeFeedMessage, type DecodedFeed, type VehiclePosition } from './gtfs-rt';
 import { loadLineRouteIndex } from './gtfs-static';
 
 const FEED_CACHE_URL = 'https://internal.parabus/realtime-feed';
 const FEED_CACHE_TTL = 20; // seconds
-
-const CORS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
 
 interface CachedFeedPayload {
   decodedAt: number;
@@ -253,10 +247,10 @@ export async function handleEtas(request: Request, env: Env, ctx: ExecutionConte
 // ============================================================================
 
 function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data, null, 2), {
+  return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...CORS,
+      ...CORS_HEADERS,
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': `public, max-age=${FEED_CACHE_TTL}`,
       'X-Realtime-TTL': String(FEED_CACHE_TTL),

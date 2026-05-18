@@ -19,7 +19,7 @@
  * require it; ETAs based on vehicle distance to next stop do not.
  */
 
-import type { Env } from './types';
+import { type Env, CORS_HEADERS } from './types';
 import { fetchStaticZip } from './partner-client';
 
 const KV_META_KEY = 'gtfs:static:meta';
@@ -187,11 +187,6 @@ export async function loadLineRouteIndex(env: Env): Promise<Map<string, Set<stri
 // ============================================================================
 // HTTP handlers
 // ============================================================================
-
-const CORS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-};
 
 export async function handleStaticRoutes(env: Env): Promise<Response> {
   const meta = await loadStaticMeta(env);
@@ -518,10 +513,10 @@ export function extractZipFileStream(
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data, null, 2), {
+  return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...CORS,
+      ...CORS_HEADERS,
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'public, max-age=3600',
     },

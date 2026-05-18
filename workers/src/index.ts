@@ -16,6 +16,7 @@ import {
   CachedData,
   CACHE_KEY,
   CACHE_TTL_SECONDS,
+  CORS_HEADERS,
 } from './types';
 
 import {
@@ -44,17 +45,6 @@ import {
 } from './gtfs-schedule';
 
 // ============================================================================
-// CORS Headers
-// ============================================================================
-
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Max-Age': '86400',
-};
-
-// ============================================================================
 // Main Entry Point
 // ============================================================================
 
@@ -81,7 +71,7 @@ export default {
       if (path === '/admin/refresh-static') {
         const auth = request.headers.get('authorization') ?? '';
         const presented = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-        if (!env.JDV_BOT_SECRET || presented !== env.JDV_BOT_SECRET) {
+        if (!env.JDV_BOT_SECRET || !timingSafeEqual(presented, env.JDV_BOT_SECRET)) {
           return jsonResponse({ error: 'unauthorized' }, 401);
         }
         const meta = await refreshStaticGtfs(env);
@@ -344,7 +334,7 @@ async function handleStatus(request: Request, env: Env, ctx: ExecutionContext): 
     'Cache-Control': 'public, max-age=60',
   };
 
-  return new Response(JSON.stringify(response, null, 2), {
+  return new Response(JSON.stringify(response), {
     status: 200,
     headers,
   });
@@ -419,12 +409,28 @@ function isCacheStale(timestamp: number): boolean {
  * Create a JSON response with CORS headers
  */
 function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data, null, 2), {
+  return new Response(JSON.stringify(data), {
     status,
     headers: {
       ...CORS_HEADERS,
       'Content-Type': 'application/json; charset=utf-8',
     },
   });
+}
+
+/**
+ * Constant-time string equality. Avoids leaking secret length-of-first-mismatch
+ * through early-exit timing of `===`. Workers runtime lacks
+ * `crypto.subtle.timingSafeEqual`, so we accumulate XOR diffs across the full
+ * shorter string and OR-equality on length. Length mismatch leaks only the
+ * length itself, which is acceptable for fixed-format bearer tokens.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
 }
 

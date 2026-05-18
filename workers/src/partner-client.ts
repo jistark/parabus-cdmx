@@ -127,3 +127,43 @@ export async function fetchStaticZip(env: Env): Promise<{
     generationDateTime: v.generationDateTime,
   };
 }
+
+/**
+ * Single partnerValidation followed by parallel download of both artifacts.
+ * Use this whenever a handler needs both the realtime proto and the static
+ * zip in the same tick — avoids double-billing Sinoptico and guarantees both
+ * artifacts share the same generationDateTime (handy for cache coherence).
+ *
+ * Returns null when the operator's tracking system is offline.
+ */
+export async function fetchBoth(env: Env): Promise<{
+  realtime: Uint8Array;
+  static: Uint8Array;
+  generationDateTime: string;
+} | null> {
+  const v = await partnerValidation(env);
+  if (!v) return null;
+
+  const [rtResp, staticResp] = await Promise.all([
+    fetch(v.urlRealTime),
+    fetch(v.urlStatic),
+  ]);
+
+  if (!rtResp.ok) {
+    throw new Error(`Failed to download GTFS-RT proto: HTTP ${rtResp.status}`);
+  }
+  if (!staticResp.ok) {
+    throw new Error(`Failed to download GTFS static zip: HTTP ${staticResp.status}`);
+  }
+
+  const [rtBuf, staticBuf] = await Promise.all([
+    rtResp.arrayBuffer(),
+    staticResp.arrayBuffer(),
+  ]);
+
+  return {
+    realtime: new Uint8Array(rtBuf),
+    static: new Uint8Array(staticBuf),
+    generationDateTime: v.generationDateTime,
+  };
+}

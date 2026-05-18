@@ -66,12 +66,15 @@ enum AnyNotificationKey {
 }
 
 #if os(iOS)
-import BackgroundTasks
+@preconcurrency import BackgroundTasks
 import UserNotifications
 
-/// Maneja el background refresh para actualizar datos periodicamente
-@MainActor
-final class BackgroundRefreshManager {
+/// Background refresh + local notification orchestrator. Lives as an actor
+/// (not @MainActor) because its work is I/O, not UI: network fetch, cache
+/// save, UNUserNotificationCenter posts. The registration and scheduling
+/// entry points are `nonisolated` so the App scene-phase glue can call them
+/// synchronously where iOS expects it.
+actor BackgroundRefreshManager {
 
     // MARK: - Constants
 
@@ -81,7 +84,7 @@ final class BackgroundRefreshManager {
     static let taskIdentifier = "com.parabus.app.refresh"
 
     /// Intervalo mínimo entre refreshes (15 minutos es el mínimo de iOS)
-    private let minimumInterval: TimeInterval = 15 * 60
+    private static let minimumInterval: TimeInterval = 15 * 60
 
     // MARK: - Dependencies
 
@@ -100,36 +103,32 @@ final class BackgroundRefreshManager {
         }
     }
 
-    // MARK: - Registration
+    // MARK: - Registration (nonisolated — App init expects synchronous calls)
 
-    /// Registra el background task. Llamar en didFinishLaunching
-    func registerBackgroundTask() {
+    /// Register the background task with iOS. Must run during App init —
+    /// BGTaskScheduler requires registration before launch completes.
+    nonisolated func registerBackgroundTask() {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: Self.taskIdentifier,
             using: nil
-        ) { [weak self] task in
+        ) { task in
             guard let task = task as? BGAppRefreshTask else { return }
-            Task { @MainActor in
-                self?.handleAppRefresh(task: task)
+            Task {
+                await Self.shared.handleAppRefresh(task: task)
             }
         }
     }
 
-    /// Programa el siguiente refresh
-    func scheduleAppRefresh() {
+    /// Programa el siguiente refresh. Llamable desde cualquier contexto.
+    nonisolated func scheduleAppRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: Self.taskIdentifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: minimumInterval)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: Self.minimumInterval)
 
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
             print("Error programando background refresh: \(error)")
         }
-    }
-
-    /// Cancela cualquier refresh programado
-    func cancelScheduledRefresh() {
-        BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: Self.taskIdentifier)
     }
 
     // MARK: - Notification Permission
@@ -250,7 +249,7 @@ final class BackgroundRefreshManager {
         }
     }
 
-    private func statusLabel(_ status: ServiceStatus) -> String {
+    nonisolated private func statusLabel(_ status: ServiceStatus) -> String {
         switch status {
         case .protest: return "Manifestación"
         case .suspended: return "Suspendido"
@@ -262,7 +261,7 @@ final class BackgroundRefreshManager {
         }
     }
 
-    private func statusIcon(_ status: ServiceStatus) -> String {
+    nonisolated private func statusIcon(_ status: ServiceStatus) -> String {
         switch status {
         case .protest: return "🚨"
         case .suspended: return "⛔"

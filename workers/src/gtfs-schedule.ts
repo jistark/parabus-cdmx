@@ -17,7 +17,7 @@
  *     → average travel time in minutes between two stops on common trips
  */
 
-import type { Env } from './types';
+import { type Env, CORS_HEADERS } from './types';
 import { extractZipFileStream } from './gtfs-static';
 import { fetchStaticZip } from './partner-client';
 
@@ -273,11 +273,6 @@ function processLine(
 // HTTP handlers
 // ============================================================================
 
-const CORS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-};
-
 /** GET /static/schedule?stop=<id>&limit=<N> */
 export async function handleSchedule(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -436,7 +431,7 @@ function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...CORS,
+      ...CORS_HEADERS,
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'public, max-age=60',
     },

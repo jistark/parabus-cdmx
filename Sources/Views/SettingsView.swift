@@ -709,8 +709,10 @@ struct DebugView: View {
             }
 
             Button("Reset protest dedup keys", role: .destructive) {
-                BackgroundRefreshManager.shared.resetProtestNotifications()
-                setMessage("Cleared notifiedProtestKeys", ok: true)
+                Task {
+                    await BackgroundRefreshManager.shared.resetProtestNotifications()
+                    setMessage("Cleared notifiedProtestKeys", ok: true)
+                }
             }
             #endif
 
