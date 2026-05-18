@@ -45,7 +45,7 @@ struct ContentView: View {
             }
             .sheet(item: $selectedLine) { line in
                 LineDetailSheet(line: line)
-                    .presentationDetents([.large])
+                    .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
         }
