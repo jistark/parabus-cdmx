@@ -6,7 +6,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab: Tab = .status
-    @State private var viewModel = MetrobusViewModel()
+    @Environment(MetrobusViewModel.self) private var viewModel
 
     enum Tab: Hashable {
         case status
@@ -81,7 +81,7 @@ struct MainTabView: View {
 /// Main view for the Commute tab showing configured routes and status
 struct CommuteTabView: View {
     @State private var schedule: CommuteSchedule
-    @State private var viewModel = MetrobusViewModel()
+    @Environment(MetrobusViewModel.self) private var viewModel
     @State private var showingIdaSetup = false
     @State private var showingRegresoSetup = false
     @State private var selectedLine: LineStatus?
