@@ -132,31 +132,17 @@ final class RealtimeMapViewModel {
     // MARK: - Station selection (pure logic)
 
     /// Returns the nearest GTFSStation to `coordinate`, optionally
-    /// filtered to a single line. Returns nil if no stations match.
-    ///
-    /// Uses CLLocation.distance which is geodesic haversine — accurate
-    /// over CDMX scale (kilometers).
+    /// filtered to a single line. Delegates to `GTFSStations.nearestStation(to:inLine:)`
+    /// — kept as an instance method for call-site discoverability via the viewmodel
+    /// and so tests don't need to know about the underlying static API.
     nonisolated func nearestStation(
         to coordinate: CLLocationCoordinate2D,
         on line: String? = nil
     ) -> GTFSStation? {
-        let candidates: [GTFSStation]
-        if let line {
-            candidates = GTFSStations.stations(for: line)
-        } else {
-            candidates = ["1","2","3","4","5","6","7"].flatMap { GTFSStations.stations(for: $0) }
-        }
-        guard !candidates.isEmpty else { return nil }
-        let origin = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        return candidates.min { lhs, rhs in
-            let l = CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
-            let r = CLLocation(latitude: rhs.latitude, longitude: rhs.longitude)
-            return origin.distance(from: l) < origin.distance(from: r)
-        }
+        GTFSStations.nearestStation(to: coordinate, inLine: line)
     }
 
-    /// Given a new line, returns the station on that line closest to
-    /// `selectedStation` (or to `fallbackCoordinate` if no selection yet).
+    /// Returns the station on `newLine` closest to `referenceCoordinate`.
     /// Returns nil only if the line has zero stations (shouldn't happen
     /// for "1".."7"; sentinel for unknown lines).
     nonisolated func nearestStation(
