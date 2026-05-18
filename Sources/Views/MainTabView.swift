@@ -7,6 +7,7 @@ import SwiftUI
 struct MainTabView: View {
     @State private var selectedTab: Tab = .status
     @Environment(MetrobusViewModel.self) private var viewModel
+    @Environment(NotificationRouter.self) private var notificationRouter
 
     enum Tab: Hashable {
         case status
@@ -58,6 +59,14 @@ struct MainTabView: View {
         .tint(.accentColor)
         .task {
             await viewModel.loadStatus()
+        }
+        // When a tapped notification sets a pending deep link, switch to
+        // the Alerts tab so AlertsView can pick it up. AlertsView is
+        // responsible for clearing pendingDeepLink after handling.
+        .onChange(of: notificationRouter.pendingDeepLink) { _, newValue in
+            if newValue != nil {
+                selectedTab = .alerts
+            }
         }
     }
 

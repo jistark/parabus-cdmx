@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UserNotifications
+#endif
 
 // MARK: - Alerts Tab View
 /// Displays incident timeline and active disruptions
@@ -6,11 +9,18 @@ import SwiftUI
 
 struct AlertsView: View {
     @Environment(MetrobusViewModel.self) private var viewModel
+    @Environment(NotificationRouter.self) private var notificationRouter
     @State private var showFavoritesOnly = true
     @State private var expandedIncidentID: UUID?
     @State private var selectedLine: LineStatus?
+    @State private var showPermissionPrePrompt = false
 
     @AppStorage("favoriteLines") private var favoriteLines: String = "1,2,3"
+    /// Tracks whether we've already shown the in-app pre-prompt offering
+    /// to enable notifications. Once true, never shown again — user can
+    /// still flip the master toggle in Settings.
+    @AppStorage("hasShownNotificationPrePrompt") private var hasShownPrePrompt = false
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var favoriteLinesSet: Set<String> {
@@ -45,13 +55,75 @@ struct AlertsView: View {
             }
             .task {
                 await viewModel.loadStatus()
+                await maybeShowPermissionPrePrompt()
+                consumePendingDeepLink()
+            }
+            // Tab switched to Alerts via a notification tap — present the
+            // affected line's sheet so the user lands directly on detail.
+            .onChange(of: notificationRouter.pendingDeepLink) { _, _ in
+                consumePendingDeepLink()
             }
             .sheet(item: $selectedLine) { line in
                 LineDetailSheet(line: line)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+            .confirmationDialog(
+                "¿Quieres saber cuándo hay incidentes?",
+                isPresented: $showPermissionPrePrompt,
+                titleVisibility: .visible
+            ) {
+                Button("Activar notificaciones") {
+                    Task { await requestNotificationsAndPersist() }
+                }
+                Button("Ahora no", role: .cancel) {
+                    // Persist that we showed it so we don't pester them.
+                    hasShownPrePrompt = true
+                }
+            } message: {
+                Text("Te avisaremos sobre suspensiones, retrasos o manifestaciones en tus líneas favoritas. Puedes ajustar qué tipos en Ajustes.")
+            }
         }
+    }
+
+    // MARK: - Notification permission flow
+
+    /// On first ever visit to Alerts (and only if the user hasn't already
+    /// answered), show our pre-prompt. Pre-prompts before the system
+    /// dialog have substantially better grant rates than asking cold.
+    private func maybeShowPermissionPrePrompt() async {
+        guard !hasShownPrePrompt else { return }
+        // Don't show if the system has already given an answer (e.g., user
+        // toggled the master switch in Settings first, which already
+        // triggered the system dialog).
+        #if os(iOS)
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        guard settings.authorizationStatus == .notDetermined else {
+            hasShownPrePrompt = true
+            return
+        }
+        #endif
+        showPermissionPrePrompt = true
+    }
+
+    private func requestNotificationsAndPersist() async {
+        hasShownPrePrompt = true
+        #if os(iOS)
+        let granted = await BackgroundRefreshManager.shared.requestNotificationPermission()
+        notificationsEnabled = granted
+        await notificationRouter.refreshPermission()
+        #endif
+    }
+
+    /// If the router has a tapped-notification deep link, surface it by
+    /// opening the corresponding line's detail sheet. Clears the link so
+    /// it isn't re-applied on subsequent appears.
+    private func consumePendingDeepLink() {
+        guard let link = notificationRouter.pendingDeepLink else { return }
+        if let line = viewModel.allLines.first(where: { $0.lineNumber == link.lineNumber }) {
+            selectedLine = line
+        }
+        notificationRouter.pendingDeepLink = nil
     }
 
     // MARK: - Filter Picker
