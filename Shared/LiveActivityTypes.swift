@@ -1,7 +1,49 @@
-#if os(iOS)
 import Foundation
-import ActivityKit
 import SwiftUI
+
+// MARK: - Severity → Symbol mapping (platform-agnostic, testable)
+//
+// `statusSeverity` mirrors `ServiceStatus.severity` from the main app
+// (LiveActivityService passes it through as `line.status.severity`):
+//   protest=6 > suspended=5 > delayed=4 > limited=3 > intervention=2 >
+//   unknown=1 > regular=0
+//
+// Previously the Live Activity switch only handled 2/3/4 and bucketed
+// everything else as "regular" — protest and suspended disruptions
+// rendered with a green checkmark. Aligned in REVIEW HIGH-17.
+//
+// Colors mirror `StatusColors.color(for:)` in DesignTokens.swift and
+// `WidgetServiceStatus.color` in SharedTypes.swift. Kept outside the
+// `#if os(iOS)` block below so the pure mapping logic is unit-testable
+// on the macOS swift-test host (no ActivityKit dependency).
+enum SeveritySymbol {
+    static func color(severity: Int) -> Color {
+        switch severity {
+        case 6: return .pink                                       // protest
+        case 5: return .red                                        // suspended
+        case 4: return Color(red: 0.85, green: 0.55, blue: 0.0)    // delayed (WCAG-amber)
+        case 3: return .yellow                                     // limited
+        case 2: return .orange                                     // intervention
+        case 1: return .secondary                                  // unknown
+        default: return .green                                     // regular
+        }
+    }
+
+    static func icon(severity: Int) -> String {
+        switch severity {
+        case 6: return "megaphone.fill"
+        case 5: return "exclamationmark.octagon.fill"
+        case 4: return "clock.badge.exclamationmark"
+        case 3: return "arrow.left.arrow.right"
+        case 2: return "wrench.and.screwdriver.fill"
+        case 1: return "questionmark.circle.fill"
+        default: return "checkmark.circle.fill"
+        }
+    }
+}
+
+#if os(iOS)
+import ActivityKit
 
 // MARK: - Live Activity Attributes
 
@@ -25,45 +67,10 @@ struct MetrobusDisruptionAttributes: ActivityAttributes {
     let startedAt: Date
 }
 
-// MARK: - Live Activity Colors
-//
-// `statusSeverity` mirrors `ServiceStatus.severity` from the main app
-// (LiveActivityService passes it through as `line.status.severity`):
-//   protest=6 > suspended=5 > delayed=4 > limited=3 > intervention=2 >
-//   unknown=1 > regular=0
-//
-// Previously this switch only handled 2/3/4 and bucketed everything else
-// as "regular" — protest and suspended disruptions rendered with a green
-// checkmark. Aligned in REVIEW HIGH-17.
-//
-// Colors mirror `StatusColors.color(for:)` in DesignTokens.swift and
-// `WidgetServiceStatus.color` in SharedTypes.swift.
-
 @available(iOS 16.1, *)
 extension MetrobusDisruptionAttributes.ContentState {
-    var statusColor: Color {
-        switch statusSeverity {
-        case 6: return .pink                                       // protest
-        case 5: return .red                                        // suspended
-        case 4: return Color(red: 0.85, green: 0.55, blue: 0.0)    // delayed (WCAG-amber)
-        case 3: return .yellow                                     // limited
-        case 2: return .orange                                     // intervention
-        case 1: return .secondary                                  // unknown
-        default: return .green                                     // regular
-        }
-    }
-
-    var statusIcon: String {
-        switch statusSeverity {
-        case 6: return "megaphone.fill"
-        case 5: return "exclamationmark.octagon.fill"
-        case 4: return "clock.badge.exclamationmark"
-        case 3: return "arrow.left.arrow.right"
-        case 2: return "wrench.and.screwdriver.fill"
-        case 1: return "questionmark.circle.fill"
-        default: return "checkmark.circle.fill"
-        }
-    }
+    var statusColor: Color { SeveritySymbol.color(severity: statusSeverity) }
+    var statusIcon: String { SeveritySymbol.icon(severity: statusSeverity) }
 }
 
 // MARK: - Push Notification Payload Structure
