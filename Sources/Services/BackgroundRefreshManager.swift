@@ -1,6 +1,42 @@
+import Foundation
+
+// MARK: - Protest Key (platform-agnostic, exposed for testing)
+
+/// Encodes/decodes the de-duplication keys used to track which protests
+/// have already triggered a notification today. Kept outside the
+/// `#if os(iOS)` block below so the pure-string logic is unit-testable on
+/// macOS (no BackgroundTasks/UserNotifications dependency).
+///
+/// Key format: `"protest_L<line>_<timestamp>"` where `<timestamp>` is a
+/// `TimeInterval` from a `Date`. The old inline implementation parsed by
+/// `split(_:on:).last` which silently breaks if `lineNumber` ever contains
+/// an underscore. Using a fixed prefix sentinel here makes that robust.
+enum ProtestKey {
+    private static let prefix = "protest_L"
+    private static let separator: Character = "_"
+
+    /// Build a deduplication key for a protest detected on `lineNumber` on a
+    /// given calendar day. Two calls with the same `(lineNumber, day)` produce
+    /// the same key.
+    static func make(lineNumber: String, day: Date, calendar: Calendar = .current) -> String {
+        let dayStart = calendar.startOfDay(for: day).timeIntervalSince1970
+        return "\(prefix)\(lineNumber)\(separator)\(dayStart)"
+    }
+
+    /// Extract the timestamp portion from a key produced by `make(...)`.
+    /// Returns nil if the key wasn't produced by `make` (wrong prefix or
+    /// non-numeric tail).
+    static func timestamp(from key: String) -> TimeInterval? {
+        guard key.hasPrefix(prefix) else { return nil }
+        let tail = key.dropFirst(prefix.count) // "<line>_<timestamp>"
+        guard let lastSep = tail.lastIndex(of: separator) else { return nil }
+        let timestampPart = tail[tail.index(after: lastSep)...]
+        return Double(timestampPart)
+    }
+}
+
 #if os(iOS)
 import BackgroundTasks
-import Foundation
 import UserNotifications
 
 /// Maneja el background refresh para actualizar datos periodicamente
@@ -114,7 +150,7 @@ final class BackgroundRefreshManager {
 
         for line in protestLines {
             // Create unique key for this protest
-            let protestKey = "protest_L\(line.lineNumber)_\(Calendar.current.startOfDay(for: Date()).timeIntervalSince1970)"
+            let protestKey = ProtestKey.make(lineNumber: line.lineNumber, day: Date())
 
             // Skip if we've already notified about this protest today
             guard !notifiedProtestKeys.contains(protestKey) else { continue }
@@ -166,9 +202,7 @@ final class BackgroundRefreshManager {
     private func cleanupOldProtestKeys() {
         let oneDayAgo = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970 - 86400
         notifiedProtestKeys = notifiedProtestKeys.filter { key in
-            // Extract timestamp from key format: "protest_L1_TIMESTAMP"
-            guard let timestampStr = key.split(separator: "_").last,
-                  let timestamp = Double(timestampStr) else { return false }
+            guard let timestamp = ProtestKey.timestamp(from: key) else { return false }
             return timestamp > oneDayAgo
         }
         saveNotifiedProtests()

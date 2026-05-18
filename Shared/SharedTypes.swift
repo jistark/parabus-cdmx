@@ -120,14 +120,18 @@ enum WidgetServiceStatus: String, Codable, CaseIterable {
     /// severity: green → yellow → orange → amber → red → pink. Each step
     /// changes hue (not just intensity) so users with color-vision
     /// deficiencies can still distinguish them.
+    ///
+    /// All values are SwiftUI semantic colors (`.green`, `.red`, …) or sRGB —
+    /// no Display-P3. Widget rendering pipelines in iOS 26 sometimes flatten
+    /// custom P3 colors in accented contexts.
     var color: Color {
         switch self {
         case .regular: return .green
-        case .limited: return .yellow                                 // real-time partial
-        case .intervention: return .orange                            // scheduled disruption
+        case .limited: return .yellow                                  // real-time partial
+        case .intervention: return .orange                             // scheduled disruption
         case .delayed: return Color(red: 0.85, green: 0.55, blue: 0.0) // WCAG-amber
-        case .suspended: return .red                                  // service stopped
-        case .protest: return .pink                                   // urgent external event
+        case .suspended: return .red                                   // service stopped
+        case .protest: return .pink                                    // urgent external event
         case .unknown: return .secondary
         }
     }
@@ -230,21 +234,25 @@ enum WidgetCacheReader {
 
 // MARK: - Line Colors for Widget
 //
-// Mirrors `LineColors` in Sources/Theme/DesignTokens.swift. Display-P3 with
-// the official Pantone-derived hex from ref/CDMX_PALETTE.md. Kept as a
-// separate enum here (instead of importing LineColors) so the widget can
-// resolve colors without pulling in the full DesignTokens module.
+// Mirrors `LineColors` in Sources/Theme/DesignTokens.swift but uses sRGB
+// (default Color initializer) rather than Display-P3. iOS 26 widget rendering
+// pipelines apply accented/vibrant tinting in some contexts (lock-screen
+// preview, dynamic wallpaper, accented mode) that can flatten Display-P3
+// custom colors to grayscale/white. sRGB renders predictably across every
+// widget rendering mode at the cost of slight desaturation on P3 displays
+// — acceptable trade-off for the widget surface, where reliability beats the
+// extra few percent of color gamut.
 
 enum WidgetLineColor {
     static func color(for lineNumber: String) -> Color {
         switch lineNumber {
-        case "1": return Color(.displayP3, red: 164/255, green: 52/255,  blue: 58/255,  opacity: 1) // PANTONE 1807 C
-        case "2": return Color(.displayP3, red: 135/255, green: 24/255,  blue: 157/255, opacity: 1) // PANTONE 2602 C
-        case "3": return Color(.displayP3, red: 122/255, green: 154/255, blue: 1/255,   opacity: 1) // PANTONE 377 C
-        case "4": return Color(.displayP3, red: 254/255, green: 80/255,  blue: 0/255,   opacity: 1) // PANTONE 021 C
-        case "5": return Color(.displayP3, red: 0/255,   green: 30/255,  blue: 96/255,  opacity: 1) // PANTONE 2757 C
-        case "6": return Color(.displayP3, red: 225/255, green: 0/255,   blue: 152/255, opacity: 1) // PANTONE Rhodamine Red C
-        case "7": return Color(.displayP3, red: 4/255,   green: 106/255, blue: 56/255,  opacity: 1) // PANTONE 349 C
+        case "1": return Color(red: 164/255, green: 52/255,  blue: 58/255)  // PANTONE 1807 C
+        case "2": return Color(red: 135/255, green: 24/255,  blue: 157/255) // PANTONE 2602 C
+        case "3": return Color(red: 122/255, green: 154/255, blue: 1/255)   // PANTONE 377 C
+        case "4": return Color(red: 254/255, green: 80/255,  blue: 0/255)   // PANTONE 021 C
+        case "5": return Color(red: 0/255,   green: 30/255,  blue: 96/255)  // PANTONE 2757 C
+        case "6": return Color(red: 225/255, green: 0/255,   blue: 152/255) // PANTONE Rhodamine Red C
+        case "7": return Color(red: 4/255,   green: 106/255, blue: 56/255)  // PANTONE 349 C
         default: return .gray
         }
     }

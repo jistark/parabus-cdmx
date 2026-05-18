@@ -166,8 +166,9 @@ actor GTFSScheduleService {
     }
 
     /// Pure parse — nonisolated so it can run inside Task.detached without
-    /// touching actor state.
-    private static func parseStopTimes(_ content: String) -> [String: [ScheduledArrival]] {
+    /// touching actor state. Internal (not private) so tests can exercise the
+    /// parsing in isolation without going through the bundle-loaded singleton.
+    static func parseStopTimes(_ content: String) -> [String: [ScheduledArrival]] {
         let lines = content.components(separatedBy: .newlines)
         guard lines.count > 1 else { return [:] }
 
@@ -199,7 +200,7 @@ actor GTFSScheduleService {
         return temp
     }
 
-    private static func parseTime(_ timeStr: String) -> Int? {
+    static func parseTime(_ timeStr: String) -> Int? {
         // Format: HH:MM:SS — GTFS allows >24:00 for next-day service. We mod
         // by 24, which folds a 25:00 trip back to 1:00 (wrong day association
         // for late-night routes). Tracked as REVIEW HIGH-15 bug; out of scope

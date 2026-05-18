@@ -99,9 +99,10 @@ struct SmallWidgetView: View {
 
             Spacer()
 
-            // Status text
+            // Status text — Tipo Movin → uppercase per MB manual
             Text(statusTitle)
                 .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
+                .textCase(.uppercase)
                 .lineLimit(2)
 
             // Subtitle
@@ -151,6 +152,7 @@ struct MediumWidgetView: View {
             HStack {
                 Text("Metrobús CDMX")
                     .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
+                    .textCase(.uppercase)
 
                 Spacer()
 
