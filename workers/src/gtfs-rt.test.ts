@@ -95,7 +95,7 @@ describe('decodeFeedMessage', () => {
     expect(decoded.feedTimestamp).toBe(1_700_000_000);
     expect(decoded.vehicles).toHaveLength(1);
 
-    const v = decoded.vehicles[0];
+    const v = decoded.vehicles[0]!;
     expect(v.entityId).toBe('ent-001');
     expect(v.tripId).toBe('TRIP_001');
     expect(v.routeId).toBe('ROUTE_42');
@@ -113,13 +113,13 @@ describe('decodeFeedMessage', () => {
   it('normalizes bearing outside [0, 360)', () => {
     // Sinoptico Plus publishes raw GPS heading which can exceed 360°
     const overflow = decodeFeedMessage(buildSampleFeed({ bearing: 400 }));
-    expect(overflow.vehicles[0].bearing).toBeCloseTo(40, 3);
+    expect(overflow.vehicles[0]!.bearing).toBeCloseTo(40, 3);
 
     const negative = decodeFeedMessage(buildSampleFeed({ bearing: -10 }));
-    expect(negative.vehicles[0].bearing).toBeCloseTo(350, 3);
+    expect(negative.vehicles[0]!.bearing).toBeCloseTo(350, 3);
 
     const huge = decodeFeedMessage(buildSampleFeed({ bearing: 720.5 }));
-    expect(huge.vehicles[0].bearing).toBeCloseTo(0.5, 3);
+    expect(huge.vehicles[0]!.bearing).toBeCloseTo(0.5, 3);
   });
 
   it('decodes empty feed (header only)', () => {

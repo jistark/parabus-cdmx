@@ -39,6 +39,11 @@ import {
   refreshStaticGtfs,
 } from './gtfs-static';
 
+import {
+  handleSchedule,
+  handleTravelTime,
+} from './gtfs-schedule';
+
 // ============================================================================
 // CORS Headers
 // ============================================================================
@@ -124,6 +129,12 @@ export default {
         case '/static/stops':
           return await handleStaticStops(env);
 
+        case '/static/schedule':
+          return await handleSchedule(request, env);
+
+        case '/static/travel-time':
+          return await handleTravelTime(request, env);
+
         case '/':
           return jsonResponse({
             name: 'Metrobus CDMX Status API',
@@ -136,6 +147,8 @@ export default {
               '/etas': 'GET — Vehicles approaching a stop. Query: ?stop=<id>',
               '/static/routes': 'GET — Routes catalog from daily GTFS',
               '/static/stops': 'GET — Stops catalog from daily GTFS',
+              '/static/schedule': 'GET — Next arrivals at a stop. Query: ?stop=<id>&limit=N',
+              '/static/travel-time': 'GET — Avg travel time between two stops. Query: ?from=A&to=B',
             },
           });
 
