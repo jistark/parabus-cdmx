@@ -305,8 +305,8 @@ extension BackgroundRefreshManager {
             let result = try await dataProvider.fetchStatus()
             try await cache.save(result)
 
-            // Also check for protests in simulation
-            await checkForProtestsAndNotify(lines: result.lines)
+            // Also run the notification path in simulation
+            await checkAndNotify(lines: result.lines)
 
             print("✅ Background refresh simulado exitoso: \(result.lines.count) líneas")
 
