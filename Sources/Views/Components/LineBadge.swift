@@ -30,14 +30,12 @@ struct LineBadge: View {
             .accessibilityLabel("\(transportType.displayName) línea \(number)")
     }
 
-    /// Rounded-rectangle badge with the line number centered, rendered as a
-    /// SwiftUI shape (vector — crisp at every Dynamic Type size + zoom level).
-    /// Replaces the prior bitmap fallback from `TransitImageLoader`, which
-    /// pixelated noticeably at small sizes.
+    /// Iconic Metrobús "B" silhouette with the line number centered in the
+    /// LEFT block (the visual center of the mark — the right lobes already
+    /// pull the eye). Vector — crisp at every Dynamic Type size + zoom level.
     private var nativeBadge: some View {
-        let corner = size.dimension * 0.22
-        return ZStack {
-            RoundedRectangle(cornerRadius: corner, style: .continuous)
+        ZStack {
+            MetrobusLineShape()
                 .fill(lineColor.gradient)
 
             Text(number)
@@ -45,6 +43,10 @@ struct LineBadge: View {
                 .foregroundStyle(.white)
                 .monospacedDigit()
                 .minimumScaleFactor(0.5)
+                // Shift left to land in the rectangular block of the B —
+                // geometric center sits inside the right-bulging lobes which
+                // would push the number visually too far right.
+                .offset(x: -size.dimension * 0.12)
         }
         .frame(width: size.dimension, height: size.dimension)
         .shadow(color: lineColor.opacity(colorScheme == .dark ? 0.5 : 0.25), radius: 3, y: 1)
