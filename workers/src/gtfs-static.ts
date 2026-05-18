@@ -98,6 +98,11 @@ export async function refreshStaticGtfs(env: Env): Promise<GtfsStaticMeta | null
   memoMeta = meta;
   memoLineRouteIndex = null;
 
+  // Schedule data (stop_times.txt) is populated lazily per-stop via the
+  // `/static/schedule` endpoint rather than eagerly here — parsing all
+  // ~1M rows + 376 KV writes in one cron tick blew the Worker's resource
+  // limits (error 1102). Per-stop lazy fits comfortably.
+
   return meta;
 }
 
