@@ -120,7 +120,12 @@ actor BackgroundRefreshManager {
                 }
             }
             UserDefaults.standard.removeObject(forKey: Self.legacyStorageKey)
-            persistNotifiedKeys()
+            // Inline persist — actor.init is implicitly nonisolated under Swift 6
+            // strict concurrency, so calling the actor-isolated persistNotifiedKeys()
+            // method here is rejected. UserDefaults is thread-safe; safe to do inline.
+            if let data = try? SharedCoders.plainEncoder.encode(notifiedKeys) {
+                UserDefaults.standard.set(data, forKey: Self.storageKey)
+            }
         }
     }
 
