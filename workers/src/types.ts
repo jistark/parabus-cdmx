@@ -174,12 +174,6 @@ export interface Env {
   METROBUS_SENHA: string;
 }
 
-export interface ScheduledEvent {
-  cron: string;
-  type: string;
-  scheduledTime: number;
-}
-
 // ============================================================================
 // Constants
 // ============================================================================

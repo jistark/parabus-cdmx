@@ -197,7 +197,7 @@ actor APITransitDataProvider: TransitDataProviding {
             let (data, response) = try await session.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "API", code: -1, userInfo: [
                         NSLocalizedDescriptionKey: "Invalid response type"
                     ])
@@ -208,19 +208,19 @@ actor APITransitDataProvider: TransitDataProviding {
             case 200...299:
                 break
             case 429:
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "API", code: 429, userInfo: [
                         NSLocalizedDescriptionKey: "Demasiadas solicitudes, intenta más tarde"
                     ])
                 )
             case 500...599:
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "API", code: httpResponse.statusCode, userInfo: [
                         NSLocalizedDescriptionKey: "Error del servidor, intenta más tarde"
                     ])
                 )
             default:
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "API", code: httpResponse.statusCode, userInfo: [
                         NSLocalizedDescriptionKey: "Error HTTP \(httpResponse.statusCode)"
                     ])
@@ -230,13 +230,13 @@ actor APITransitDataProvider: TransitDataProviding {
             do {
                 return try decoder.decode(APIMetrobusResponse.self, from: data)
             } catch {
-                throw ScraperError.parsingError("Error decodificando JSON: \(error.localizedDescription)")
+                throw TransitDataError.parsingError("Error decodificando JSON: \(error.localizedDescription)")
             }
 
-        } catch let error as ScraperError {
+        } catch let error as TransitDataError {
             throw error
         } catch {
-            throw ScraperError.networkError(error)
+            throw TransitDataError.networkError(error)
         }
     }
 

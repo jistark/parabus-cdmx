@@ -1,12 +1,6 @@
 import SwiftUI
 
 /// Compact timeline used in LineDetailSheet to show incidents per line.
-///
-/// History: this file also contained a fuller `StationTimeline` variant with
-/// per-station rows + connecting track styling, but it was never referenced
-/// outside its own #Preview and was deleted along with the parallel
-/// LineRowView / StatusHeroCard / LineStatusGrid surfaces (Phase 2 of
-/// REVIEW.md cleanup).
 struct CompactStationTimeline: View {
     let incidents: [Incident]
     let lineColor: Color

@@ -63,7 +63,7 @@ actor RealtimeService {
             let (data, response) = try await session.data(for: request)
 
             guard let http = response as? HTTPURLResponse else {
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "RealtimeService", code: -1,
                             userInfo: [NSLocalizedDescriptionKey: "Invalid response type"])
                 )
@@ -73,22 +73,22 @@ actor RealtimeService {
             case 200...299:
                 break
             case 429:
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "RealtimeService", code: 429,
                             userInfo: [NSLocalizedDescriptionKey: "Demasiadas solicitudes, intenta más tarde"])
                 )
             case 503:
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "RealtimeService", code: 503,
                             userInfo: [NSLocalizedDescriptionKey: "Datos no disponibles temporalmente"])
                 )
             case 500...599:
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "RealtimeService", code: http.statusCode,
                             userInfo: [NSLocalizedDescriptionKey: "Error del servidor"])
                 )
             default:
-                throw ScraperError.networkError(
+                throw TransitDataError.networkError(
                     NSError(domain: "RealtimeService", code: http.statusCode,
                             userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"])
                 )
@@ -97,14 +97,14 @@ actor RealtimeService {
             do {
                 return try decoder.decode(T.self, from: data)
             } catch {
-                throw ScraperError.parsingError(
+                throw TransitDataError.parsingError(
                     "Error decodificando \(T.self): \(error.localizedDescription)"
                 )
             }
-        } catch let error as ScraperError {
+        } catch let error as TransitDataError {
             throw error
         } catch {
-            throw ScraperError.networkError(error)
+            throw TransitDataError.networkError(error)
         }
     }
 }

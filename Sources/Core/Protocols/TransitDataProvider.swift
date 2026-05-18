@@ -33,9 +33,7 @@ extension TransitDataProviding {
 // MARK: - Mock Implementation for Previews/Tests
 
 #if DEBUG
-/// Static fixtures for SwiftUI previews and unit tests. Previously lived in
-/// MetrobusScraper's DEBUG extension; moved here when the scraper itself was
-/// deleted.
+/// Static fixtures for SwiftUI previews and unit tests.
 enum MockTransitData {
     static let lines: [LineStatus] = [
         LineStatus(
@@ -121,7 +119,7 @@ actor MockTransitDataProvider: TransitDataProviding {
         }
 
         if shouldFail {
-            throw ScraperError.networkError(
+            throw TransitDataError.networkError(
                 NSError(domain: "Mock", code: -1, userInfo: [
                     NSLocalizedDescriptionKey: "Simulated network failure"
                 ])
@@ -137,7 +135,7 @@ actor MockTransitDataProvider: TransitDataProviding {
 
     func fetchMaintenanceClosures() async throws -> MaintenanceResult {
         if shouldFail {
-            throw ScraperError.networkError(
+            throw TransitDataError.networkError(
                 NSError(domain: "Mock", code: -1)
             )
         }

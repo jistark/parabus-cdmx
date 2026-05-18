@@ -1,11 +1,8 @@
 import Foundation
 
 /// Errors thrown by transit data providers (worker API client, realtime feed
-/// client, etc). Originally lived in MetrobusScraper.swift — moved to its own
-/// file when the scraper was deleted as part of REVIEW.md Phase 2 cleanup.
-/// The name is kept for source compatibility; consider renaming to
-/// `TransitDataError` in a future refactor.
-enum ScraperError: LocalizedError {
+/// client, etc).
+enum TransitDataError: LocalizedError {
     case invalidURL
     case networkError(Error)
     case parsingError(String)

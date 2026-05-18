@@ -149,7 +149,7 @@ struct APITransitDataProviderTests {
 
     // MARK: - HTTP status mapping
 
-    @Test("429 maps to ScraperError.networkError")
+    @Test("429 maps to TransitDataError.networkError")
     func http429() async throws {
         let provider = APITransitDataProvider(
             session: makeSession(status: 429, body: "rate limited")
@@ -157,7 +157,7 @@ struct APITransitDataProviderTests {
         do {
             _ = try await provider.fetchStatus()
             Issue.record("expected throw")
-        } catch let ScraperError.networkError(underlying) {
+        } catch let TransitDataError.networkError(underlying) {
             let nsError = underlying as NSError
             #expect(nsError.code == 429)
         } catch {
@@ -165,7 +165,7 @@ struct APITransitDataProviderTests {
         }
     }
 
-    @Test("500 maps to ScraperError.networkError")
+    @Test("500 maps to TransitDataError.networkError")
     func http500() async throws {
         let provider = APITransitDataProvider(
             session: makeSession(status: 503, body: "service unavailable")
@@ -173,7 +173,7 @@ struct APITransitDataProviderTests {
         do {
             _ = try await provider.fetchStatus()
             Issue.record("expected throw")
-        } catch let ScraperError.networkError(underlying) {
+        } catch let TransitDataError.networkError(underlying) {
             let nsError = underlying as NSError
             #expect(nsError.code == 503)
         } catch {
@@ -181,7 +181,7 @@ struct APITransitDataProviderTests {
         }
     }
 
-    @Test("malformed JSON maps to ScraperError.parsingError")
+    @Test("malformed JSON maps to TransitDataError.parsingError")
     func parseFailure() async throws {
         let provider = APITransitDataProvider(
             session: makeSession(json: "this is not json")
@@ -189,7 +189,7 @@ struct APITransitDataProviderTests {
         do {
             _ = try await provider.fetchStatus()
             Issue.record("expected throw")
-        } catch ScraperError.parsingError {
+        } catch TransitDataError.parsingError {
             // expected
         } catch {
             Issue.record("unexpected error type: \(error)")

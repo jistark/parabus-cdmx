@@ -413,31 +413,6 @@ struct AboutView: View {
                 Text("Los datos de estado del servicio se obtienen del sitio oficial de Metrobús CDMX.")
             }
 
-            // MARK: - Open Source Libraries
-            Section {
-                Link(destination: URL(string: "https://github.com/scinfu/SwiftSoup")!) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: Spacing.xxs) {
-                            Text("SwiftSoup")
-                                .font(.subheadline)
-                                .foregroundStyle(.primary)
-
-                            Text("HTML Parser - MIT License")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "arrow.up.forward.square")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            } header: {
-                Text("Librerias de codigo abierto")
-            }
-
             // MARK: - Legal Disclaimer
             Section {
                 Text("Parabús es una aplicación no oficial. No está afiliada con Metrobús ni con el Gobierno de la Ciudad de México. Metrobús es una marca registrada.")
