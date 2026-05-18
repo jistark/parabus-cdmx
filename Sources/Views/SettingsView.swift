@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UserNotifications
+#endif
 
 // MARK: - Settings Tab View
 /// User preferences and app information
@@ -546,47 +549,344 @@ struct DataSourcesView: View {
 // MARK: - Debug View
 
 #if DEBUG
+/// In-app diagnostics for development builds. Surfaces the same data the
+/// REVIEW.md investigations needed (cache age + file path + App Group
+/// container, worker health, notification permission, BG refresh next-fire),
+/// plus action buttons that trigger the various simulate-* helpers. Touch
+/// any section header to copy the visible text to the pasteboard.
 struct DebugView: View {
-    @State private var cacheInfo: String = "Loading..."
+    @Environment(MetrobusViewModel.self) private var viewModel
+    @State private var snapshot = DebugSnapshot()
+    @State private var actionMessage: String?
+    @State private var actionMessageColor: Color = .secondary
 
     var body: some View {
         List {
-            Section {
-                Button("Force Refresh") {
-                    // Trigger refresh
-                }
+            statusSection
+            cacheSection
+            appGroupSection
+            workerSection
+            notificationsSection
+            #if os(iOS)
+            liveActivitySection
+            #endif
+            actionsSection
+            designSection
 
-                Button("Clear Cache") {
-                    // Clear cache
+            if let actionMessage {
+                Section {
+                    Text(actionMessage)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(actionMessageColor)
+                } header: {
+                    Text("Last action")
                 }
-
-                Button("Simulate Error") {
-                    // Simulate error state
-                }
-            } header: {
-                Text("Actions")
-            }
-
-            Section {
-                Text(cacheInfo)
-                    .font(.caption.monospaced())
-            } header: {
-                Text("Cache Info")
-            }
-
-            Section {
-                NavigationLink("Design Tokens Preview") {
-                    DesignTokensPreview()
-                }
-            } header: {
-                Text("Design")
             }
         }
         .navigationTitle("Debug")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .task {
+            await refreshSnapshot()
+        }
+        .refreshable {
+            await refreshSnapshot()
+        }
     }
+
+    // MARK: - Sections
+
+    private var statusSection: some View {
+        Section("Status") {
+            row("Lines loaded", "\(viewModel.lines.count) / 7")
+            row("Lines with issues", "\(viewModel.linesWithIssues.count)")
+            row("Maintenance closures", "\(viewModel.maintenanceClosures.count)")
+            row("Today's closures", "\(viewModel.deduplicatedTodaysClosures.count)")
+            row("Last updated", snapshot.lastUpdatedDescription)
+            row("Is stale", "\(viewModel.isStale)")
+            row("Is loading", "\(viewModel.isLoading)")
+            row("Is refreshing", "\(viewModel.isRefreshing)")
+            if let err = viewModel.error {
+                row("Last error", err.localizedDescription, valueColor: .red)
+            }
+        }
+    }
+
+    private var cacheSection: some View {
+        Section("Cache") {
+            row("Exists on disk", snapshot.cacheExists ? "yes" : "no",
+                valueColor: snapshot.cacheExists ? .green : .secondary)
+            if let bytes = snapshot.cacheSizeBytes {
+                row("File size", ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))
+            }
+            if let age = snapshot.cacheAgeSeconds {
+                row("Cache age", formatAge(age))
+            }
+            if let path = snapshot.cachePath {
+                row("Path", shorten(path), monospaced: true)
+            }
+        }
+    }
+
+    /// Catches REVIEW CRIT-01-style App Group misconfigurations: if the
+    /// identifier doesn't match the entitlement, the container URL is nil.
+    private var appGroupSection: some View {
+        Section("App Group") {
+            row("Identifier", ParabusConstants.appGroupIdentifier, monospaced: true)
+            row("Container resolves",
+                snapshot.appGroupContainerOK ? "yes" : "no (check entitlement!)",
+                valueColor: snapshot.appGroupContainerOK ? .green : .red)
+        }
+    }
+
+    private var workerSection: some View {
+        Section("Worker") {
+            row("Base URL", APIConfiguration.baseURL.absoluteString, monospaced: true)
+            row("/health status", snapshot.workerHealth ?? "(not probed)")
+            if let ms = snapshot.workerHealthLatencyMs {
+                row("Probe latency", "\(ms) ms")
+            }
+        }
+    }
+
+    private var notificationsSection: some View {
+        Section("Notifications") {
+            row("Authorization", snapshot.notificationAuthStatus)
+            #if os(iOS)
+            Button("Request permission") {
+                Task {
+                    let granted = await BackgroundRefreshManager.shared.requestNotificationPermission()
+                    setMessage(granted ? "Permission granted" : "Permission denied", ok: granted)
+                    await refreshSnapshot()
+                }
+            }
+            #endif
+        }
+    }
+
+    #if os(iOS)
+    private var liveActivitySection: some View {
+        Section("Live Activities") {
+            if #available(iOS 16.2, *) {
+                row("Available", LiveActivityService.shared.isAvailable ? "yes" : "no")
+                Button("Start test activity (Línea 1)") {
+                    Task {
+                        await startTestActivity()
+                    }
+                }
+                Button("End all activities", role: .destructive) {
+                    Task {
+                        await LiveActivityService.shared.endAllActivities()
+                        setMessage("Ended all live activities", ok: true)
+                    }
+                }
+            } else {
+                Text("iOS 16.2 required").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+    #endif
+
+    private var actionsSection: some View {
+        Section("Actions") {
+            Button("Force refresh (bypass cache)") {
+                Task {
+                    await viewModel.refresh()
+                    setMessage("Refreshed: \(viewModel.lines.count) lines, \(viewModel.maintenanceClosures.count) closures",
+                               ok: viewModel.error == nil)
+                    await refreshSnapshot()
+                }
+            }
+
+            Button("Clear cache") {
+                Task { await runClearCache() }
+            }
+
+            #if os(iOS)
+            Button("Simulate background refresh") {
+                Task {
+                    await BackgroundRefreshManager.shared.simulateBackgroundRefresh()
+                    setMessage("Background refresh simulated", ok: true)
+                    await refreshSnapshot()
+                }
+            }
+
+            Button("Simulate protest notification") {
+                Task {
+                    await BackgroundRefreshManager.shared.simulateProtestNotification(forLine: "1")
+                    setMessage("Protest notification sent for L1", ok: true)
+                }
+            }
+
+            Button("Reset protest dedup keys", role: .destructive) {
+                BackgroundRefreshManager.shared.resetProtestNotifications()
+                setMessage("Cleared notifiedProtestKeys", ok: true)
+            }
+            #endif
+
+            Button("Reload worker /health") {
+                Task {
+                    await probeWorkerHealth()
+                }
+            }
+        }
+    }
+
+    private var designSection: some View {
+        Section("Design") {
+            NavigationLink("Design tokens preview") {
+                DesignTokensPreview()
+            }
+        }
+    }
+
+    // MARK: - Row helpers
+
+    private func row(_ label: String, _ value: String,
+                     valueColor: Color = .secondary,
+                     monospaced: Bool = false) -> some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .foregroundStyle(.primary)
+            Spacer()
+            Text(value)
+                .font(monospaced ? .caption.monospaced() : .body)
+                .foregroundStyle(valueColor)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func setMessage(_ text: String, ok: Bool) {
+        actionMessage = text
+        actionMessageColor = ok ? .green : .red
+    }
+
+    private func runClearCache() async {
+        do {
+            try await CacheManager().clear()
+            setMessage("Cache cleared", ok: true)
+            await refreshSnapshot()
+        } catch {
+            setMessage("Clear failed: \(error.localizedDescription)", ok: false)
+        }
+    }
+
+    #if os(iOS)
+    @available(iOS 16.2, *)
+    private func startTestActivity() async {
+        let testLine = LineStatus(
+            lineNumber: "1",
+            transportType: .metrobus,
+            status: .delayed,
+            affectedStations: ["Insurgentes", "Reforma"],
+            additionalInfo: "Debug test activity"
+        )
+        do {
+            try await LiveActivityService.shared.startActivity(for: testLine)
+            setMessage("Started test live activity", ok: true)
+        } catch {
+            setMessage("Start failed: \(error.localizedDescription)", ok: false)
+        }
+    }
+    #endif
+
+    // MARK: - Snapshot building
+
+    private func refreshSnapshot() async {
+        var s = DebugSnapshot()
+        s.lastUpdatedDescription = viewModel.lastUpdated
+            .map { ISO8601DateFormatter().string(from: $0) } ?? "(none)"
+        s.appGroupContainerOK = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: ParabusConstants.appGroupIdentifier) != nil
+
+        // Cache file inspection
+        if let url = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: ParabusConstants.appGroupIdentifier)?
+            .appendingPathComponent("metrobus_status.json") {
+            s.cachePath = url.path
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) {
+                s.cacheExists = true
+                s.cacheSizeBytes = (attrs[.size] as? NSNumber)?.intValue
+                if let modDate = attrs[.modificationDate] as? Date {
+                    s.cacheAgeSeconds = Date().timeIntervalSince(modDate)
+                }
+            }
+        }
+
+        #if os(iOS)
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        s.notificationAuthStatus = authStatusString(settings.authorizationStatus)
+        #else
+        s.notificationAuthStatus = "n/a (non-iOS)"
+        #endif
+
+        snapshot = s
+        await probeWorkerHealth()
+    }
+
+    private func probeWorkerHealth() async {
+        let url = APIConfiguration.baseURL.appendingPathComponent("health")
+        let start = Date()
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            let ms = Int(Date().timeIntervalSince(start) * 1000)
+            if let http = response as? HTTPURLResponse, http.statusCode == 200,
+               let body = String(data: data, encoding: .utf8) {
+                snapshot.workerHealth = body.prefix(120).description
+            } else {
+                snapshot.workerHealth = "HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)"
+            }
+            snapshot.workerHealthLatencyMs = ms
+        } catch {
+            snapshot.workerHealth = "error: \(error.localizedDescription)"
+            snapshot.workerHealthLatencyMs = nil
+        }
+    }
+
+    private func shorten(_ path: String) -> String {
+        if let home = ProcessInfo.processInfo.environment["HOME"], path.hasPrefix(home) {
+            return "~" + path.dropFirst(home.count)
+        }
+        return path
+    }
+
+    private func formatAge(_ seconds: TimeInterval) -> String {
+        let m = Int(seconds / 60)
+        let s = Int(seconds.truncatingRemainder(dividingBy: 60))
+        if m == 0 { return "\(s)s" }
+        if m < 60 { return "\(m)m \(s)s" }
+        return "\(m / 60)h \(m % 60)m"
+    }
+
+    #if os(iOS)
+    private func authStatusString(_ s: UNAuthorizationStatus) -> String {
+        switch s {
+        case .notDetermined: return "not asked"
+        case .denied: return "denied"
+        case .authorized: return "authorized"
+        case .provisional: return "provisional"
+        case .ephemeral: return "ephemeral"
+        @unknown default: return "unknown (\(s.rawValue))"
+        }
+    }
+    #endif
+}
+
+/// Mutable snapshot of debug data — populated by `refreshSnapshot()`.
+private struct DebugSnapshot {
+    var lastUpdatedDescription: String = "(loading)"
+    var cacheExists: Bool = false
+    var cacheSizeBytes: Int?
+    var cacheAgeSeconds: TimeInterval?
+    var cachePath: String?
+    var appGroupContainerOK: Bool = false
+    var workerHealth: String?
+    var workerHealthLatencyMs: Int?
+    var notificationAuthStatus: String = "(loading)"
 }
 #endif
 
