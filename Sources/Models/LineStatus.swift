@@ -225,6 +225,24 @@ struct ScrapingResult {
     let lines: [LineStatus]
     let scrapedAt: Date
     let source: URL
+    /// True when the upstream API served cached data because a fresh fetch
+    /// failed. Populated from APIMetrobusResponse.stale. Was previously
+    /// dropped silently (REVIEW MED-02): callers should surface this to
+    /// the user as "datos desactualizados" rather than treating the
+    /// response as fresh.
+    let isStale: Bool
+    /// Upstream's explanation when serving stale or partial data (e.g.
+    /// "Failed to fetch fresh data, serving cached response"). Optional;
+    /// only present when the API set it.
+    let sourceError: String?
+
+    init(lines: [LineStatus], scrapedAt: Date, source: URL, isStale: Bool = false, sourceError: String? = nil) {
+        self.lines = lines
+        self.scrapedAt = scrapedAt
+        self.source = source
+        self.isStale = isStale
+        self.sourceError = sourceError
+    }
 
     var linesWithIssues: [LineStatus] {
         lines.filter { $0.hasIssues }

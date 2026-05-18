@@ -14,6 +14,11 @@ final class MetrobusViewModel {
     private(set) var error: Error?
     private(set) var lastUpdated: Date?
     private(set) var isStale = false
+    /// Upstream-reported warning when the API served cached or partial data
+    /// (e.g. "Failed to fetch fresh data, serving cached response"). Surface
+    /// in UI alongside `isStale` for an honest "data may not reflect current
+    /// service state" indicator. REVIEW MED-02.
+    private(set) var sourceWarning: String?
 
     // MARK: - Scheduled Maintenance State
 
@@ -307,7 +312,12 @@ final class MetrobusViewModel {
 
             lines = sortLines(status.lines)
             lastUpdated = status.scrapedAt
-            isStale = false
+            // Honor upstream's "I'm serving stale cache" signal (worker sets
+            // this when it falls back after a failed source fetch). Previous
+            // behavior set isStale = false unconditionally on any 2xx
+            // response and dropped sourceError on the floor.
+            isStale = status.isStale
+            sourceWarning = status.sourceError
 
             maintenanceClosures = maintenance.closures
             maintenanceLastUpdated = maintenance.scrapedAt
