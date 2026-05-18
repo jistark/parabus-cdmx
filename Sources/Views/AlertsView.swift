@@ -118,7 +118,7 @@ struct AlertsView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(activeIncidentCount) incidente\(activeIncidentCount == 1 ? "" : "s") activo\(activeIncidentCount == 1 ? "" : "s")")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
 
                 Text(showFavoritesOnly ? "en tus líneas favoritas" : "en todas las líneas")
                     .font(.caption)
@@ -144,7 +144,7 @@ struct AlertsView: View {
             // Section header
             HStack {
                 Text("Incidentes actuales")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
                 Spacer()
             }
             .padding(.horizontal, Layout.screenMargin)
@@ -210,7 +210,7 @@ struct AlertsView: View {
                 Image(systemName: "clock")
                     .foregroundStyle(.secondary)
                 Text("Historial de hoy")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
                     .foregroundStyle(.secondary)
                 Spacer()
             }
@@ -451,7 +451,7 @@ struct MaintenanceAlertSection: View {
                     .font(.subheadline.weight(.semibold))
 
                 Text("Cierres programados")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
                     .foregroundStyle(.secondary)
 
                 Spacer()

@@ -127,7 +127,7 @@ struct SettingsView: View {
                         .frame(width: 24, height: 24)
 
                     Text(lineNumber)
-                        .font(BrandTypography.numeralSmall)
+                        .brandTitle(BrandTypography.numeralSmall)
                         .foregroundStyle(.white)
                         .monospacedDigit()
                 }

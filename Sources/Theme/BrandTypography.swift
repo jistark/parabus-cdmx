@@ -20,6 +20,23 @@ import CoreText
 // `.font(.custom("TipoMovinCDMX-Bold", size: …))` directly — that bypasses
 // Dynamic Type and breaks accessibility.
 
+// MARK: - Brand Title Modifier
+//
+// Per the MB Movilidad Integrada manual, Tipo Movin CDMX is always set in
+// uppercase — even when the source string is in mixed case. `brandTitle(_:)`
+// combines the font + `.textCase(.uppercase)` so call sites stay readable
+// ("Líneas" in code → "LÍNEAS" on screen) and we never forget the case rule.
+//
+// Safe to use on digits/symbols: `.textCase(.uppercase)` is a no-op there.
+
+extension View {
+    /// Brand typography with the obligatory all-caps rendering.
+    /// Use this instead of `.font(BrandTypography.X)` for every Tipo Movin text.
+    func brandTitle(_ font: Font) -> some View {
+        self.font(font).textCase(.uppercase)
+    }
+}
+
 /// PostScript names of the registered Tipo Movin CDMX faces.
 enum BrandFont {
     static let light = "TipoMovinCDMX-Light"

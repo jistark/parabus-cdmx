@@ -186,7 +186,7 @@ struct CommuteTabView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(hasRouteIssues ? "Incidentes en tu ruta" : "Tu ruta está despejada")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
 
                 Text(schedule.isActiveToday ? "Activo hoy" : "Inactivo hoy")
                     .font(.caption)
@@ -251,7 +251,7 @@ struct CommuteTabView: View {
                 Image(systemName: "calendar")
                     .foregroundStyle(.secondary)
                 Text("Días activos")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
                 Spacer()
             }
 
@@ -305,7 +305,7 @@ struct CommuteTabView: View {
                 Image(systemName: "bell.fill")
                     .foregroundStyle(.secondary)
                 Text("Ventana de notificación")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
                 Spacer()
             }
 
@@ -338,7 +338,7 @@ struct CommuteTabView: View {
                 Image(systemName: "exclamationmark.circle")
                     .foregroundStyle(StatusColors.critical)
                 Text("Líneas afectadas")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
                 Spacer()
             }
 

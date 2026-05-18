@@ -53,7 +53,7 @@ struct LineDetailSheet: View {
                 .font(.system(size: 44))
                 .foregroundStyle(StatusColors.good)
             Text("Sin incidentes reportados")
-                .font(BrandTypography.lineLabel)
+                .brandTitle(BrandTypography.lineLabel)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -71,7 +71,7 @@ struct LineDetailSheet: View {
             // Line info
             VStack(alignment: .leading, spacing: 4) {
                 Text(line.lineName)
-                    .font(BrandTypography.displayMedium)
+                    .brandTitle(BrandTypography.displayMedium)
 
                 statusPill
             }
@@ -95,7 +95,7 @@ struct LineDetailSheet: View {
                 .symbolEffect(.pulse, options: .repeating, isActive: shouldPulse && !reduceMotion)
 
             Text(StatusColors.displayText(for: line.status))
-                .font(BrandTypography.statusLabel)
+                .brandTitle(BrandTypography.statusLabel)
         }
         .foregroundStyle(statusColor)
         .padding(.horizontal, Spacing.sm)
@@ -112,7 +112,7 @@ struct LineDetailSheet: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(StatusColors.warning)
                 Text(line.incidentCount == 1 ? "Incidente" : "\(line.incidentCount) incidentes")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
             }
 
             // Compact timeline - incidents sorted by severity (most severe first)

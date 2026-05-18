@@ -30,6 +30,7 @@ struct MetrobusLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.attributes.lineName)
                         .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
+                        .textCase(.uppercase)
                         .lineLimit(1)
                 }
 
@@ -98,6 +99,7 @@ struct LockScreenLiveActivityView: View {
                 HStack {
                     Text(attributes.lineName)
                         .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
+                        .textCase(.uppercase)
 
                     Spacer()
 
@@ -272,6 +274,7 @@ struct StatusPill: View {
 
             Text(statusText)
                 .font(.caption.weight(.medium))
+                .textCase(.uppercase)
         }
         .foregroundStyle(state.statusColor)
         .padding(.horizontal, 8)

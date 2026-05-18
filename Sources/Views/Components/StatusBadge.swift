@@ -17,7 +17,7 @@ struct StatusBadge: View {
 
             if style == .expanded {
                 Text(StatusColors.displayText(for: status))
-                    .font(BrandTypography.statusLabel)
+                    .brandTitle(BrandTypography.statusLabel)
             }
         }
         .padding(.horizontal, style == .compact ? Layout.pillInset : Spacing.sm + 2)

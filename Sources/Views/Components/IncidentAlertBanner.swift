@@ -24,7 +24,7 @@ struct IncidentAlertBanner: View {
                 // Incident info
                 VStack(alignment: .leading, spacing: 2) {
                     Text(line.lineName)
-                        .font(BrandTypography.lineLabel)
+                        .brandTitle(BrandTypography.lineLabel)
                         .foregroundStyle(.primary)
 
                     Text(incidentSummary)

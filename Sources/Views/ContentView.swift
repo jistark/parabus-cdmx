@@ -45,7 +45,7 @@ struct ContentView: View {
             }
             .sheet(item: $selectedLine) { line in
                 LineDetailSheet(line: line)
-                    .presentationDetents([.large, .medium])
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
         }
@@ -61,7 +61,7 @@ struct ContentView: View {
     private var heroHeader: some View {
         HStack {
             Text("PARABÚS")
-                .font(BrandTypography.displayLarge)
+                .brandTitle(BrandTypography.displayLarge)
                 .accessibilityHidden(true)   // navigationTitle reads instead
             Spacer()
         }
@@ -73,52 +73,55 @@ struct ContentView: View {
 
     private var mainContent: some View {
         ScrollView {
-            LiquidGlassContainer {
-                VStack(spacing: Layout.sectionSpacing) {
-                    heroHeader
+            // No LiquidGlassContainer here — wrapping all sections in
+            // GlassEffectContainer made the IncidentAlertBanner's tinted glass
+            // blur into a smeary block that hid its content. The container is
+            // designed for cards that morph as they appear/disappear, not for
+            // static stacked sections. Each `.surface(_:)` already renders its
+            // own glass; that's enough.
+            VStack(spacing: Layout.sectionSpacing) {
+                heroHeader
 
-                    // 1. Lines Carousel (all lines at a glance)
-                    VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
-                        HStack {
-                            Text("Líneas")
-                                .font(BrandTypography.lineLabel)
-                            Spacer()
+                // 1. Lines Carousel (all lines at a glance)
+                VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
+                    HStack {
+                        Text("Líneas")
+                            .brandTitle(BrandTypography.lineLabel)
+                        Spacer()
 
-                            // Show refreshing indicator or last updated time
-                            if viewModel.isRefreshing {
-                                RefreshingIndicator()
-                            } else if let description = viewModel.lastUpdatedDescription {
-                                Text(description)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
-                        }
-                        .padding(.horizontal, Layout.screenMargin)
-
-                        LinesCarousel(lines: viewModel.allLines) { line in
-                            triggerHaptic()
-                            selectedLine = line
+                        if viewModel.isRefreshing {
+                            RefreshingIndicator()
+                        } else if let description = viewModel.lastUpdatedDescription {
+                            Text(description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
                         }
                     }
+                    .padding(.horizontal, Layout.screenMargin)
 
-                    // 2. Active Incidents (real-time urgent issues: delays, suspensions)
-                    if !urgentIncidents.isEmpty {
-                        urgentIncidentsSection
-                    }
-
-                    // 3. Station Interventions (maintenance/obras at specific stations)
-                    if !interventionIncidents.isEmpty {
-                        stationInterventionsSection
-                    }
-
-                    // 4. Scheduled closures (from maintenance calendar, filtered for deduplication)
-                    if viewModel.hasMaintenanceToday {
-                        scheduledClosuresSection
+                    LinesCarousel(lines: viewModel.allLines) { line in
+                        triggerHaptic()
+                        selectedLine = line
                     }
                 }
-                .padding(.vertical, Layout.cardInset)
+
+                // 2. Active Incidents (real-time urgent issues: delays, suspensions)
+                if !urgentIncidents.isEmpty {
+                    urgentIncidentsSection
+                }
+
+                // 3. Station Interventions (maintenance/obras at specific stations)
+                if !interventionIncidents.isEmpty {
+                    stationInterventionsSection
+                }
+
+                // 4. Scheduled closures (from maintenance calendar, filtered for deduplication)
+                if viewModel.hasMaintenanceToday {
+                    scheduledClosuresSection
+                }
             }
+            .padding(.vertical, Layout.cardInset)
         }
         .animation(
             reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8),
@@ -153,7 +156,7 @@ struct ContentView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(StatusColors.critical)
                 Text("Incidentes activos")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
             }
             .padding(.horizontal, Layout.screenMargin)
 
@@ -179,7 +182,7 @@ struct ContentView: View {
                 Image(systemName: "wrench.and.screwdriver.fill")
                     .foregroundStyle(StatusColors.warning)
                 Text("Estaciones cerradas")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
             }
             .padding(.horizontal, Layout.screenMargin)
 
@@ -212,7 +215,7 @@ struct ContentView: View {
                     .foregroundStyle(.orange)
 
                 Text("Cierres programados")
-                    .font(BrandTypography.lineLabel)
+                    .brandTitle(BrandTypography.lineLabel)
                     .foregroundStyle(.secondary)
 
                 Spacer()
