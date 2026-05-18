@@ -42,6 +42,20 @@ struct SettingsView: View {
                         Label("Notificaciones", systemImage: "bell.fill")
                     }
                     .tint(.accentColor)
+                    // When the user flips this ON, request system
+                    // permission. If they deny, snap the toggle back off
+                    // so the visible state reflects reality (REVIEW LOW-11).
+                    .onChange(of: notificationsEnabled) { _, isOn in
+                        #if os(iOS)
+                        guard isOn else { return }
+                        Task {
+                            let granted = await BackgroundRefreshManager.shared.requestNotificationPermission()
+                            if !granted {
+                                notificationsEnabled = false
+                            }
+                        }
+                        #endif
+                    }
 
                     if notificationsEnabled {
                         NavigationLink {
@@ -53,7 +67,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Notificaciones")
                 } footer: {
-                    Text("Activa las notificaciones para recibir alertas de incidentes en tus lineas.")
+                    Text("Activa las notificaciones para recibir alertas de incidentes en tus lineas favoritas.")
                 }
 
                 // MARK: - About Section
