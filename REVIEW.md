@@ -6,21 +6,33 @@
 
 ---
 
-## ⚡ Status snapshot — 2026-05-17 evening
+## ⚡ Status snapshot — 2026-05-17 latest pass
 
-All CRIT and HIGH items from this REVIEW are now addressed:
+All CRIT and HIGH items from this REVIEW are addressed. Plus the
+notification feature ships end-to-end with local-only delivery (no
+backend, no APN, no developer account dependency).
 
-- ✅ CRIT-04 unify MetrobusViewModel — commit `8331c62`
-- ✅ HIGH-16 GTFSScheduleService → worker — commits `fea7fc4` + `a5e0f1f` (streaming parser + iOS HTTP client; -56MB binary size)
-- ✅ All other CRIT/HIGH closed in earlier batches
+- ✅ CRIT-04 unify MetrobusViewModel — `8331c62`
+- ✅ HIGH-16 GTFSScheduleService → worker — `fea7fc4` + `a5e0f1f` (streaming parser; -56MB binary)
+- ✅ MED-02 propagate stale/error from API — `2ad3446`
+- ✅ LOW-11 notification toggles wired (was: persisted but ignored) — `5558fcf`
+- ✅ NIT: ImageLoader.swift renamed to TransitImageLoader.swift — `8437ba2`
 
-**Test situation for the two iOS-only services without unit tests:**
+**Notifications (new feature, local-only):**
 
-- `LiveActivityService` (ActivityKit) and `BackgroundRefreshManager` (BGTaskScheduler) are mostly thin wrappers over Apple frameworks. The pure-logic pieces worth testing in isolation were already extracted: `SeveritySymbol` (commit `d001fea`) and `ProtestKey` (commit `094a423`).
-- Adding an iOS XCTest target to the .xcodeproj would mostly test Apple's frameworks rather than our code — judged not worth the project surgery.
-- **Integration validation lives in the rebuilt Debug screen** (commit `d06e5d5`): "Simulate background refresh", "Simulate protest notification", "Start test activity" all trigger the real code paths on a simulator/device, with visible feedback.
+- `NotificationPreferences` reads UserDefaults: master switch + favorites filter + per-status toggles. `shouldNotify(line:status:)` is the single decision point.
+- `BackgroundRefreshManager.checkAndNotify` (rewrite of checkForProtestsAndNotify) handles all notifiable statuses; severity-appropriate sound + interruption level; status-aware dedup via `IncidentNotificationKey`. Legacy `ProtestKey` kept for UserDefaults backward-compat.
+- AlertsView first-visit pre-prompt asks contextually before triggering the iOS system dialog. Settings master toggle re-asks if needed and reverts on deny.
+- `NotificationRouter` + `NotificationDelegate` handle foreground presentation and tapped-notif deep linking — tap a notification → app switches to Alerts tab → opens the affected line's detail sheet.
+- 13 new unit tests cover the pure pieces (preferences, key roundtrip, backward-compat reader).
 
-So: the unit-test ceiling for these two services is what's currently shipped. If integration coverage in CI becomes important later, that's an xcodebuild-test-target spike of its own.
+**Test situation for the iOS-only system-framework services:**
+
+- `LiveActivityService` (ActivityKit) and `BackgroundRefreshManager` (BGTaskScheduler) are mostly thin wrappers over Apple frameworks. Pure-logic pieces extracted to standalone testable types: `SeveritySymbol` (`d001fea`), `ProtestKey` + `IncidentNotificationKey` (`094a423` + `5558fcf`), `NotificationPreferences` (`5558fcf`).
+- Adding an iOS XCTest target would mostly test Apple's frameworks rather than our code — judged not worth the project surgery.
+- **Integration validation lives in the rebuilt Debug screen** (`d06e5d5`): "Simulate background refresh", "Simulate protest notification", "Start test activity" trigger the real code paths on a simulator/device, with visible feedback.
+
+Total tests: **65 iOS in 10 suites + 47 worker = 112 passing.**
 
 ---
 
