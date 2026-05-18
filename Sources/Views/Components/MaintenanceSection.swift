@@ -194,39 +194,15 @@ struct MaintenanceClosureRow: View {
 
 // MARK: - Line Badge Mini
 
-/// Smaller line badge for maintenance section - uses official icons when available
+/// Compact 28pt badge for maintenance rows. Wraps `LineBadge.small` (32pt)
+/// scaled down — keeps the canonical RoundedRectangle look consistent with
+/// every other badge in the app.
 struct LineBadgeMini: View {
     let lineNumber: String
 
     var body: some View {
-        Group {
-            if let image = TransitImageLoader.loadOfficialImage(
-                for: lineNumber,
-                transportType: .metrobus
-            ) {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 28, height: 28)
-            } else {
-                // Fallback to colored circle — Tipo Movin Bold numeral
-                ZStack {
-                    Circle()
-                        .fill(lineColor.gradient)
-                        .frame(width: 28, height: 28)
-
-                    Text(lineNumber)
-                        .font(BrandTypography.numeralSmall)
-                        .foregroundStyle(.white)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .accessibilityLabel("Línea \(lineNumber)")
-    }
-
-    private var lineColor: Color {
-        LineColors.color(for: lineNumber)
+        LineBadge(number: lineNumber, transportType: .metrobus, size: .small)
+            .frame(width: 28, height: 28)
     }
 }
 

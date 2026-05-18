@@ -32,10 +32,9 @@ struct ContentView: View {
                     mainContent
                 }
             }
-            .navigationTitle("Parabús")
+            .navigationTitle("Parabús")     // VoiceOver / multitasking switcher only
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)  // Hero header below takes its place
             .background(Color(.systemGroupedBackground))
             #endif
             .refreshable {
@@ -46,10 +45,28 @@ struct ContentView: View {
             }
             .sheet(item: $selectedLine) { line in
                 LineDetailSheet(line: line)
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.large, .medium])
                     .presentationDragIndicator(.visible)
             }
         }
+    }
+
+    // MARK: - Hero Header
+    //
+    // Custom large-title equivalent so we can render the app name in Tipo Movin
+    // CDMX (the official MB typeface, which the brand renders in caps). The
+    // system `.navigationTitle` is kept hidden so VoiceOver and the app
+    // switcher still pick up "Parabús" with normal pronunciation.
+
+    private var heroHeader: some View {
+        HStack {
+            Text("PARABÚS")
+                .font(BrandTypography.displayLarge)
+                .accessibilityHidden(true)   // navigationTitle reads instead
+            Spacer()
+        }
+        .padding(.horizontal, Layout.screenMargin)
+        .padding(.top, Spacing.xs)
     }
 
     // MARK: - Main Content
@@ -58,6 +75,8 @@ struct ContentView: View {
         ScrollView {
             LiquidGlassContainer {
                 VStack(spacing: Layout.sectionSpacing) {
+                    heroHeader
+
                     // 1. Lines Carousel (all lines at a glance)
                     VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
                         HStack {

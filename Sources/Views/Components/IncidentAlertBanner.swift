@@ -61,22 +61,8 @@ struct IncidentAlertBanner: View {
 
     // MARK: - Line Badge
 
-    @ViewBuilder
     private var lineBadgeView: some View {
-        if let image = TransitImageLoader.loadOfficialImage(for: line) {
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-        } else {
-            ZStack {
-                Circle()
-                    .fill(LineColors.color(for: line.lineNumber).gradient)
-
-                Text(line.lineNumber)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-            }
-        }
+        LineBadge(number: line.lineNumber, transportType: line.transportType, size: .regular)
     }
 
     // MARK: - Status Badge
