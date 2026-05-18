@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// Detail sheet for a single line. Surfaces the line identity + every
-/// incident with its affected stations and explanatory info.
+/// Detail sheet for a single line. Three blocks readable at the `.medium`
+/// detent without scrolling: WHO (line identity), WHY (reason per incident),
+/// and WHERE (affected stations as a card with count + names).
 ///
-/// Layout intentionally tight: header (line + status), incidents timeline,
-/// done. The previous "Información" section duplicated everything already in
-/// the header (Sistema/Línea/Estado/Afectadas count) — removed.
+/// `.large` is a drag-up affordance for very long incident texts or many
+/// affected stations — the default `.medium` keeps the parent visible so
+/// users can quickly compare against the list they came from.
 struct LineDetailSheet: View {
     let line: LineStatus
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -13,13 +14,7 @@ struct LineDetailSheet: View {
     // Dynamic Type support - unified badge size
     @ScaledMetric(relativeTo: .body) private var badgeSize: CGFloat = Layout.badgeRegular
 
-    private var statusColor: Color {
-        StatusColors.color(for: line.status)
-    }
-
-    private var lineColor: Color {
-        LineColors.color(for: line.lineNumber)
-    }
+    private var statusColor: Color { StatusColors.color(for: line.status) }
 
     var body: some View {
         ScrollView {
@@ -28,7 +23,13 @@ struct LineDetailSheet: View {
                     .padding(.top, Spacing.sm)
 
                 if !line.incidents.isEmpty {
-                    incidentsSection
+                    if hasAnyReason {
+                        reasonsSection
+                    }
+                    AffectedStationsCard(
+                        lineNumber: line.lineNumber,
+                        incidents: line.incidents
+                    )
                 } else {
                     allClearMessage
                         .padding(.top, Spacing.lg)
@@ -43,36 +44,16 @@ struct LineDetailSheet: View {
         #endif
     }
 
-    /// Shown when the sheet opens for a line with no active incidents — the
-    /// header already says "Servicio Normal", but a friendly confirmation
-    /// avoids leaving the user staring at a near-empty sheet wondering if
-    /// data failed to load.
-    private var allClearMessage: some View {
-        VStack(spacing: Spacing.sm) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(StatusColors.good)
-            Text("Sin incidentes reportados")
-                .brandTitle(BrandTypography.lineLabel)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Spacing.xl)
-    }
-
-    // MARK: - Compact Header
+    // MARK: - Hero Header
 
     private var compactHeader: some View {
         HStack(spacing: Layout.cardInset) {
-            // Line badge — canonical component handles fallback + shadow + Tipo Movin
             LineBadge(number: line.lineNumber, transportType: line.transportType, size: .large)
                 .frame(width: badgeSize, height: badgeSize)
 
-            // Line info
             VStack(alignment: .leading, spacing: 4) {
                 Text(line.lineName)
                     .brandTitle(BrandTypography.displayMedium)
-
                 statusPill
             }
 
@@ -103,51 +84,122 @@ struct LineDetailSheet: View {
         .background(statusColor.opacity(SurfaceOpacity.tintLight), in: Capsule())
     }
 
-    // MARK: - Incidents Section
+    // MARK: - Reasons section
+    //
+    // One row per incident with its (status icon + reason text). When several
+    // incidents share the same reason or none of them have one, we collapse
+    // to a single explanatory pill so the section never reads as filler.
 
-    private var incidentsSection: some View {
+    private var hasAnyReason: Bool {
+        line.incidents.contains { ($0.info?.isEmpty == false) }
+    }
+
+    private var reasonsSection: some View {
         VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
-            // Section header
-            HStack {
+            HStack(spacing: Spacing.xs) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(StatusColors.warning)
-                Text(line.incidentCount == 1 ? "Incidente" : "\(line.incidentCount) incidentes")
+                Text(line.incidents.count == 1 ? "Razón" : "Razones")
                     .brandTitle(BrandTypography.lineLabel)
+                    .foregroundStyle(.secondary)
             }
 
-            // Compact timeline - incidents sorted by severity (most severe first)
-            CompactStationTimeline(
-                incidents: sortedIncidents,
-                lineColor: lineColor
-            )
+            VStack(spacing: Spacing.xs) {
+                ForEach(reasonsToShow.indices, id: \.self) { idx in
+                    reasonRow(reasonsToShow[idx])
+                }
+            }
         }
+    }
+
+    /// Drops incidents with no info — they'd render as bare status pills and
+    /// add noise. Incidents without a reason are already represented by the
+    /// header's status pill and the affected-stations card.
+    private var reasonsToShow: [Incident] {
+        line.incidents
+            .filter { ($0.info?.isEmpty == false) }
+            .sorted { $0.status > $1.status }
+    }
+
+    private func reasonRow(_ incident: Incident) -> some View {
+        let color = StatusColors.color(for: incident.status)
+        return HStack(alignment: .top, spacing: Spacing.sm) {
+            Image(systemName: StatusColors.icon(for: incident.status))
+                .font(.subheadline)
+                .foregroundStyle(color)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(incident.info ?? StatusColors.displayText(for: incident.status))
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(Spacing.sm)
+        .surface(.base, cornerRadius: Layout.cornerRadiusSmall)
+    }
+
+    // MARK: - All clear
+
+    private var allClearMessage: some View {
+        VStack(spacing: Spacing.sm) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(StatusColors.good)
+            Text("Sin incidentes reportados")
+                .brandTitle(BrandTypography.lineLabel)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
     }
 
     // MARK: - Helpers
 
-    /// Incidents sorted by severity (suspended > delayed > intervention > unknown > regular)
-    private var sortedIncidents: [Incident] {
-        line.incidents.sorted { $0.status > $1.status }
-    }
-
     private var shouldPulse: Bool {
-        line.status == .suspended || line.status == .delayed
+        line.status == .suspended || line.status == .delayed || line.status == .protest
     }
 }
 
 // MARK: - Previews
 
-#Preview("With Issues") {
+#Preview("Toda la línea — suspendida") {
     LineDetailSheet(line: LineStatus(
-        lineNumber: "2",
+        lineNumber: "1",
         transportType: .metrobus,
-        status: .intervention,
-        affectedStations: ["La Joya", "Iztacalco", "UAM-I"],
-        additionalInfo: "Por mantenimiento a la estacion"
+        status: .suspended,
+        affectedStations: ["Línea Completa"],
+        additionalInfo: "Retraso en el servicio por evento deportivo"
     ))
 }
 
-#Preview("Normal Service") {
+#Preview("Segmento afectado") {
+    LineDetailSheet(line: LineStatus(
+        lineNumber: "4",
+        transportType: .metrobus,
+        status: .suspended,
+        affectedStations: ["Plaza de la República - Vocacional 5"],
+        additionalInfo: "Por reencarpetamiento en Ponciano Arriaga desvío"
+    ))
+}
+
+#Preview("Múltiples incidentes") {
+    LineDetailSheet(line: LineStatus(
+        lineNumber: "1",
+        transportType: .metrobus,
+        incidents: [
+            Incident(status: .suspended, affectedStations: ["Indios Verdes", "Potrero"], info: "Cierre temporal por obras"),
+            Incident(status: .delayed, affectedStations: ["Buenavista L1"], info: "Alta afluencia de usuarios"),
+            Incident(status: .intervention, affectedStations: ["La Raza L1"], info: "Mantenimiento mayor")
+        ]
+    ))
+}
+
+#Preview("Sin incidentes") {
     LineDetailSheet(line: LineStatus(
         lineNumber: "1",
         transportType: .metrobus,
@@ -156,46 +208,13 @@ struct LineDetailSheet: View {
     ))
 }
 
-#Preview("Multiple Incidents") {
-    LineDetailSheet(line: LineStatus(
-        lineNumber: "1",
-        transportType: .metrobus,
-        incidents: [
-            Incident(
-                status: .intervention,
-                affectedStations: ["Indios Verdes", "Potrero"],
-                info: "Mantenimiento de estacion"
-            ),
-            Incident(
-                status: .delayed,
-                affectedStations: ["Buenavista"],
-                info: "Alta afluencia de usuarios"
-            ),
-            Incident(
-                status: .suspended,
-                affectedStations: ["La Raza"],
-                info: "Cierre temporal por obras"
-            )
-        ]
-    ))
-}
-
-#Preview("Large Text") {
-    LineDetailSheet(line: LineStatus(
-        lineNumber: "4",
-        transportType: .metrobus,
-        status: .suspended,
-        affectedStations: ["San Lazaro"]
-    ))
-    .environment(\.sizeCategory, .accessibilityExtraExtraLarge)
-}
-
 #Preview("Dark Mode") {
     LineDetailSheet(line: LineStatus(
         lineNumber: "4",
         transportType: .metrobus,
-        status: .suspended,
-        affectedStations: ["San Lazaro", "Mixcoac"]
+        status: .protest,
+        affectedStations: ["Plaza de la República - Vocacional 5"],
+        additionalInfo: "Marcha rumbo al Zócalo, desvíos activos"
     ))
     .preferredColorScheme(.dark)
 }
