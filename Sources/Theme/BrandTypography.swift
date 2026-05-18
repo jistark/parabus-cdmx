@@ -142,7 +142,7 @@ enum BrandFontRegistration {
         for name in fileNames {
             guard let url = Bundle.module.url(forResource: name, withExtension: "otf", subdirectory: "Fonts") else {
                 #if DEBUG
-                print("[BrandFontRegistration] Missing OTF: \(name).otf")
+                Log.theme.error("Missing OTF: \(name, privacy: .public).otf")
                 #endif
                 continue
             }
@@ -153,7 +153,7 @@ enum BrandFontRegistration {
                     let nsError = err as Error as NSError
                     // 304/305 = already registered (idempotent) → ignore
                     if nsError.code != 305 && nsError.code != 304 {
-                        print("[BrandFontRegistration] Failed \(name): \(nsError)")
+                        Log.theme.error("Failed registering \(name, privacy: .public): \(nsError.localizedDescription, privacy: .public)")
                     }
                 }
                 #endif

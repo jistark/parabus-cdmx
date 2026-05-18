@@ -72,7 +72,7 @@ final class LiveActivityService {
             activeActivities[line.lineNumber] = activity
 
         } catch {
-            print("Failed to start Live Activity: \(error)")
+            Log.liveActivity.error("Failed to start Live Activity: \(error.localizedDescription, privacy: .public)")
             throw error
         }
     }
@@ -181,7 +181,7 @@ final class LiveActivityService {
                     try await startActivity(for: line)
                 }
             } catch {
-                print("Failed to manage activity for line \(line.lineNumber): \(error)")
+                Log.liveActivity.error("Failed to manage activity for line \(line.lineNumber, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
 

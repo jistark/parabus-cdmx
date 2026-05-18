@@ -597,6 +597,6 @@ struct CommuteLegSetupView: View {
         iconColor: .orange,
         existingLeg: nil
     ) { leg in
-        print("Saved: \(leg)")
+        Log.ui.info("Saved leg: \(String(describing: leg), privacy: .public)")
     }
 }
