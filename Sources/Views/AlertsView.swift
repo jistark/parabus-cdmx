@@ -5,7 +5,7 @@ import SwiftUI
 /// Design: DESIGN_SYSTEM.md Section 6.4
 
 struct AlertsView: View {
-    @State private var viewModel = MetrobusViewModel()
+    @Environment(MetrobusViewModel.self) private var viewModel
     @State private var showFavoritesOnly = true
     @State private var expandedIncidentID: UUID?
     @State private var selectedLine: LineStatus?

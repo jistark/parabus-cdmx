@@ -4,7 +4,7 @@ import UIKit
 #endif
 
 struct ContentView: View {
-    @State private var viewModel = MetrobusViewModel()
+    @Environment(MetrobusViewModel.self) private var viewModel
     @State private var selectedLine: LineStatus?
 
     @AppStorage("favoriteLines") private var favoriteLines: String = "1,2,3"
