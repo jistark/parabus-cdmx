@@ -6,17 +6,53 @@
 
 ---
 
-## ⚡ Status snapshot — 2026-05-17 latest pass
+## ⚡ Status snapshot — 2026-05-18 (Phase 2 closure pass)
 
-All CRIT and HIGH items from this REVIEW are addressed. Plus the
-notification feature ships end-to-end with local-only delivery (no
-backend, no APN, no developer account dependency).
+Phase 1 quick wins, Phase 2 dead-code sweep, AND most of Phase 3
+architectural refactors are committed. The text of items below
+(severities, "Fix:" guidance) still reads as if open — treat the body
+as historical context, this snapshot as ground truth.
 
-- ✅ CRIT-04 unify MetrobusViewModel — `8331c62`
-- ✅ HIGH-16 GTFSScheduleService → worker — `fea7fc4` + `a5e0f1f` (streaming parser; -56MB binary)
+**Phase 2 — Dead code sweep (this batch):**
+
+- ✅ HIGH-01 MetrobusScraper.swift + SwiftSoup + Dependencies DI — `2673537`
+- ✅ HIGH-02 MetrobusStations.swift — `599025e`
+- ✅ HIGH-03 WidgetIntegration.swift — `599025e`
+- ✅ HIGH-04 Legacy views (LineRowView, StatusHeroCard, top StationTimeline, LineStatusGrid) — `b4074e1` (~600 LoC)
+- ✅ HIGH-05 Dependencies.swift DI plumbing — `2673537` (deleted — no consumers existed)
+- ✅ HIGH-06 IncidentHistoryManager + IncidentHistory model — `297f18e`
+- ✅ MED-12 + MED-13 + LOW-05 dead methods / worker exports — `1c31a1f`
+- ✅ LOW-06 duplicate ScheduledEvent → @cloudflare/workers-types ScheduledController — *this commit*
+- ✅ Bonus: Sources/GTFS/ folder (~59MB) — `05705b2`
+
+**Phase 2 residue (this session):**
+
+- AlertsView.timelineSection orphan (placeholder UI left after IncidentHistoryManager deletion) — removed
+- SwiftSoup credit in SettingsView.swift (dep no longer in Package.swift) — removed
+- Tombstone comments in MetrobusViewModel, TransitDataProvider, StationTimeline — cleaned per CLAUDE.md no-tombstone rule
+- ScraperError → TransitDataError rename (31 sites / 7 files + filename) — naming aligned with current reality
+
+**Phase 3 — Architectural refactors already landed:**
+
+- ✅ CRIT-04 hoist MetrobusViewModel to App root — `8331c62`
+- ✅ CRIT-06 single-fetch /status via fetchAll() — `0364b7f`
+- ✅ HIGH-07 worker ctx.waitUntil — `faa5449`
+- ✅ HIGH-10 worker KV memoize line→routeIds — `b225d2c`
+- ✅ HIGH-11 + HIGH-12 RealtimeMapViewModel concurrency — `9ee0577` + `b9c2b28`
+- ✅ HIGH-13 + HIGH-18 + LOW-10 Live Activity push observer drop — `c644c66`
+- ✅ HIGH-14 detached GTFS parse — `4611e23` (later superseded by HIGH-16 worker migration)
+- ✅ HIGH-15 hardcoded /Users/ji path — `731b381`
+- ✅ HIGH-16 GTFSScheduleService → worker — `fea7fc4` + `a5e0f1f` (-56MB binary)
+- ✅ HIGH-17 widget severity alignment — `a69705c`
 - ✅ MED-02 propagate stale/error from API — `2ad3446`
-- ✅ LOW-11 notification toggles wired (was: persisted but ignored) — `5558fcf`
-- ✅ NIT: ImageLoader.swift renamed to TransitImageLoader.swift — `8437ba2`
+- ✅ MED-03 theme consolidation (TransitColors → DesignTokens) — `97b9132`
+- ✅ MED-05 cache derived state in MetrobusViewModel — `9e01303`
+- ✅ MED-06 hoist JSON/Date coders — `4efe33f` (later refined in `ce7a0ee`)
+- ✅ HIGH-08 + HIGH-09 + MED-15 worker cache/protobuf/ZIP64 safety — `0e46159`
+- ✅ LOW-11 notification toggles wired — `5558fcf`
+- ✅ NIT: ImageLoader.swift → TransitImageLoader.swift — `8437ba2`
+
+**What's NOT yet audited as closed:** CRIT-01/02/03/05, HIGH-X1 (no-git — moot now), several MED + LOW + NIT items. A fresh adversarial pass is the next sensible review milestone; the current REVIEW body is stale enough that line-by-line cross-checking is more work than re-running the audit.
 
 **Notifications (new feature, local-only):**
 

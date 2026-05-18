@@ -150,7 +150,7 @@ actor GTFSScheduleService {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            throw ScraperError.networkError(
+            throw TransitDataError.networkError(
                 NSError(domain: "GTFSSchedule", code: code,
                         userInfo: [NSLocalizedDescriptionKey: "HTTP \(code)"])
             )

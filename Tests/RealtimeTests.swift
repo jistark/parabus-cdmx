@@ -144,26 +144,26 @@ struct RealtimeTests {
             #expect(counter.value == 1, "memoization should have hit only once")
         }
 
-        @Test("429 maps to ScraperError.networkError")
+        @Test("429 maps to TransitDataError.networkError")
         func http429() async throws {
             let service = RealtimeService(session: makeStatusSession(429, body: "rate limited"))
-            await #expect(throws: ScraperError.self) {
+            await #expect(throws: TransitDataError.self) {
                 _ = try await service.fetchVehicles()
             }
         }
 
-        @Test("503 maps to ScraperError.networkError")
+        @Test("503 maps to TransitDataError.networkError")
         func http503() async throws {
             let service = RealtimeService(session: makeStatusSession(503, body: "unavailable"))
-            await #expect(throws: ScraperError.self) {
+            await #expect(throws: TransitDataError.self) {
                 _ = try await service.fetchVehicles()
             }
         }
 
-        @Test("malformed JSON maps to ScraperError.parsingError")
+        @Test("malformed JSON maps to TransitDataError.parsingError")
         func parseFailure() async throws {
             let service = RealtimeService(session: makeJSONSession("not valid json {"))
-            await #expect(throws: ScraperError.self) {
+            await #expect(throws: TransitDataError.self) {
                 _ = try await service.fetchVehicles()
             }
         }

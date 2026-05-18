@@ -153,9 +153,6 @@ struct AlertsView: View {
                     currentIncidentsSection
                 }
 
-                // Timeline history (today's incidents)
-                timelineSection
-
                 // Scheduled maintenance
                 if viewModel.hasMaintenanceToday && !filteredClosures.isEmpty {
                     maintenanceSection
@@ -271,42 +268,6 @@ struct AlertsView: View {
             .padding(.horizontal, Spacing.md)
         }
         .padding(.bottom, Spacing.md)
-    }
-
-    // MARK: - Timeline Section
-
-    private var timelineSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            // Section header
-            HStack {
-                Image(systemName: "clock")
-                    .foregroundStyle(.secondary)
-                Text("Historial de hoy")
-                    .brandTitle(BrandTypography.lineLabel)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            .padding(.horizontal, Layout.screenMargin)
-            .padding(.top, Layout.cardInset)
-
-            // Placeholder card — real timeline data was deleted in Phase 2
-            // cleanup (IncidentHistoryManager). See ref/UX_UI_CONTEXT.md.
-            HStack {
-                Spacer()
-                VStack(spacing: Spacing.xs) {
-                    Image(systemName: "clock.badge.checkmark")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    Text("El historial se actualiza con cada consulta")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                Spacer()
-            }
-            .padding(.vertical, Layout.screenMargin)
-            .surface(.base, cornerRadius: Layout.cornerRadiusSmall + 4)
-            .padding(.horizontal, Layout.cardInset)
-        }
     }
 
     // MARK: - Maintenance Section

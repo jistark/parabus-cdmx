@@ -14,7 +14,6 @@ import {
   MetrobusResponse,
   HealthResponse,
   CachedData,
-  ScheduledEvent,
   CACHE_KEY,
   CACHE_TTL_SECONDS,
 } from './types';
@@ -171,7 +170,7 @@ export default {
    *   "30 10 * * *" → pre-warm /status before service starts
    *   "0 6 * * *"   → refresh GTFS static (daily, after Sinoptico midnight regen)
    */
-  async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+  async scheduled(event: ScheduledController, env: Env): Promise<void> {
     console.log(`Cron triggered: ${event.cron} at ${new Date(event.scheduledTime).toISOString()}`);
 
     try {
