@@ -122,6 +122,19 @@ describe('decodeFeedMessage', () => {
     expect(huge.vehicles[0]!.bearing).toBeCloseTo(0.5, 3);
   });
 
+  it('REGRESSION (NIT-01): NaN bearing emits null, not NaN', () => {
+    // ((NaN % 360) + 360) % 360 === NaN, which JSON-serialized to "null"
+    // by coincidence. The explicit isFinite guard makes that intentional.
+    const nanFeed = decodeFeedMessage(buildSampleFeed({ bearing: NaN }));
+    expect(nanFeed.vehicles[0]!.bearing).toBeNull();
+  });
+
+  it('REGRESSION (NIT-01): Infinity bearing emits null', () => {
+    // Same guard protects against Infinity / -Infinity from corrupt floats.
+    const infFeed = decodeFeedMessage(buildSampleFeed({ bearing: Infinity }));
+    expect(infFeed.vehicles[0]!.bearing).toBeNull();
+  });
+
   it('decodes empty feed (header only)', () => {
     const headerBytes = [...varintField(3, 1_700_000_000)];
     const bytes = new Uint8Array([...lengthDelim(1, headerBytes)]);
