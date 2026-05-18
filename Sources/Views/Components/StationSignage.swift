@@ -143,7 +143,7 @@ struct StationSignage: View {
         ZStack {
             Color.black
             if let pictogramAssetName {
-                Image(pictogramAssetName, bundle: .module)
+                Image(pictogramAssetName, bundle: StationPictogram.bundle)
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
