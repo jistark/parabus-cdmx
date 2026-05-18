@@ -1,47 +1,64 @@
 import SwiftUI
 import MapKit
+import CoreLocation
 
-/// Live map of Metrobús vehicles. Polls /vehicles every 20s while visible.
-/// Minimal-viable surface — see plan futures for filters, sheets, animations.
+/// Live map of Metrobús vehicles + station carousel overlay.
+/// Bootstrap state machine in MapBootstrap; CLLocationManager in
+/// LocationCoordinator; line membership + coords in GTFSStations.
 struct RealtimeMapView: View {
     @State private var viewModel = RealtimeMapViewModel()
+    @State private var locationCoordinator = LocationCoordinator()
     @State private var cameraPosition: MapCameraPosition = .region(Self.cdmxRegion)
+    @State private var showingLineChange = false
+    @State private var showingPrePrompt = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var selectedStationIdBinding: Binding<String?> {
+        Binding(
+            get: { viewModel.selectedStation?.id },
+            set: { newId in
+                guard let id = newId,
+                      let station = viewModel.resolveStation(byId: id) else { return }
+                viewModel.selectedStation = station
+                animateCamera(to: station.coordinate)
+            }
+        )
+    }
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
+            ZStack(alignment: .bottom) {
                 map
                     .ignoresSafeArea(edges: .bottom)
 
-                statusBar
-                    .padding(.horizontal, Spacing.md)
-                    .padding(.top, Spacing.xs)
+                VStack(alignment: .leading, spacing: 0) {
+                    statusBar
+                        .padding(.horizontal, Layout.screenMargin)
+                        .padding(.top, Spacing.xs)
+                    Spacer()
+                    StationCarousel(
+                        stations: viewModel.stationsOnSelectedLine,
+                        selectedStationId: selectedStationIdBinding,
+                        onMBTap: { showingLineChange = true }
+                    )
+                    .frame(height: 88)
+                    .padding(.bottom, Spacing.md)
+                }
             }
             .navigationTitle("Mapa en vivo")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackgroundVisibility(.visible, for: .navigationBar)
             #endif
-            .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .topBarTrailing) {
-                    linePicker
-                }
-                #else
-                ToolbarItem(placement: .primaryAction) {
-                    linePicker
-                }
-                #endif
-            }
             .task {
                 viewModel.startPolling()
+                handleBootstrap()
             }
             .onDisappear {
                 viewModel.stopPolling()
             }
             .onChange(of: scenePhase) { _, newPhase in
-                // Background → stop polling to save battery. Active → resume.
                 switch newPhase {
                 case .background, .inactive:
                     viewModel.stopPolling()
@@ -51,8 +68,81 @@ struct RealtimeMapView: View {
                     break
                 }
             }
+            .onChange(of: locationCoordinator.authStatus) { _, _ in
+                handleBootstrap()
+            }
+            .onChange(of: locationCoordinator.latestLocation) { _, newLoc in
+                guard let coord = newLoc else { return }
+                if let nearest = viewModel.nearestStation(to: coord) {
+                    viewModel.selectedStation = nearest
+                    animateCamera(to: nearest.coordinate)
+                }
+            }
             .refreshable {
                 await viewModel.refresh()
+            }
+            .sheet(isPresented: $showingLineChange) {
+                LineChangeSheet(
+                    currentLine: viewModel.selectedStation?.lineNumber ?? "1",
+                    onSelect: handleLineChange
+                )
+                .presentationDetents([.medium])
+            }
+            .sheet(isPresented: $showingPrePrompt) {
+                LocationPrePromptSheet(
+                    onAccept: {
+                        viewModel.markPrePromptShown()
+                        locationCoordinator.requestAuthorization()
+                    },
+                    onDecline: {
+                        viewModel.markPrePromptShown()
+                        handleBootstrap()
+                    }
+                )
+                .presentationDetents([.medium])
+            }
+        }
+    }
+
+    // MARK: - Bootstrap
+
+    private func handleBootstrap() {
+        let outcome = viewModel.bootstrapOutcome(authStatus: locationCoordinator.authStatus)
+        switch outcome {
+        case .showPrePrompt:
+            showingPrePrompt = true
+        case .useStation(let id):
+            // Persisted or seed
+            if let station = viewModel.resolveStation(byId: id)
+                ?? GTFSStations.stations(for: MapBootstrap.defaultSeedLine).first {
+                viewModel.selectedStation = station
+                animateCamera(to: station.coordinate)
+            }
+        case .waitingForLocation:
+            locationCoordinator.requestLocation()
+        }
+    }
+
+    private func handleLineChange(_ newLine: String) {
+        let ref = viewModel.selectedStation?.coordinate
+            ?? locationCoordinator.latestLocation
+            ?? Self.cdmxRegion.center
+        if let target = viewModel.nearestStation(on: newLine, from: ref) {
+            viewModel.selectedStation = target
+            animateCamera(to: target.coordinate)
+        }
+    }
+
+    private func animateCamera(to coord: CLLocationCoordinate2D) {
+        let region = MKCoordinateRegion(
+            center: coord,
+            span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
+        )
+        if reduceMotion {
+            cameraPosition = .region(region)
+        } else {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                cameraPosition = .region(region)
             }
         }
     }
@@ -115,10 +205,13 @@ struct RealtimeMapView: View {
             .overlay(
                 Circle()
                     .stroke(statusDotColor.opacity(0.4), lineWidth: 4)
-                    .scaleEffect(viewModel.isLoading ? 1.6 : 1.0)
-                    .opacity(viewModel.isLoading ? 0 : 1)
-                    .animation(.easeOut(duration: 1.0).repeatForever(autoreverses: false),
-                               value: viewModel.isLoading)
+                    .scaleEffect(viewModel.isLoading && !reduceMotion ? 1.6 : 1.0)
+                    .opacity(viewModel.isLoading && !reduceMotion ? 0 : 1)
+                    .animation(
+                        reduceMotion ? nil :
+                            .easeOut(duration: 1.0).repeatForever(autoreverses: false),
+                        value: viewModel.isLoading
+                    )
             )
     }
 
@@ -132,7 +225,7 @@ struct RealtimeMapView: View {
         if let err = viewModel.errorMessage { return err }
         if viewModel.serviceInactive { return "Sin servicio reportado" }
         let count = viewModel.vehicles.count
-        if let line = viewModel.selectedLine {
+        if let line = viewModel.selectedStation?.lineNumber {
             return "Línea \(line) · \(count) buses"
         }
         return "\(count) buses en vivo"
@@ -145,62 +238,71 @@ struct RealtimeMapView: View {
         return "Actualizado \(formatter.localizedString(for: date, relativeTo: Date()))"
     }
 
-    // MARK: - Line picker
-
-    private var linePicker: some View {
-        Menu {
-            Button {
-                viewModel.selectedLine = nil
-            } label: {
-                Label("Todas", systemImage: viewModel.selectedLine == nil ? "checkmark" : "")
-            }
-            Divider()
-            ForEach(["1", "2", "3", "4", "5", "6", "7"], id: \.self) { line in
-                Button {
-                    viewModel.selectedLine = line
-                } label: {
-                    HStack {
-                        Text("Línea \(line)")
-                        if viewModel.selectedLine == line {
-                            Spacer()
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                if let line = viewModel.selectedLine {
-                    Circle()
-                        .fill(LineColors.color(for: line))
-                        .frame(width: 10, height: 10)
-                    Text(line)
-                        .font(.subheadline.weight(.semibold))
-                } else {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                }
-            }
-        }
-    }
-
     // MARK: - Helpers
 
-    /// Map worker routeId → line number via the viewmodel's cached index from
-    /// /static/routes. Falls back to selectedLine, then "unknown" (gray).
     private func lineNumber(for routeId: String?) -> String {
         viewModel.line(forRouteId: routeId)
-            ?? viewModel.selectedLine
+            ?? viewModel.selectedStation?.lineNumber
             ?? "unknown"
     }
 
-    /// Approximate CDMX bounds.
+    /// Approximate CDMX bounds. Used only as last-resort fallback.
     private static let cdmxRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 19.432, longitude: -99.133),
         span: MKCoordinateSpan(latitudeDelta: 0.35, longitudeDelta: 0.35)
     )
 }
 
-// MARK: - Bus marker
+// MARK: - Location pre-prompt sheet
+
+private struct LocationPrePromptSheet: View {
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text("UBICACIÓN")
+                    .font(BrandTypography.lineLabel)
+                    .foregroundStyle(.secondary)
+                Text("Mostrar la estación más cercana")
+                    .font(BrandTypography.displayMedium)
+            }
+
+            Text("Parabús puede usar tu ubicación para abrir el mapa en la estación más cercana a ti. Es opcional — siempre puedes elegir manualmente.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            VStack(spacing: Spacing.sm) {
+                Button {
+                    onAccept()
+                    dismiss()
+                } label: {
+                    Text("Activar ubicación")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button {
+                    onDecline()
+                    dismiss()
+                } label: {
+                    Text("Ahora no")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+        }
+        .padding(Layout.screenMargin)
+    }
+}
+
+// MARK: - Bus marker (unchanged from previous version)
 
 private struct BusMarker: View {
     let line: String
@@ -219,7 +321,6 @@ private struct BusMarker: View {
                 .foregroundStyle(.white)
 
             if let bearing {
-                // Compass arrow rotates around the marker center.
                 Image(systemName: "location.north.fill")
                     .font(.system(size: 8, weight: .heavy))
                     .foregroundStyle(.white)

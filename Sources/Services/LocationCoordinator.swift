@@ -79,3 +79,16 @@ extension LocationCoordinator: CLLocationManagerDelegate {
         // CLError.denied surfaces as authStatus change separately.
     }
 }
+
+// MARK: - CLLocationCoordinate2D Equatable
+
+/// Retroactive Equatable so SwiftUI's `.onChange(of:)` can observe
+/// `LocationCoordinator.latestLocation`. Apple hasn't added this
+/// conformance themselves as of iOS 18; `@retroactive` is the modern
+/// Swift 6 way to acknowledge that this is a non-original-module
+/// conformance.
+extension CLLocationCoordinate2D: @retroactive Equatable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
+    }
+}
