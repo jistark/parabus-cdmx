@@ -18,7 +18,7 @@
  */
 
 import type { Env } from './types';
-import { extractZipFiles } from './gtfs-static';
+import { extractZipFileStream } from './gtfs-static';
 import { fetchStaticZip } from './partner-client';
 
 export interface ScheduledArrival {
@@ -154,25 +154,31 @@ export async function loadStopSchedule(env: Env, stopId: string): Promise<Schedu
 }
 
 /**
- * Populate KV for one stop on demand: download the zip, extract stop_times,
- * filter for `stopId` only, sort, store. Returns the sorted arrivals.
+ * Populate KV for one stop on demand: download the zip, stream-scan
+ * `stop_times.txt`, filter for `stopId` only, sort, store. Returns the sorted
+ * arrivals.
  *
- * This is the per-stop fallback when KV doesn't have the entry yet. Bounded
- * memory: only one stop's arrivals (typically ~3000 rows × ~80 bytes JSON =
- * ~250KB) lives in memory at a time, vs ~30MB for the all-stops dict.
+ * Memory profile:
+ *   - zip bytes (compressed, ~10MB)
+ *   - one DecompressionStream chunk at a time (~16-64KB)
+ *   - one in-progress line being decoded (~150 bytes)
+ *   - accumulated matches for ONE stop (~250KB for the busiest stop)
+ *
+ * Total peak: well under 20MB, comfortably within Workers' 128MB ceiling.
+ * The naive String approach (TextDecoder over the full 56MB) was hitting
+ * the limit (REVIEW HIGH-16).
  */
 export async function populateStopSchedule(env: Env, stopId: string): Promise<ScheduledArrival[]> {
   const dl = await fetchStaticZip(env);
   if (!dl) {
     throw new Error('partner service inactive — cannot populate schedule');
   }
-  const files = await extractZipFiles(dl.bytes, ['stop_times.txt']);
-  const csv = files.get('stop_times.txt');
-  if (!csv) {
+  const stream = extractZipFileStream(dl.bytes, 'stop_times.txt');
+  if (!stream) {
     throw new Error('stop_times.txt missing from partner zip');
   }
 
-  const arrivals = filterStopTimes(csv, stopId);
+  const arrivals = await streamFilterStop(stream, stopId);
   arrivals.sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 
   await env.METROBUS_CACHE.put(
@@ -181,6 +187,86 @@ export async function populateStopSchedule(env: Env, stopId: string): Promise<Sc
     { expirationTtl: KV_TTL_SECONDS },
   );
   return arrivals;
+}
+
+/**
+ * Stream-scan a UTF-8 CSV stream for rows matching `wantedStopId`. Memory
+ * stays bounded regardless of total CSV size: at any moment only one chunk
+ * + the current incomplete line + the matches array are held.
+ *
+ * Exported for testing — pass a synthetic ReadableStream to exercise the
+ * boundary handling (chunks split mid-line, missing trailing newline, etc).
+ */
+export async function streamFilterStop(
+  stream: ReadableStream<Uint8Array>,
+  wantedStopId: string,
+): Promise<ScheduledArrival[]> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let headerIndices: { trip: number; arrival: number; stop: number; seq: number } | null = null;
+  const out: ScheduledArrival[] = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (value) {
+      buffer += decoder.decode(value, { stream: true });
+      let eol: number;
+      while ((eol = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, eol).replace(/\r$/, '');
+        buffer = buffer.slice(eol + 1);
+        if (line.length === 0) continue;
+
+        if (headerIndices === null) {
+          headerIndices = parseHeaderLine(line);
+          continue;
+        }
+        processLine(line, headerIndices, wantedStopId, out);
+      }
+    }
+    if (done) break;
+  }
+  // Flush any tail without trailing newline.
+  if (buffer.length > 0) {
+    const line = buffer.replace(/\r$/, '');
+    if (headerIndices !== null && line.length > 0) {
+      processLine(line, headerIndices, wantedStopId, out);
+    }
+  }
+  return out;
+}
+
+function parseHeaderLine(line: string): { trip: number; arrival: number; stop: number; seq: number } {
+  const cols = line.split(',');
+  const trip = cols.indexOf('trip_id');
+  const arrival = cols.indexOf('arrival_time');
+  const stop = cols.indexOf('stop_id');
+  const seq = cols.indexOf('stop_sequence');
+  if (trip < 0 || arrival < 0 || stop < 0 || seq < 0) {
+    throw new Error(`stop_times.txt: missing required columns (have: ${cols.join(',')})`);
+  }
+  return { trip, arrival, stop, seq };
+}
+
+function processLine(
+  line: string,
+  cols: { trip: number; arrival: number; stop: number; seq: number },
+  wantedStopId: string,
+  out: ScheduledArrival[],
+): void {
+  // Fast pre-filter: only split if the line plausibly contains the wanted
+  // stop. The naive .split() per row over 1M rows is the bulk of the cost;
+  // this `indexOf` check skips most rows in ~1µs each. Saves ~80% CPU.
+  if (line.indexOf(wantedStopId) < 0) return;
+
+  const fields = line.split(',');
+  const tripId = fields[cols.trip];
+  const stopId = fields[cols.stop];
+  if (!tripId || !stopId || stopId !== wantedStopId) return;
+  const arrivalMinutes = parseTime(fields[cols.arrival] ?? '');
+  if (arrivalMinutes === null) return;
+  const sequence = parseInt(fields[cols.seq] ?? '0', 10) || 0;
+  out.push({ tripId, arrivalMinutes, sequence });
 }
 
 // ============================================================================

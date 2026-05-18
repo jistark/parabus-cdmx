@@ -2,43 +2,63 @@ import Foundation
 
 // MARK: - GTFS Schedule Service
 
-/// Provides schedule-based ETA calculations using GTFS static data.
+/// Schedule-based ETA helper. Now backed by the Cloudflare Worker's
+/// `/static/schedule` and `/static/travel-time` endpoints (HIGH-16
+/// completion). Previously this actor loaded a 56MB bundled
+/// `stop_times.txt` on demand and parsed in-process; the bundle is gone,
+/// the worker is the single source of truth, and freshness now matches
+/// Sinoptico's daily upstream regen instead of the App Store release
+/// cadence.
 ///
-/// The stop_times.txt parse is heavy (the file ships at ~56MB → roughly
-/// 150k+ ScheduledArrival rows). To keep the actor's executor free for
-/// short reads while the first call loads, the parse runs on a detached
-/// Task; the actor only blocks on the result assignment. Concurrent
-/// callers coalesce via a shared loading Task so we never double-parse.
+/// Trade-off: ETAs require network. Offline behavior: `nextArrivals` and
+/// `travelTime` return empty/nil rather than crashing, so UI degrades to
+/// "no ETA available" rather than stale-but-displayed data. A short-term
+/// cache (UserDefaults per stop) could restore last-known offline values
+/// — punted as a future enhancement.
 actor GTFSScheduleService {
     static let shared = GTFSScheduleService()
 
-    // MARK: - Schedule Data
+    // MARK: - Dependencies
 
-    private var stopTimes: [String: [ScheduledArrival]] = [:]
-    private var isLoaded = false
-    /// Tracks an in-flight load so concurrent callers wait on the same parse
-    /// instead of each kicking off their own.
-    private var loadingTask: Task<Void, Never>?
+    private let session: URLSession
+
+    /// Tiny in-actor cache keyed by stopId. The worker already aggressively
+    /// caches in KV (per-stop, 30h TTL); this cache just avoids repeating
+    /// the network round-trip when the same view asks twice in quick
+    /// succession (e.g. CommuteLegCard.loadTravelTime + an ETA refresh).
+    /// 5-minute TTL is short enough to pick up Sinoptico's hourly schedule
+    /// drift but long enough to absorb tab-switch retries.
+    private var stopCache: [String: (arrivals: [ScheduledArrival], loadedAt: Date)] = [:]
+    private let stopCacheTTL: TimeInterval = 5 * 60
+
+    init(session: URLSession? = nil) {
+        self.session = session ?? {
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = APIConfiguration.timeoutInterval
+            config.timeoutIntervalForResource = APIConfiguration.timeoutInterval * 2
+            return URLSession(configuration: config)
+        }()
+    }
 
     // MARK: - Public API
 
-    /// Get next scheduled arrivals for a station
+    /// Get next scheduled arrivals for a station.
     func nextArrivals(at stationId: String, limit: Int = 3) async -> [ScheduledArrival] {
-        await loadIfNeeded()
-
-        guard let arrivals = stopTimes[stationId] else {
+        do {
+            let arrivals = try await loadStopSchedule(stationId)
+            let now = currentTimeInMinutes()
+            return arrivals
+                .filter { $0.arrivalMinutes >= now }
+                .sorted { $0.arrivalMinutes < $1.arrivalMinutes }
+                .prefix(limit)
+                .map { $0 }
+        } catch {
+            print("GTFSSchedule: nextArrivals failed for \(stationId): \(error)")
             return []
         }
-
-        let now = currentTimeInMinutes()
-        let todayArrivals = arrivals.filter { $0.arrivalMinutes >= now }
-            .sorted { $0.arrivalMinutes < $1.arrivalMinutes }
-            .prefix(limit)
-
-        return Array(todayArrivals)
     }
 
-    /// Get ETA string for next arrival at a station
+    /// Get ETA string for next arrival at a station.
     func etaString(for stationId: String) async -> String? {
         let arrivals = await nextArrivals(at: stationId, limit: 1)
         guard let next = arrivals.first else { return nil }
@@ -59,48 +79,31 @@ actor GTFSScheduleService {
         }
     }
 
-    /// Calculate travel time between two stations on the same line
+    /// Calculate travel time between two stations on the same line.
+    /// Hits the worker's pre-aggregated /static/travel-time endpoint —
+    /// avoids transferring both stops' full schedules just to compute one
+    /// average integer.
     func travelTime(from originId: String, to destinationId: String) async -> Int? {
-        await loadIfNeeded()
-
-        guard let originArrivals = stopTimes[originId],
-              let destArrivals = stopTimes[destinationId] else {
+        do {
+            let url = APIConfiguration.baseURL
+                .appendingPathComponent("static/travel-time")
+                .appending(queryItems: [
+                    URLQueryItem(name: "from", value: originId),
+                    URLQueryItem(name: "to", value: destinationId),
+                ])
+            let response = try await get(url, as: TravelTimeResponse.self)
+            return response.travelTimeMinutes
+        } catch {
+            print("GTFSSchedule: travelTime failed for \(originId)→\(destinationId): \(error)")
             return nil
         }
-
-        // Find trips that serve both stations
-        let originTrips = Set(originArrivals.map { $0.tripId })
-        let destTrips = Set(destArrivals.map { $0.tripId })
-        let commonTrips = originTrips.intersection(destTrips)
-
-        guard !commonTrips.isEmpty else { return nil }
-
-        // Calculate average travel time across common trips
-        var totalTime = 0
-        var validTrips = 0
-
-        for tripId in commonTrips {
-            guard let originTime = originArrivals.first(where: { $0.tripId == tripId })?.arrivalMinutes,
-                  let destTime = destArrivals.first(where: { $0.tripId == tripId })?.arrivalMinutes else {
-                continue
-            }
-
-            let diff = destTime - originTime
-            if diff > 0 {
-                totalTime += diff
-                validTrips += 1
-            }
-        }
-
-        return validTrips > 0 ? totalTime / validTrips : nil
     }
 
-    /// Get formatted travel time string
+    /// Get formatted travel time string.
     func travelTimeString(from originId: String, to destinationId: String) async -> String? {
         guard let minutes = await travelTime(from: originId, to: destinationId) else {
             return nil
         }
-
         if minutes < 60 {
             return "~\(minutes) min"
         } else {
@@ -110,108 +113,49 @@ actor GTFSScheduleService {
         }
     }
 
-    // MARK: - Private Methods
+    // MARK: - Network
 
-    private func loadIfNeeded() async {
-        if isLoaded { return }
-        // Coalesce concurrent callers onto a single in-flight parse.
-        if let existing = loadingTask {
-            await existing.value
-            return
-        }
-        let task = Task { [weak self] in
-            guard let self else { return }
-            await self.performLoad()
-        }
-        loadingTask = task
-        await task.value
-        loadingTask = nil
-    }
-
-    /// Performs the actual load: locates the file, then hands the CPU-heavy
-    /// parse to a detached Task so the actor's executor is free during the
-    /// hundreds of ms it takes. Other actor calls (etaString, travelTime)
-    /// queue on loadingTask without doing redundant parse work.
-    private func performLoad() async {
-        guard let url = Self.findStopTimesURL() else {
-            print("GTFSSchedule: stop_times.txt not found")
-            isLoaded = true // don't keep retrying a missing file
-            return
+    private func loadStopSchedule(_ stopId: String) async throws -> [ScheduledArrival] {
+        if let cached = stopCache[stopId],
+           Date().timeIntervalSince(cached.loadedAt) < stopCacheTTL {
+            return cached.arrivals
         }
 
-        let parsed: [String: [ScheduledArrival]] = await Task.detached(priority: .utility) {
-            do {
-                let content = try String(contentsOf: url, encoding: .utf8)
-                return Self.parseStopTimes(content)
-            } catch {
-                print("GTFSSchedule: Failed to load: \(error)")
-                return [:]
-            }
-        }.value
-
-        stopTimes = parsed
-        isLoaded = true
-        print("GTFSSchedule: Loaded \(parsed.count) stations with schedules")
-    }
-
-    private static func findStopTimesURL() -> URL? {
-        #if SWIFT_PACKAGE
-        let moduleURL = Bundle.module.url(forResource: "stop_times", withExtension: "txt", subdirectory: "GTFS")
-        #else
-        let moduleURL: URL? = nil
-        #endif
-        return moduleURL
-            ?? Bundle.main.url(forResource: "stop_times", withExtension: "txt", subdirectory: "GTFS")
-            ?? Bundle.main.url(forResource: "stop_times", withExtension: "txt")
-    }
-
-    /// Pure parse — nonisolated so it can run inside Task.detached without
-    /// touching actor state. Internal (not private) so tests can exercise the
-    /// parsing in isolation without going through the bundle-loaded singleton.
-    static func parseStopTimes(_ content: String) -> [String: [ScheduledArrival]] {
-        let lines = content.components(separatedBy: .newlines)
-        guard lines.count > 1 else { return [:] }
-
-        let header = lines[0].components(separatedBy: ",")
-        guard let tripIdx = header.firstIndex(of: "trip_id"),
-              let arrivalIdx = header.firstIndex(of: "arrival_time"),
-              let stopIdx = header.firstIndex(of: "stop_id"),
-              let seqIdx = header.firstIndex(of: "stop_sequence") else {
-            print("GTFSSchedule: Invalid header format")
-            return [:]
-        }
-
-        var temp: [String: [ScheduledArrival]] = [:]
-        for line in lines.dropFirst() where !line.isEmpty {
-            let cols = line.components(separatedBy: ",")
-            guard cols.count > max(tripIdx, arrivalIdx, stopIdx, seqIdx) else { continue }
-            let tripId = cols[tripIdx]
-            let stopId = cols[stopIdx]
-            guard let arrivalMinutes = parseTime(cols[arrivalIdx]) else { continue }
-            let sequence = Int(cols[seqIdx]) ?? 0
-            let arrival = ScheduledArrival(
-                tripId: tripId,
+        // Request a larger window (limit=20) so the in-actor cache can serve
+        // multiple subsequent nextArrivals(limit:) calls from one fetch.
+        let url = APIConfiguration.baseURL
+            .appendingPathComponent("static/schedule")
+            .appending(queryItems: [
+                URLQueryItem(name: "stop", value: stopId),
+                URLQueryItem(name: "limit", value: "20"),
+            ])
+        let response = try await get(url, as: ScheduleResponse.self)
+        let arrivals = response.arrivals.map {
+            ScheduledArrival(
+                tripId: $0.tripId,
                 stopId: stopId,
-                arrivalMinutes: arrivalMinutes,
-                sequence: sequence
+                arrivalMinutes: $0.arrivalMinutes,
+                sequence: $0.sequence
             )
-            temp[stopId, default: []].append(arrival)
         }
-        return temp
+        stopCache[stopId] = (arrivals, Date())
+        return arrivals
     }
 
-    static func parseTime(_ timeStr: String) -> Int? {
-        // Format: HH:MM:SS — GTFS allows >24:00 for next-day service. We mod
-        // by 24, which folds a 25:00 trip back to 1:00 (wrong day association
-        // for late-night routes). Tracked as REVIEW HIGH-15 bug; out of scope
-        // for the detached-parse refactor.
-        let parts = timeStr.components(separatedBy: ":")
-        guard parts.count >= 2,
-              let hours = Int(parts[0]),
-              let minutes = Int(parts[1]) else {
-            return nil
+    private func get<T: Decodable>(_ url: URL, as: T.Type) async throws -> T {
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Parabus-iOS/1.0", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            throw ScraperError.networkError(
+                NSError(domain: "GTFSSchedule", code: code,
+                        userInfo: [NSLocalizedDescriptionKey: "HTTP \(code)"])
+            )
         }
-        return (hours % 24) * 60 + minutes
+        return try SharedCoders.plainDecoder.decode(T.self, from: data)
     }
 
     private func currentTimeInMinutes() -> Int {
@@ -221,7 +165,26 @@ actor GTFSScheduleService {
         let minute = calendar.component(.minute, from: now)
         return hour * 60 + minute
     }
+}
 
+// MARK: - Wire types (mirror worker /static/schedule + /static/travel-time)
+
+private struct ScheduleResponse: Decodable {
+    let stop: String
+    let count: Int
+    let arrivals: [WireArrival]
+}
+
+private struct WireArrival: Decodable {
+    let tripId: String
+    let arrivalMinutes: Int
+    let sequence: Int
+}
+
+private struct TravelTimeResponse: Decodable {
+    let from: String
+    let to: String
+    let travelTimeMinutes: Int?
 }
 
 // MARK: - Scheduled Arrival
@@ -260,13 +223,11 @@ extension CommuteSchedule {
     }
 }
 
-// MARK: - Commute ETA Info
-
 struct CommuteETAInfo {
     let nextArrival: String?
     let travelTime: String?
 
-    var hasInfo: Bool {
+    var hasData: Bool {
         nextArrival != nil || travelTime != nil
     }
 }

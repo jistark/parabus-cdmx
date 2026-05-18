@@ -4,8 +4,26 @@ import {
   parseTime,
   nextArrivals,
   travelTime,
+  streamFilterStop,
   type ScheduledArrival,
 } from './gtfs-schedule';
+
+/** Build a ReadableStream that yields the given chunks. Useful for testing
+ *  the streaming parser with deliberately weird chunk boundaries. */
+function streamFromChunks(chunks: string[]): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  let i = 0;
+  return new ReadableStream({
+    pull(controller) {
+      if (i < chunks.length) {
+        controller.enqueue(encoder.encode(chunks[i]!));
+        i += 1;
+      } else {
+        controller.close();
+      }
+    },
+  });
+}
 
 describe('parseStopTimes', () => {
   it('parses a minimal valid stop_times.txt', () => {
@@ -134,5 +152,87 @@ describe('travelTime', () => {
     ];
     // Should pick the lower-sequence one (earlier in trip).
     expect(travelTime(origin, destination)).toBe(20);
+  });
+});
+
+describe('streamFilterStop', () => {
+  const csv = [
+    'trip_id,arrival_time,departure_time,stop_id,stop_sequence',
+    'T1,05:00:00,05:00:00,STOP_A,1',
+    'T1,05:15:00,05:15:00,STOP_B,2',
+    'T2,06:00:00,06:00:00,STOP_A,1',
+    'T2,06:20:00,06:20:00,STOP_B,2',
+    'T3,07:00:00,07:00:00,STOP_C,1',
+  ].join('\n');
+
+  it('returns matches for the requested stop only', async () => {
+    const out = await streamFilterStop(streamFromChunks([csv]), 'STOP_A');
+    expect(out).toHaveLength(2);
+    expect(out.map((a) => a.tripId).sort()).toEqual(['T1', 'T2']);
+  });
+
+  it('returns empty when no rows match', async () => {
+    const out = await streamFilterStop(streamFromChunks([csv]), 'STOP_NEVER');
+    expect(out).toEqual([]);
+  });
+
+  it('handles chunks split mid-line', async () => {
+    // Split the CSV across arbitrary byte boundaries to verify the line
+    // buffer correctly reassembles across `.read()` calls.
+    const split = [
+      'trip_id,arrival_time,departure_time,stop_id,stop',
+      '_sequence\nT1,05:00:00,05:00:00,STOP_',
+      'A,1\nT1,05:15:00,05:15:00,STOP_B,2\nT2,06',
+      ':00:00,06:00:00,STOP_A,1\n',
+    ];
+    const out = await streamFilterStop(streamFromChunks(split), 'STOP_A');
+    expect(out).toHaveLength(2);
+  });
+
+  it('handles missing trailing newline', async () => {
+    const noTrailingNL = csv.replace(/\n$/, ''); // ensure no trailing
+    const last = noTrailingNL.endsWith('STOP_C,1') ? noTrailingNL : noTrailingNL + '\nT9,08:00:00,08:00:00,STOP_X,1';
+    const out = await streamFilterStop(streamFromChunks([last]), 'STOP_C');
+    expect(out).toHaveLength(1);
+    expect(out[0]!.tripId).toBe('T3');
+  });
+
+  it('throws on missing required header columns', async () => {
+    const bad = 'trip_id,arrival_time,stop_id\nT1,05:00:00,STOP_A';
+    await expect(streamFilterStop(streamFromChunks([bad]), 'STOP_A')).rejects.toThrow(/missing required columns/);
+  });
+
+  it('skips rows where stop_id substring matches but full field does not', async () => {
+    // Pre-filter uses indexOf; ensure full equality check still kicks in for
+    // partial matches like "STOP_ABCD" containing "STOP_A" as a prefix.
+    const partialCsv = [
+      'trip_id,arrival_time,departure_time,stop_id,stop_sequence',
+      'T1,05:00:00,05:00:00,STOP_ABCD,1', // contains "STOP_A" but isn't equal
+      'T2,06:00:00,06:00:00,STOP_A,1',
+    ].join('\n');
+    const out = await streamFilterStop(streamFromChunks([partialCsv]), 'STOP_A');
+    expect(out).toHaveLength(1);
+    expect(out[0]!.tripId).toBe('T2');
+  });
+
+  it('decodes multi-byte UTF-8 across chunk boundaries', async () => {
+    // "México" is 6 bytes in UTF-8 (the í is 2 bytes). Split the line so the
+    // í straddles a chunk boundary, ensuring TextDecoder stream mode flushes
+    // correctly.
+    const headerAndPrefix = 'trip_id,arrival_time,departure_time,stop_id,stop_sequence\nT1,05:00:00,05:00:00,México_';
+    const bytes = new TextEncoder().encode(headerAndPrefix);
+    // Insert a chunk boundary inside the í (split at byte index of the start of multi-byte char).
+    const splitAt = bytes.length - 6; // somewhere inside "México_"
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(bytes.slice(0, splitAt));
+        controller.enqueue(bytes.slice(splitAt));
+        controller.enqueue(new TextEncoder().encode('A,1\n'));
+        controller.close();
+      },
+    });
+    const out = await streamFilterStop(stream, 'México_A');
+    expect(out).toHaveLength(1);
+    expect(out[0]!.tripId).toBe('T1');
   });
 });

@@ -437,6 +437,86 @@ async function inflateRaw(compressed: Uint8Array, hintSize: number): Promise<Uin
   return out;
 }
 
+/**
+ * Stream variant of `extractZipFiles` for a single entry. Returns a
+ * decompressed `ReadableStream<Uint8Array>` so the caller can process the
+ * payload chunk-by-chunk WITHOUT materializing the whole decoded file as a
+ * Uint8Array or String in memory.
+ *
+ * This is the memory-safe entry point for `stop_times.txt` (Sinoptico's
+ * file decompresses to ~56MB; a single String allocation crosses the 128MB
+ * Workers limit).
+ *
+ * Returns null if the zip doesn't contain `name`.
+ */
+export function extractZipFileStream(
+  zip: Uint8Array,
+  name: string,
+): ReadableStream<Uint8Array> | null {
+  const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+
+  // Locate EOCD (same logic as extractZipFiles — kept duplicated rather than
+  // refactored into a helper because the call sites' control flow differs).
+  const eocdSig = 0x06054b50;
+  let eocdOffset = -1;
+  const searchStart = Math.max(0, zip.length - 65557);
+  for (let i = zip.length - 22; i >= searchStart; i--) {
+    if (view.getUint32(i, true) === eocdSig) {
+      eocdOffset = i;
+      break;
+    }
+  }
+  if (eocdOffset < 0) throw new Error('zip: EOCD not found');
+
+  const cdEntries = view.getUint16(eocdOffset + 10, true);
+  const cdOffset = view.getUint32(eocdOffset + 16, true);
+  if (cdOffset === 0xffffffff || cdEntries === 0xffff) {
+    throw new Error('zip: ZIP64 archives not supported');
+  }
+
+  const cdSig = 0x02014b50;
+  let p = cdOffset;
+  for (let n = 0; n < cdEntries; n++) {
+    if (view.getUint32(p, true) !== cdSig) {
+      throw new Error(`zip: bad CD entry at offset ${p}`);
+    }
+    const method = view.getUint16(p + 10, true);
+    const compSize = view.getUint32(p + 20, true);
+    const nameLen = view.getUint16(p + 28, true);
+    const extraLen = view.getUint16(p + 30, true);
+    const commentLen = view.getUint16(p + 32, true);
+    const lfhOffset = view.getUint32(p + 42, true);
+    const entryName = new TextDecoder().decode(zip.subarray(p + 46, p + 46 + nameLen));
+
+    if (entryName === name) {
+      const lfhNameLen = view.getUint16(lfhOffset + 26, true);
+      const lfhExtraLen = view.getUint16(lfhOffset + 28, true);
+      const dataStart = lfhOffset + 30 + lfhNameLen + lfhExtraLen;
+      const compressed = zip.subarray(dataStart, dataStart + compSize);
+
+      if (method === 0) {
+        // Stored — wrap as a one-shot stream.
+        return new ReadableStream({
+          start(controller) {
+            controller.enqueue(compressed);
+            controller.close();
+          },
+        });
+      }
+      if (method === 8) {
+        return new Response(compressed).body!.pipeThrough(
+          new DecompressionStream('deflate-raw'),
+        );
+      }
+      throw new Error(`zip: unsupported compression method ${method} for ${name}`);
+    }
+
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+
+  return null;
+}
+
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data, null, 2), {
     status,
