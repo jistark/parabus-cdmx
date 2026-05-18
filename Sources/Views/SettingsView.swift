@@ -552,6 +552,7 @@ struct DebugView: View {
     var body: some View {
         List {
             statusSection
+            mapBootstrapSection
             cacheSection
             appGroupSection
             workerSection
@@ -599,6 +600,25 @@ struct DebugView: View {
             if let err = viewModel.error {
                 row("Last error", err.localizedDescription, valueColor: .red)
             }
+        }
+    }
+
+    private var mapBootstrapSection: some View {
+        Section {
+            Button("Reset lastStationId (map)") {
+                UserDefaults.standard.removeObject(forKey: MapBootstrap.userDefaultsKeyLastStation)
+                UserDefaults.standard.removeObject(forKey: MapBootstrap.userDefaultsKeyPrePromptShown)
+            }
+
+            Button("Force seed station (L1 first)") {
+                let seedId = MapBootstrap.defaultSeedStationId()
+                UserDefaults.standard.set(seedId, forKey: MapBootstrap.userDefaultsKeyLastStation)
+            }
+        } header: {
+            Text("Mapa / ubicación")
+        } footer: {
+            Text("Reset borra la estación persistida y el flag de pre-prompt; al volver al map se vuelve a mostrar el pre-prompt si la auth está .notDetermined.")
+                .font(.caption)
         }
     }
 
