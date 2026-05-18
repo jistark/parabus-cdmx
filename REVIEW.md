@@ -6,6 +6,24 @@
 
 ---
 
+## ⚡ Status snapshot — 2026-05-17 evening
+
+All CRIT and HIGH items from this REVIEW are now addressed:
+
+- ✅ CRIT-04 unify MetrobusViewModel — commit `8331c62`
+- ✅ HIGH-16 GTFSScheduleService → worker — commits `fea7fc4` + `a5e0f1f` (streaming parser + iOS HTTP client; -56MB binary size)
+- ✅ All other CRIT/HIGH closed in earlier batches
+
+**Test situation for the two iOS-only services without unit tests:**
+
+- `LiveActivityService` (ActivityKit) and `BackgroundRefreshManager` (BGTaskScheduler) are mostly thin wrappers over Apple frameworks. The pure-logic pieces worth testing in isolation were already extracted: `SeveritySymbol` (commit `d001fea`) and `ProtestKey` (commit `094a423`).
+- Adding an iOS XCTest target to the .xcodeproj would mostly test Apple's frameworks rather than our code — judged not worth the project surgery.
+- **Integration validation lives in the rebuilt Debug screen** (commit `d06e5d5`): "Simulate background refresh", "Simulate protest notification", "Start test activity" all trigger the real code paths on a simulator/device, with visible feedback.
+
+So: the unit-test ceiling for these two services is what's currently shipped. If integration coverage in CI becomes important later, that's an xcodebuild-test-target spike of its own.
+
+---
+
 ## TL;DR
 
 Three architectural landmines and one operational gap dominate:
