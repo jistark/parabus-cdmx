@@ -178,6 +178,16 @@ export interface Env {
 // Constants
 // ============================================================================
 
+/// Shared CORS headers for every JSON response and preflight reply. Centralized
+/// here so consumer files (index, realtime-handlers, gtfs-static, gtfs-schedule)
+/// can't drift on which OPTIONS/methods/age they advertise.
+export const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400',
+};
+
 export const CACHE_KEY = 'metrobus-status';
 export const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes
 

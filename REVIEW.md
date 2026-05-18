@@ -52,7 +52,24 @@ as historical context, this snapshot as ground truth.
 - ✅ LOW-11 notification toggles wired — `5558fcf`
 - ✅ NIT: ImageLoader.swift → TransitImageLoader.swift — `8437ba2`
 
-**What's NOT yet audited as closed:** CRIT-01/02/03/05, HIGH-X1 (no-git — moot now), several MED + LOW + NIT items. A fresh adversarial pass is the next sensible review milestone; the current REVIEW body is stale enough that line-by-line cross-checking is more work than re-running the audit.
+**Phase 4 — MED + LOW sweep (this session, post-Phase 2 closure):**
+
+- ✅ CRIT-01 moot — IncidentHistoryManager already deleted (App-Group bug evaporated with the class)
+- ✅ CRIT-02 Sources/Shared/ confirmed deleted; only top-level Shared/ remains
+- ✅ CRIT-03 APIConfiguration baseURL/timeoutInterval are now `static let` (the `nonisolated(unsafe) static var` race was already fixed)
+- ✅ CRIT-05 LineStatus uses `var id: String { lineNumber }` (UUID identity bug already fixed)
+- ✅ MED-01 BackgroundRefreshManager `@MainActor final class` → `actor` (off-main I/O; nonisolated entry points for App init / scenePhase glue; `@preconcurrency import BackgroundTasks` clears Sendable warnings on BGAppRefreshTask)
+- ✅ MED-04 App Group string only literal in ParabusConstants now
+- ✅ MED-07 + MED-08 no iOS prettyPrinted prod paths; allLines memoized as stored property
+- ✅ MED-10 CommuteStation.latitude/longitude → `Double?`; custom Codable init maps legacy `0.0` → nil for backward compat
+- ✅ MED-11 partial: `cancelScheduledRefresh` deleted (orphan); `requestNotificationPermission` already wired in Settings + Alerts pre-prompt; `resetProtestNotifications` kept (still has Debug-screen caller)
+- ✅ MED-14 `fetchBoth()` helper added to partner-client — one partnerValidation + parallel proto+zip download
+- ✅ MED-16 worker JSON responses no longer pretty-printed (4 sites: realtime-handlers, gtfs-static, index×2)
+- ✅ MED-17 CORS_HEADERS hoisted to `types.ts` as single source of truth; 4 consumer files import it (drops 3 drift-prone local copies)
+- ✅ MED-18 `saveToCache` gated on `incidentes.success && mantenimiento.success` (partial-failure no longer overwrites good cache)
+- ✅ LOW-01 admin endpoint uses constant-time `timingSafeEqual` (XOR-accumulate) instead of `!==`
+
+**Still NOT yet closed:** MED-09 (GTFSStations eager arrays — needs a worker endpoint design; separate session), LOW-02/03/04/07/08/09/12+, NIT items, and most TEST gaps. A fresh adversarial pass would catch what this audit missed; the body of this document is now ~80% stale relative to git HEAD.
 
 **Notifications (new feature, local-only):**
 
