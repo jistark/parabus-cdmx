@@ -1,5 +1,4 @@
 import Foundation
-import CoreLocation
 
 /// Abstraction over CLAuthorizationStatus that's testable without
 /// CLLocationManager. LocationCoordinator translates the real Apple
