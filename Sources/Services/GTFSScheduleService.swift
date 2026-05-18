@@ -53,7 +53,7 @@ actor GTFSScheduleService {
                 .prefix(limit)
                 .map { $0 }
         } catch {
-            print("GTFSSchedule: nextArrivals failed for \(stationId): \(error)")
+            Log.gtfs.error("nextArrivals failed for \(stationId, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return []
         }
     }
@@ -94,7 +94,7 @@ actor GTFSScheduleService {
             let response = try await get(url, as: TravelTimeResponse.self)
             return response.travelTimeMinutes
         } catch {
-            print("GTFSSchedule: travelTime failed for \(originId)→\(destinationId): \(error)")
+            Log.gtfs.error("travelTime failed for \(originId, privacy: .public)→\(destinationId, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }

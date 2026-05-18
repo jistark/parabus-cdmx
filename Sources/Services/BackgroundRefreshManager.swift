@@ -148,7 +148,7 @@ actor BackgroundRefreshManager {
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
-            print("Error programando background refresh: \(error)")
+            Log.background.error("Error programando background refresh: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -160,7 +160,7 @@ actor BackgroundRefreshManager {
         do {
             return try await center.requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
-            print("Error requesting notification permission: \(error)")
+            Log.background.error("Error requesting notification permission: \(error.localizedDescription, privacy: .public)")
             return false
         }
     }
@@ -264,9 +264,9 @@ actor BackgroundRefreshManager {
         )
         do {
             try await UNUserNotificationCenter.current().add(request)
-            print("Notification sent: L\(line.lineNumber) \(status.rawValue)")
+            Log.background.info("Notification sent: L\(line.lineNumber, privacy: .public) \(status.rawValue, privacy: .public)")
         } catch {
-            print("Notification failed: \(error)")
+            Log.background.error("Notification failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -326,15 +326,16 @@ extension BackgroundRefreshManager {
             // Also run the notification path in simulation
             await checkAndNotify(lines: result.lines)
 
-            print("✅ Background refresh simulado exitoso: \(result.lines.count) líneas")
+            Log.background.notice("Background refresh simulado: \(result.lines.count, privacy: .public) líneas")
 
             // Log any protests found
             let protests = result.lines.filter { $0.status == .protest }
             if !protests.isEmpty {
-                print("🚨 Manifestaciones detectadas: \(protests.map { "L\($0.lineNumber)" }.joined(separator: ", "))")
+                let summary = protests.map { "L\($0.lineNumber)" }.joined(separator: ", ")
+                Log.background.notice("Manifestaciones detectadas: \(summary, privacy: .public)")
             }
         } catch {
-            print("❌ Background refresh simulado falló: \(error)")
+            Log.background.error("Background refresh simulado falló: \(error.localizedDescription, privacy: .public)")
         }
     }
 

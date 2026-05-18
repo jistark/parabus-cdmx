@@ -10,6 +10,10 @@ struct StationPicker: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
+    /// Debounced copy of `searchText` — the filter runs against this so each
+    /// keystroke doesn't re-fold ~374 station names. Updates ~250ms after the
+    /// user stops typing via `.task(id: searchText)` below.
+    @State private var debouncedSearchText = ""
     @State private var selectedLineNumber: String?
 
     private var filteredStations: [GTFSStation] {
@@ -25,11 +29,11 @@ struct StationPicker: View {
         }
 
         // Apply search filter
-        if searchText.isEmpty {
+        if debouncedSearchText.isEmpty {
             return stations
         }
 
-        let query = searchText.lowercased()
+        let query = debouncedSearchText.lowercased()
             .folding(options: .diacriticInsensitive, locale: .current)
 
         return stations.filter { station in
@@ -61,6 +65,16 @@ struct StationPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .searchable(text: $searchText, prompt: "Buscar estacion")
+            .task(id: searchText) {
+                // 250ms debounce: each keystroke restarts this task because
+                // the id changes; the previous task is cancelled before the
+                // sleep completes, so debouncedSearchText only updates after
+                // the user actually pauses typing.
+                try? await Task.sleep(for: .milliseconds(250))
+                if !Task.isCancelled {
+                    debouncedSearchText = searchText
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {

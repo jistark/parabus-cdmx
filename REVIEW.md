@@ -88,7 +88,15 @@ iOS:
 - ✅ NIT-05 moot — RealtimeService.decoder is already inline (no empty config block)
 - ✅ NIT-06 ServiceStatus.init reorder: protest → suspended → delayed → limited → intervention → regular → unknown, so compound text ("limitado y regular") picks the more-severe status
 
-**Still NOT yet closed:** MED-09 (GTFSStations 469 LoC eager arrays — needs a worker endpoint design; separate session), LOW-08 (`print()` → `os.Logger` ~16 sites in iOS Services/), LOW-09 (force-unwraps — acceptable on string literals per REVIEW; one remaining at APITransitDataProvider:77 is a constant URL), most TEST gaps. The body of this document is now ~85% stale relative to git HEAD; a fresh adversarial pass would catch what this audit missed.
+**Phase 6 — LOW-08 + LOW-09 + MED-09 short-term (this session):**
+
+- ✅ LOW-08 `print()` → `os.Logger` sweep. New `Sources/Core/Logging/Loggers.swift` exposes `Log.background`, `Log.liveActivity`, `Log.gtfs`, `Log.theme`, `Log.ui` (all subsystem `app.parabus`). 14 production prints + 1 preview print converted across BGRM, LiveActivityService, GTFSScheduleService, BrandTypography, CommuteSetupView. Error interpolations use `\(error.localizedDescription, privacy: .public)`.
+- ✅ LOW-09 closed as acceptable. Audit confirms every surviving force-unwrap (10 sites: SettingsView×6 link destinations, TransitDataProvider mock×2, APITransitDataProvider baseURL, CommuteSetupView preview) is `URL(string:)!` on a string literal — exactly the pattern REVIEW.md MED-09 explicitly accepts.
+- ✅ MED-09 short-term: StationPicker search debounced (250ms via `.task(id: searchText)`). Each keystroke no longer triggers a fold over ~374 station names; the filter only re-runs after the user pauses. The long-term data-source migration is **explicitly deferred** — see note below.
+
+**MED-09 long-term — deferred, needs a separate session:** Migrating GTFSStations from the 469 LoC hardcoded Swift to a worker-backed cache requires extending the worker's `/static/stops` endpoint to include stop-to-line membership (`Record<stopId, lineNumbers[]>`). The worker's current `StopMeta` interface only has `(stopId, name, lat, lon)` — line-grouping requires parsing `trips.txt` + `stop_times.txt`, and the existing comment in `gtfs-schedule.ts` documents that doing that join in-cron exceeds Workers' resource limits (error 1102, ~1M rows). The path forward is either (a) precompute the index at deploy time and ship it as a worker static asset, or (b) lazy-build per-stop with KV caching (analogous to the existing per-stop schedule lazy index). Either approach is M-effort and worth its own session.
+
+**Still NOT yet closed:** MED-09 long-term (see above); most TEST gaps. The body of this document is now ~90% stale relative to git HEAD; a fresh adversarial pass would catch what these incremental audits missed.
 
 **Notifications (new feature, local-only):**
 
