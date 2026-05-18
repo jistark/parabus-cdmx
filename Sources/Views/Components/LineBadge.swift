@@ -25,27 +25,19 @@ struct LineBadge: View {
     }
 
     var body: some View {
-        Group {
-            if let image = TransitImageLoader.loadOfficialImage(
-                for: number,
-                transportType: transportType
-            ) {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: size.dimension, height: size.dimension)
-            } else {
-                fallbackBadge
-            }
-        }
-        .frame(minWidth: size.touchTarget, minHeight: size.touchTarget)
-        .accessibilityLabel("\(transportType.displayName) linea \(number)")
+        nativeBadge
+            .frame(minWidth: size.touchTarget, minHeight: size.touchTarget)
+            .accessibilityLabel("\(transportType.displayName) línea \(number)")
     }
 
-    /// Fallback badge for lines without official icons
-    private var fallbackBadge: some View {
-        ZStack {
-            Circle()
+    /// Rounded-rectangle badge with the line number centered, rendered as a
+    /// SwiftUI shape (vector — crisp at every Dynamic Type size + zoom level).
+    /// Replaces the prior bitmap fallback from `TransitImageLoader`, which
+    /// pixelated noticeably at small sizes.
+    private var nativeBadge: some View {
+        let corner = size.dimension * 0.22
+        return ZStack {
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
                 .fill(lineColor.gradient)
 
             Text(number)
@@ -55,7 +47,7 @@ struct LineBadge: View {
                 .minimumScaleFactor(0.5)
         }
         .frame(width: size.dimension, height: size.dimension)
-        .shadow(color: lineColor.opacity(colorScheme == .dark ? 0.5 : 0.3), radius: 4, y: 2)
+        .shadow(color: lineColor.opacity(colorScheme == .dark ? 0.5 : 0.25), radius: 3, y: 1)
     }
 
     /// Brand-typography numeral — Tipo Movin CDMX Bold, scaled per badge size.

@@ -482,6 +482,18 @@ struct SurfaceModifier: ViewModifier {
         }
     }
 
+    /// Resolve the tint to apply to the surface. Custom tints arrive at full
+    /// opacity from callers — we damp them to a glass-friendly level so a
+    /// statusColor like `.red` produces a subtle red glass instead of an
+    /// opaque red wall. Level tints (`level.iOS26Tint`) already have opacity
+    /// baked in, so they pass through unchanged.
+    private var resolvedTint: Color {
+        if let tint {
+            return tint.opacity(SurfaceOpacity.tintLight)
+        }
+        return level.iOS26Tint
+    }
+
     private var solidFallback: some View {
         let base = Color(white: colorScheme == .dark ? 0.15 : 0.95)
         return ZStack {
@@ -497,18 +509,16 @@ struct SurfaceModifier: ViewModifier {
     @available(iOS 26.0, macOS 26.0, *)
     @ViewBuilder
     private var glassBackground: some View {
-        let resolvedTint = tint ?? level.iOS26Tint
         Color.clear
             .glassEffect(.regular.tint(resolvedTint), in: .rect(cornerRadius: cornerRadius))
     }
 
     @ViewBuilder
     private var legacyBackground: some View {
-        let resolvedTint = tint ?? level.iOS26Tint
         ZStack {
             Rectangle().fill(level.legacyMaterial)
-            if resolvedTint != .clear {
-                resolvedTint.opacity(SurfaceOpacity.tintLight)
+            if tint != nil {
+                resolvedTint
             }
         }
     }

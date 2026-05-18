@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// Compact detail sheet for a line
+/// Detail sheet for a single line. Surfaces the line identity + every
+/// incident with its affected stations and explanatory info.
+///
+/// Layout intentionally tight: header (line + status), incidents timeline,
+/// done. The previous "Información" section duplicated everything already in
+/// the header (Sistema/Línea/Estado/Afectadas count) — removed.
 struct LineDetailSheet: View {
     let line: LineStatus
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Dynamic Type support - unified badge size
@@ -18,35 +22,42 @@ struct LineDetailSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Compact header
-                    compactHeader
-                        .padding(.top, 8)
+        ScrollView {
+            VStack(spacing: Layout.sectionSpacing) {
+                compactHeader
+                    .padding(.top, Spacing.sm)
 
-                    // Incidents timeline (if any)
-                    if !line.incidents.isEmpty {
-                        incidentsSection
-                    }
-
-                    // Service info
-                    serviceInfoSection
-
-                    Spacer(minLength: 24)
+                if !line.incidents.isEmpty {
+                    incidentsSection
+                } else {
+                    allClearMessage
+                        .padding(.top, Spacing.lg)
                 }
-                .padding(.horizontal, 16)
+
+                Spacer(minLength: Spacing.xl)
             }
-            #if os(iOS)
-            .background(Color(.systemGroupedBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Cerrar") { dismiss() }
-                }
-            }
+            .padding(.horizontal, Layout.cardInset)
         }
+        #if os(iOS)
+        .background(Color(.systemGroupedBackground))
+        #endif
+    }
+
+    /// Shown when the sheet opens for a line with no active incidents — the
+    /// header already says "Servicio Normal", but a friendly confirmation
+    /// avoids leaving the user staring at a near-empty sheet wondering if
+    /// data failed to load.
+    private var allClearMessage: some View {
+        VStack(spacing: Spacing.sm) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(StatusColors.good)
+            Text("Sin incidentes reportados")
+                .font(BrandTypography.lineLabel)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
     }
 
     // MARK: - Compact Header
@@ -110,84 +121,6 @@ struct LineDetailSheet: View {
                 lineColor: lineColor
             )
         }
-    }
-
-    // MARK: - Service Info Section
-
-    private var serviceInfoSection: some View {
-        VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
-            // Section header
-            HStack {
-                Image(systemName: "info.circle.fill")
-                    .foregroundStyle(.secondary)
-                Text("Información")
-                    .font(BrandTypography.lineLabel)
-            }
-
-            // Info rows
-            VStack(spacing: 0) {
-                infoRow(
-                    icon: "tram.fill",
-                    label: "Sistema",
-                    value: line.transportType.displayName
-                )
-
-                Divider().padding(.leading, 40)
-
-                infoRow(
-                    icon: "number",
-                    label: "Linea",
-                    value: line.lineNumber
-                )
-
-                Divider().padding(.leading, 40)
-
-                infoRow(
-                    icon: StatusColors.icon(for: line.status),
-                    iconColor: statusColor,
-                    label: "Estado",
-                    value: line.status.rawValue
-                )
-
-                if !line.affectedStations.isEmpty {
-                    Divider().padding(.leading, 40)
-
-                    infoRow(
-                        icon: "mappin.and.ellipse",
-                        iconColor: StatusColors.warning,
-                        label: "Afectadas",
-                        value: "\(line.affectedStations.count) estación\(line.affectedStations.count == 1 ? "" : "es")"
-                    )
-                }
-            }
-            .surface(.base, cornerRadius: Layout.cornerRadiusSmall + 4)
-        }
-    }
-
-    private func infoRow(
-        icon: String,
-        iconColor: Color = .secondary,
-        label: String,
-        value: String
-    ) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(iconColor)
-                .frame(width: 24)
-
-            Text(label)
-                .font(.body)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            Text(value)
-                .font(.body.weight(.medium))
-                .foregroundStyle(.primary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
     }
 
     // MARK: - Helpers
