@@ -44,7 +44,8 @@ let package = Package(
                 // GTFS schedule data (stop_times.txt) removed in HIGH-16:
                 // the worker's /static/schedule + /static/travel-time
                 // endpoints replaced the bundled file. -56MB binary size.
-                .copy("Sources/Resources/Fonts")
+                .copy("Sources/Resources/Fonts"),
+                .copy("Sources/Resources/Pictograms")
             ]
         ),
         .testTarget(
