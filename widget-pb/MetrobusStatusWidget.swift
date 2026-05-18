@@ -26,7 +26,6 @@ struct MetrobusStatusProvider: TimelineProvider {
 
         let entry = MetrobusStatusEntry(date: currentDate, data: data, isPlaceholder: false)
         let timeline = Timeline(entries: [entry], policy: .after(nextRefresh))
-
         completion(timeline)
     }
 }
@@ -49,13 +48,13 @@ struct MetrobusStatusWidget: Widget {
             MetrobusStatusWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Estado Metrobus")
-        .description("Estado actual de las lineas del Metrobus CDMX")
+        .configurationDisplayName("Estado Metrobús")
+        .description("Estado actual de las líneas del Metrobús CDMX")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
-// MARK: - Widget Views
+// MARK: - Router
 
 struct MetrobusStatusWidgetView: View {
     let entry: MetrobusStatusEntry
@@ -63,230 +62,367 @@ struct MetrobusStatusWidgetView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            SmallWidgetView(data: entry.data)
-        case .systemMedium:
-            MediumWidgetView(data: entry.data)
-        default:
-            SmallWidgetView(data: entry.data)
+        Group {
+            if entry.isPlaceholder {
+                SkeletonView(family: family)
+            } else if entry.data.allClear {
+                AllClearView(data: entry.data, family: family)
+            } else {
+                ActiveIncidentsView(data: entry.data, family: family)
+            }
         }
     }
 }
 
-// MARK: - Small Widget
+// MARK: - Header (shared across all states)
 
-struct SmallWidgetView: View {
-    let data: WidgetData
+private struct WidgetHeader: View {
+    let updatedAt: Date
+    let isStale: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Status icon and count
-            HStack(spacing: 8) {
-                Image(systemName: data.worstStatus.icon)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(data.worstStatus.color)
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text("Metrobús")
+                .font(.custom("TipoMovinCDMX-Bold", size: 14, relativeTo: .footnote))
+                .textCase(.uppercase)
 
-                Spacer()
-
-                if !data.allClear {
-                    Text("\(data.affectedLinesCount)")
-                        .font(.custom("TipoMovinCDMX-Bold", size: 28, relativeTo: .title))
-                        .foregroundStyle(data.worstStatus.color)
-                        .monospacedDigit()
-                }
+            if isStale {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel("Datos desactualizados")
             }
 
             Spacer()
 
-            // Status text — Tipo Movin → uppercase per MB manual
-            Text(statusTitle)
-                .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
-                .textCase(.uppercase)
-                .lineLimit(2)
-
-            // Subtitle
-            Text(statusSubtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            // Last updated
-            Text(data.updatedAt, style: .relative)
+            Text(updatedAt, style: .time)
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .monospacedDigit()
         }
-        .padding()
-    }
-
-    private var statusTitle: String {
-        if data.allClear {
-            return "Todo en orden"
-        } else if data.affectedLinesCount == 1 {
-            return "1 línea afectada"
-        } else {
-            return "\(data.affectedLinesCount) líneas"
-        }
-    }
-
-    private var statusSubtitle: String {
-        if data.allClear {
-            return "Servicio normal"
-        } else {
-            let worst = data.worstStatus
-            return worst.displayText
-        }
     }
 }
 
-// MARK: - Medium Widget
+// MARK: - All Clear State
 
-struct MediumWidgetView: View {
+private struct AllClearView: View {
     let data: WidgetData
-
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
+    let family: WidgetFamily
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Text("Metrobús CDMX")
-                    .font(.custom("TipoMovinCDMX-Bold", size: 17, relativeTo: .headline))
-                    .textCase(.uppercase)
-
-                Spacer()
-
-                if data.isStale {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                        .font(.caption)
-                }
-
-                Text(data.updatedAt, style: .time)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-
-            // Line grid
-            LazyVGrid(columns: columns, spacing: 8) {
-                ForEach(sortedLines) { line in
-                    LineStatusBadge(line: line)
-                }
-            }
-
-            // Summary
-            HStack {
-                if data.allClear {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("Todas las lineas operando normal")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Image(systemName: data.worstStatus.icon)
-                        .foregroundStyle(data.worstStatus.color)
-                    Text("\(data.affectedLinesCount) linea\(data.affectedLinesCount == 1 ? "" : "s") con incidentes")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            WidgetHeader(updatedAt: data.updatedAt, isStale: data.isStale)
+            Spacer()
+            WidgetHeroStatus(
+                icon: "checkmark.circle.fill",
+                title: "Todo en orden",
+                subtitle: family == .systemSmall
+                    ? "\(data.lines.count) líneas operando"
+                    : "\(data.lines.count) líneas operando normal",
+                tint: .green
+            )
+            .frame(maxWidth: .infinity)
+            Spacer()
         }
-        .padding()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityDescription)
-    }
-
-    private var sortedLines: [WidgetLineStatus] {
-        data.lines.sorted { line1, line2 in
-            let num1 = Int(line1.lineNumber) ?? 99
-            let num2 = Int(line2.lineNumber) ?? 99
-            return num1 < num2
-        }
-    }
-
-    private var accessibilityDescription: String {
-        if data.allClear {
-            return "Metrobus CDMX. Todas las lineas operando normal."
-        } else {
-            let affected = data.linesWithIssues.map { "Linea \($0.lineNumber)" }.joined(separator: ", ")
-            return "Metrobus CDMX. \(data.affectedLinesCount) lineas con incidentes: \(affected)"
-        }
+        .accessibilityLabel("Metrobús. Todas las líneas operando normal. Actualizado \(data.updatedAt.formatted(date: .omitted, time: .shortened))")
     }
 }
 
-// MARK: - Line Status Badge
+// MARK: - Active Incidents State
 
-struct LineStatusBadge: View {
+private struct ActiveIncidentsView: View {
+    let data: WidgetData
+    let family: WidgetFamily
+
+    private var sortedIssues: [WidgetLineStatus] {
+        data.linesWithIssues.sorted { $0.status.severity > $1.status.severity }
+    }
+
+    var body: some View {
+        switch family {
+        case .systemSmall:
+            smallLayout
+        case .systemMedium:
+            mediumLayout
+        default:
+            smallLayout
+        }
+    }
+
+    // MARK: Small — hero of worst affected line
+
+    private var smallLayout: some View {
+        let worst = sortedIssues.first
+        let extraCount = max(0, sortedIssues.count - 1)
+        return VStack(alignment: .leading, spacing: 6) {
+            WidgetHeader(updatedAt: data.updatedAt, isStale: data.isStale)
+
+            Spacer(minLength: 0)
+
+            if let worst {
+                HStack {
+                    Spacer()
+                    WidgetLineBadge(lineNumber: worst.lineNumber, size: .large)
+                    Spacer()
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(worst.status.shortText)
+                        .font(.custom("TipoMovinCDMX-Bold", size: 15, relativeTo: .subheadline))
+                        .textCase(.uppercase)
+                        .foregroundStyle(worst.status.color)
+                        .widgetAccentable()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    if extraCount > 0 {
+                        Text("+ \(extraCount) línea\(extraCount == 1 ? "" : "s") más")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Línea \(worst.lineNumber)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(smallAccessibilityLabel)
+    }
+
+    private var smallAccessibilityLabel: String {
+        guard let worst = sortedIssues.first else { return "Metrobús sin datos" }
+        let extra = max(0, sortedIssues.count - 1)
+        let extraText = extra > 0 ? ". Y \(extra) línea\(extra == 1 ? "" : "s") más con incidentes" : ""
+        return "Metrobús. Línea \(worst.lineNumber) \(worst.status.displayText)\(extraText)"
+    }
+
+    // MARK: Medium — priority-sorted list of affected lines
+
+    private var mediumLayout: some View {
+        // Show up to 3 in the list; if there are more, show a "+N más" footer.
+        let visible = Array(sortedIssues.prefix(3))
+        let remainder = max(0, sortedIssues.count - visible.count)
+
+        return VStack(alignment: .leading, spacing: 4) {
+            WidgetHeader(updatedAt: data.updatedAt, isStale: data.isStale)
+
+            Divider()
+                .padding(.vertical, 2)
+
+            VStack(spacing: 4) {
+                ForEach(visible) { line in
+                    IncidentRow(line: line)
+                }
+
+                if remainder > 0 {
+                    HStack {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("+ \(remainder) línea\(remainder == 1 ? "" : "s") más")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.top, 2)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(mediumAccessibilityLabel)
+    }
+
+    private var mediumAccessibilityLabel: String {
+        let count = sortedIssues.count
+        let summary = sortedIssues
+            .prefix(3)
+            .map { "Línea \($0.lineNumber) \($0.status.displayText)" }
+            .joined(separator: ", ")
+        let extra = max(0, count - 3)
+        let extraText = extra > 0 ? ". Y \(extra) más" : ""
+        return "Metrobús, \(count) líneas con incidentes: \(summary)\(extraText)"
+    }
+}
+
+// MARK: - Single Incident Row
+
+private struct IncidentRow: View {
     let line: WidgetLineStatus
 
     var body: some View {
-        VStack(spacing: 4) {
-            // Line number circle — flat fill (no gradient) for widget memory efficiency
-            ZStack {
-                Circle()
-                    .fill(WidgetLineColor.color(for: line.lineNumber))
-                    .frame(width: 32, height: 32)
+        HStack(spacing: 10) {
+            WidgetLineBadge(lineNumber: line.lineNumber, size: .small)
 
-                Text(line.lineNumber)
-                    .font(.custom("TipoMovinCDMX-Bold", size: 13, relativeTo: .footnote))
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
+            Text("Línea \(line.lineNumber)")
+                .font(.custom("TipoMovinCDMX-Bold", size: 14, relativeTo: .footnote))
+                .textCase(.uppercase)
+                .lineLimit(1)
+
+            Spacer(minLength: 4)
+
+            WidgetStatusPill(status: line.status)
+        }
+    }
+}
+
+// MARK: - Skeleton (loading)
+
+private struct SkeletonView: View {
+    let family: WidgetFamily
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Header skeleton
+            HStack {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.25))
+                    .frame(width: 70, height: 12)
+                Spacer()
+                Capsule()
+                    .fill(Color.secondary.opacity(0.20))
+                    .frame(width: 36, height: 10)
             }
 
-            // Status indicator
-            Image(systemName: line.status.icon)
-                .font(.caption2)
-                .foregroundStyle(line.status.color)
+            Spacer(minLength: 0)
+
+            switch family {
+            case .systemSmall:
+                HStack {
+                    Spacer()
+                    WidgetBadgeSkeleton(size: .large)
+                    Spacer()
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Capsule().fill(Color.secondary.opacity(0.25)).frame(width: 100, height: 12)
+                    Capsule().fill(Color.secondary.opacity(0.20)).frame(width: 70, height: 10)
+                }
+            case .systemMedium:
+                VStack(spacing: 6) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        HStack(spacing: 10) {
+                            WidgetBadgeSkeleton(size: .small)
+                            Capsule().fill(Color.secondary.opacity(0.25)).frame(width: 80, height: 12)
+                            Spacer()
+                            Capsule().fill(Color.secondary.opacity(0.20)).frame(width: 50, height: 16)
+                        }
+                    }
+                }
+            default:
+                EmptyView()
+            }
+
+            Spacer(minLength: 0)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Línea \(line.lineNumber), \(line.status.displayText)")
+        .accessibilityLabel("Cargando estado del Metrobús")
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 
 // MARK: - Previews
 
-#Preview("Small", as: .systemSmall) {
+#Preview("Small — All Clear", as: .systemSmall) {
     MetrobusStatusWidget()
 } timeline: {
     MetrobusStatusEntry(date: .now, data: .placeholder, isPlaceholder: false)
+}
+
+#Preview("Small — One Incident", as: .systemSmall) {
+    MetrobusStatusWidget()
+} timeline: {
     MetrobusStatusEntry(date: .now, data: WidgetData(
         lines: [
-            WidgetLineStatus(id: "1", lineNumber: "1", status: .regular, affectedStationsCount: 0, incidentCount: 0),
-            WidgetLineStatus(id: "2", lineNumber: "2", status: .intervention, affectedStationsCount: 2, incidentCount: 1),
-            WidgetLineStatus(id: "3", lineNumber: "3", status: .limited, affectedStationsCount: 3, incidentCount: 1),
-            WidgetLineStatus(id: "4", lineNumber: "4", status: .suspended, affectedStationsCount: 1, incidentCount: 1),
-            WidgetLineStatus(id: "5", lineNumber: "5", status: .protest, affectedStationsCount: 4, incidentCount: 1),
+            WidgetLineStatus(id: "1", lineNumber: "1", status: .suspended, affectedStationsCount: 3, incidentCount: 1),
+            WidgetLineStatus(id: "2", lineNumber: "2", status: .regular, affectedStationsCount: 0, incidentCount: 0),
+            WidgetLineStatus(id: "3", lineNumber: "3", status: .regular, affectedStationsCount: 0, incidentCount: 0),
         ],
         updatedAt: Date(),
         isStale: false
     ), isPlaceholder: false)
 }
 
-#Preview("Medium", as: .systemMedium) {
+#Preview("Small — Three Incidents", as: .systemSmall) {
     MetrobusStatusWidget()
 } timeline: {
     MetrobusStatusEntry(date: .now, data: WidgetData(
         lines: (1...7).map { num in
             let status: WidgetServiceStatus = switch num {
-            case 2: .intervention
-            case 3: .limited
-            case 4: .suspended
-            case 5: .delayed
-            case 6: .protest
+            case 1: .suspended
+            case 4: .protest
+            case 7: .delayed
             default: .regular
             }
-            return WidgetLineStatus(
-                id: "\(num)",
-                lineNumber: "\(num)",
-                status: status,
-                affectedStationsCount: status == .regular ? 0 : Int.random(in: 1...3),
-                incidentCount: status == .regular ? 0 : 1
-            )
+            return WidgetLineStatus(id: "\(num)", lineNumber: "\(num)", status: status,
+                                    affectedStationsCount: status == .regular ? 0 : 2,
+                                    incidentCount: status == .regular ? 0 : 1)
         },
         updatedAt: Date(),
         isStale: false
     ), isPlaceholder: false)
+}
+
+#Preview("Small — Skeleton", as: .systemSmall) {
+    MetrobusStatusWidget()
+} timeline: {
+    MetrobusStatusEntry(date: .now, data: .placeholder, isPlaceholder: true)
+}
+
+#Preview("Medium — All Clear", as: .systemMedium) {
+    MetrobusStatusWidget()
+} timeline: {
+    MetrobusStatusEntry(date: .now, data: .placeholder, isPlaceholder: false)
+}
+
+#Preview("Medium — Three Incidents", as: .systemMedium) {
+    MetrobusStatusWidget()
+} timeline: {
+    MetrobusStatusEntry(date: .now, data: WidgetData(
+        lines: (1...7).map { num in
+            let status: WidgetServiceStatus = switch num {
+            case 1: .suspended
+            case 4: .protest
+            case 7: .delayed
+            default: .regular
+            }
+            return WidgetLineStatus(id: "\(num)", lineNumber: "\(num)", status: status,
+                                    affectedStationsCount: status == .regular ? 0 : 2,
+                                    incidentCount: status == .regular ? 0 : 1)
+        },
+        updatedAt: Date(),
+        isStale: false
+    ), isPlaceholder: false)
+}
+
+#Preview("Medium — Five Incidents", as: .systemMedium) {
+    MetrobusStatusWidget()
+} timeline: {
+    MetrobusStatusEntry(date: .now, data: WidgetData(
+        lines: (1...7).map { num in
+            let status: WidgetServiceStatus = switch num {
+            case 1: .protest
+            case 2: .suspended
+            case 3: .delayed
+            case 4: .limited
+            case 5: .intervention
+            default: .regular
+            }
+            return WidgetLineStatus(id: "\(num)", lineNumber: "\(num)", status: status,
+                                    affectedStationsCount: status == .regular ? 0 : 2,
+                                    incidentCount: status == .regular ? 0 : 1)
+        },
+        updatedAt: Date(),
+        isStale: false
+    ), isPlaceholder: false)
+}
+
+#Preview("Medium — Skeleton", as: .systemMedium) {
+    MetrobusStatusWidget()
+} timeline: {
+    MetrobusStatusEntry(date: .now, data: .placeholder, isPlaceholder: true)
 }
