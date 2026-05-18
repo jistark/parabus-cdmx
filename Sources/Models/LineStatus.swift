@@ -13,21 +13,25 @@ enum ServiceStatus: String, Codable, CaseIterable, Comparable {
     init(from text: String) {
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        if normalized.contains("regular") {
-            self = .regular
-        } else if normalized.contains("intervencion") || normalized.contains("intervención") {
-            self = .intervention
-        } else if normalized.contains("limitado") {
-            self = .limited
-        } else if normalized.contains("suspendido") || normalized.contains("sin servicio") {
-            self = .suspended
-        } else if normalized.contains("manifestacion") || normalized.contains("manifestación") ||
+        // Severity-descending order. The `.regular` check has to come AFTER
+        // every abnormal status because operators sometimes write compound
+        // phrases ("servicio limitado, regreso a regular") and a `regular`-
+        // first chain would mis-tag those as healthy.
+        if normalized.contains("manifestacion") || normalized.contains("manifestación") ||
                   normalized.contains("marcha") || normalized.contains("bloqueo") {
             self = .protest
+        } else if normalized.contains("suspendido") || normalized.contains("sin servicio") {
+            self = .suspended
         } else if normalized.contains("retraso") ||
                   normalized.contains("obstrucción") || normalized.contains("obstruccion") ||
                   normalized.contains("congestionamiento") {
             self = .delayed
+        } else if normalized.contains("limitado") {
+            self = .limited
+        } else if normalized.contains("intervencion") || normalized.contains("intervención") {
+            self = .intervention
+        } else if normalized.contains("regular") {
+            self = .regular
         } else {
             self = .unknown
         }

@@ -210,9 +210,7 @@ enum WidgetCacheReader {
 
         do {
             let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(WidgetData.self, from: data)
+            return try SharedCoders.isoDecoder.decode(WidgetData.self, from: data)
         } catch {
             return nil
         }
@@ -225,9 +223,7 @@ enum WidgetCacheReader {
             ])
         }
 
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(widgetData)
+        let data = try SharedCoders.isoEncoder.encode(widgetData)
         try data.write(to: url, options: .atomic)
     }
 }

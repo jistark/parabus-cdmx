@@ -16,6 +16,10 @@
  *   5 = fixed32       (sfixed32/fixed32/float)
  */
 
+/** Module-shared UTF-8 decoder — TextDecoder allocations are surprisingly
+ *  expensive in V8 and we'd otherwise create one per protobuf string field. */
+const TEXT_DECODER = new TextDecoder();
+
 export interface VehiclePosition {
   /** FeedEntity.id — unique per feed snapshot. */
   entityId: string;
@@ -229,9 +233,11 @@ function decodePosition(bytes: Uint8Array): {
     } else if (field === 3 && wire === 5) {
       // Position.bearing (float). Sinoptico publishes raw GPS heading which
       // can exceed [0, 360) — normalize so consumers can rotate compass
-      // arrows without a modulus step.
+      // arrows without a modulus step. Guard against NaN: `((NaN % 360) +
+      // 360) % 360 === NaN`, which JSON-serializes to null only by
+      // coincidence; explicit null is honest.
       const raw = reader.readFloat();
-      bearing = ((raw % 360) + 360) % 360;
+      bearing = isFinite(raw) ? ((raw % 360) + 360) % 360 : null;
     } else if (field === 5 && wire === 5) {
       // Position.speed (float)
       speed = reader.readFloat();
@@ -278,7 +284,7 @@ class Reader {
   }
 
   readString(): string {
-    return new TextDecoder().decode(this.readBytes());
+    return TEXT_DECODER.decode(this.readBytes());
   }
 
   readBytes(): Uint8Array {

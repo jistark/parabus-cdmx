@@ -91,15 +91,36 @@ actor BackgroundRefreshManager {
     private let dataProvider = APITransitDataProvider()
     private let cache = CacheManager()
 
-    /// Track which protests we've already notified about
-    private var notifiedProtestKeys: Set<String> = []
+    /// Notification dedup keys → the day-start timestamp at which the
+    /// notification fired. Stored as a Codable dict instead of a Set<String>
+    /// so cleanup doesn't have to re-parse the timestamp out of the key
+    /// suffix every time.
+    private var notifiedKeys: [String: Date] = [:]
+
+    private static let storageKey = "notifiedIncidentKeys"
+    private static let legacyStorageKey = "notifiedProtestKeys"
 
     // MARK: - Init
 
     private init() {
-        // Load previously notified protests from UserDefaults
-        if let saved = UserDefaults.standard.stringArray(forKey: "notifiedProtestKeys") {
-            notifiedProtestKeys = Set(saved)
+        // Prefer the dict storage when present.
+        if let data = UserDefaults.standard.data(forKey: Self.storageKey),
+           let dict = try? SharedCoders.plainDecoder.decode([String: Date].self, from: data) {
+            notifiedKeys = dict
+            return
+        }
+
+        // Legacy migration from `stringArray` storage. The timestamp lives
+        // in the key suffix; AnyNotificationKey.timestamp recovers it for
+        // both ProtestKey and IncidentNotificationKey shapes.
+        if let saved = UserDefaults.standard.stringArray(forKey: Self.legacyStorageKey) {
+            for key in saved {
+                if let ts = AnyNotificationKey.timestamp(from: key) {
+                    notifiedKeys[key] = Date(timeIntervalSince1970: ts)
+                }
+            }
+            UserDefaults.standard.removeObject(forKey: Self.legacyStorageKey)
+            persistNotifiedKeys()
         }
     }
 
@@ -192,14 +213,14 @@ actor BackgroundRefreshManager {
                     status: status.rawValue,
                     day: Date()
                 )
-                guard !notifiedProtestKeys.contains(key) else { continue }
+                guard notifiedKeys[key] == nil else { continue }
                 await sendIncidentNotification(for: line, status: status)
-                notifiedProtestKeys.insert(key)
+                notifiedKeys[key] = Calendar.current.startOfDay(for: Date())
             }
         }
 
-        saveNotifiedProtests()
-        cleanupOldProtestKeys()
+        persistNotifiedKeys()
+        pruneOldNotifiedKeys()
     }
 
     /// Build and post a local notification for a single (line, status) pair.
@@ -273,23 +294,21 @@ actor BackgroundRefreshManager {
         }
     }
 
-    private func saveNotifiedProtests() {
-        UserDefaults.standard.set(Array(notifiedProtestKeys), forKey: "notifiedProtestKeys")
+    private func persistNotifiedKeys() {
+        guard let data = try? SharedCoders.plainEncoder.encode(notifiedKeys) else { return }
+        UserDefaults.standard.set(data, forKey: Self.storageKey)
     }
 
-    private func cleanupOldProtestKeys() {
-        let oneDayAgo = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970 - 86400
-        notifiedProtestKeys = notifiedProtestKeys.filter { key in
-            guard let timestamp = AnyNotificationKey.timestamp(from: key) else { return false }
-            return timestamp > oneDayAgo
-        }
-        saveNotifiedProtests()
+    private func pruneOldNotifiedKeys() {
+        let cutoff = Calendar.current.startOfDay(for: Date()).addingTimeInterval(-86400)
+        notifiedKeys = notifiedKeys.filter { $0.value > cutoff }
+        persistNotifiedKeys()
     }
 
-    /// Clear all notifications and reset protest tracking (for testing)
+    /// Clear all notifications and reset incident-dedup tracking (for testing).
     func resetProtestNotifications() {
-        notifiedProtestKeys.removeAll()
-        saveNotifiedProtests()
+        notifiedKeys.removeAll()
+        persistNotifiedKeys()
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
     }
 }

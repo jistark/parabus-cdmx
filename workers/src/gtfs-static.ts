@@ -26,6 +26,9 @@ const KV_META_KEY = 'gtfs:static:meta';
 const KV_VERSION_KEY = 'gtfs:static:version';
 const KV_TTL_SECONDS = 30 * 60 * 60; // 30h — daily refresh + buffer
 
+/** Module-shared UTF-8 decoder — zip filename + CSV decoding hot paths. */
+const TEXT_DECODER = new TextDecoder();
+
 export interface RouteMeta {
   routeId: string;
   /** "1", "2", ..., "7" — derived from route_short_name. */
@@ -380,7 +383,7 @@ export async function extractZipFiles(
     const commentLen = view.getUint16(p + 32, true);
     const lfhOffset = view.getUint32(p + 42, true);
 
-    const name = new TextDecoder().decode(
+    const name = TEXT_DECODER.decode(
       zip.subarray(p + 46, p + 46 + nameLen),
     );
 
@@ -399,7 +402,7 @@ export async function extractZipFiles(
       } else {
         throw new Error(`zip: unsupported compression method ${method} for ${name}`);
       }
-      out.set(name, new TextDecoder().decode(decompressed));
+      out.set(name, TEXT_DECODER.decode(decompressed));
     }
 
     p += 46 + nameLen + extraLen + commentLen;
@@ -481,7 +484,7 @@ export function extractZipFileStream(
     const extraLen = view.getUint16(p + 30, true);
     const commentLen = view.getUint16(p + 32, true);
     const lfhOffset = view.getUint32(p + 42, true);
-    const entryName = new TextDecoder().decode(zip.subarray(p + 46, p + 46 + nameLen));
+    const entryName = TEXT_DECODER.decode(zip.subarray(p + 46, p + 46 + nameLen));
 
     if (entryName === name) {
       const lfhNameLen = view.getUint16(lfhOffset + 26, true);

@@ -69,7 +69,26 @@ as historical context, this snapshot as ground truth.
 - ✅ MED-18 `saveToCache` gated on `incidentes.success && mantenimiento.success` (partial-failure no longer overwrites good cache)
 - ✅ LOW-01 admin endpoint uses constant-time `timingSafeEqual` (XOR-accumulate) instead of `!==`
 
-**Still NOT yet closed:** MED-09 (GTFSStations eager arrays — needs a worker endpoint design; separate session), LOW-02/03/04/07/08/09/12+, NIT items, and most TEST gaps. A fresh adversarial pass would catch what this audit missed; the body of this document is now ~80% stale relative to git HEAD.
+**Phase 5 — LOW + NIT sweep (this session):**
+
+Worker:
+- ✅ LOW-02 cache service-inactive feed for 60s — absorbs repeated requests during Sinoptico outages without re-billing partnerValidation
+- ✅ LOW-03 drop `\sy\s` split in parseAffectedStations — Spanish station names commonly contain " y " ("Insurgentes y Cuauhtémoc"); operators that need to list two stations use comma
+- ✅ LOW-04 drop greedy `(\d{1,2}:\d{2})\s*hrs?` catch-all in parseSourceTimestamp — was matching operating hours as "last updated"
+- ✅ LOW-07 jdv-fetch refactor: read body as text first, then JSON-parse with explicit handling; drops fragile substring matching on error strings
+- ✅ NIT-01 bearing isFinite check — NaN-safe (was relying on `((NaN%360)+360)%360 === NaN → JSON null` coincidence)
+- ✅ NIT-02 hoist TextDecoder to module-level const in gtfs-rt, gtfs-static (3 sites), gtfs-schedule
+- ✅ NIT-03 remove unused `JdvFetchFailure.ms` field
+
+iOS:
+- ✅ LOW-12 notifiedProtestKeys → `[String: Date]` Codable; legacy stringArray migrated on first launch via AnyNotificationKey.timestamp; cleanup uses dict value instead of re-parsing key suffix
+- ✅ LOW-13 moot — MetrobusScraperTests.swift was deleted with the scraper
+- ✅ LOW-14 WidgetCacheReader uses `SharedCoders.isoEncoder/isoDecoder` instead of allocating per call
+- ✅ NIT-04 moot — ImageLoader renamed in `8437ba2`
+- ✅ NIT-05 moot — RealtimeService.decoder is already inline (no empty config block)
+- ✅ NIT-06 ServiceStatus.init reorder: protest → suspended → delayed → limited → intervention → regular → unknown, so compound text ("limitado y regular") picks the more-severe status
+
+**Still NOT yet closed:** MED-09 (GTFSStations 469 LoC eager arrays — needs a worker endpoint design; separate session), LOW-08 (`print()` → `os.Logger` ~16 sites in iOS Services/), LOW-09 (force-unwraps — acceptable on string literals per REVIEW; one remaining at APITransitDataProvider:77 is a constant URL), most TEST gaps. The body of this document is now ~85% stale relative to git HEAD; a fresh adversarial pass would catch what this audit missed.
 
 **Notifications (new feature, local-only):**
 
