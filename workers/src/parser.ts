@@ -392,7 +392,7 @@ function parseIncidentRowData(rowHtml: string): { lineNumber: string; incident: 
  * ("Insurgentes y Cuauhtémoc"); splitting on `\sy\s` would shred those.
  * Operators that need to list two stations should separate with a comma.
  */
-function parseAffectedStations(details: string | null): string[] {
+export function parseAffectedStations(details: string | null): string[] {
   if (!details || details === '-') {
     return [];
   }

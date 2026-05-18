@@ -424,8 +424,10 @@ function jsonResponse(data: unknown, status = 200): Response {
  * `crypto.subtle.timingSafeEqual`, so we accumulate XOR diffs across the full
  * shorter string and OR-equality on length. Length mismatch leaks only the
  * length itself, which is acceptable for fixed-format bearer tokens.
+ *
+ * Exported for testing.
  */
-function timingSafeEqual(a: string, b: string): boolean {
+export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let mismatch = 0;
   for (let i = 0; i < a.length; i++) {
