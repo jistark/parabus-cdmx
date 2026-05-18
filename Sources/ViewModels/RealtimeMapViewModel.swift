@@ -23,6 +23,26 @@ final class RealtimeMapViewModel {
     /// color vehicle markers correctly when no specific line is selected.
     private(set) var routeIdToLine: [String: String] = [:]
 
+    /// Currently-focused station in the map carousel. Driven by user
+    /// swipe + bootstrap + line-change. Persisted to UserDefaults so
+    /// next session can resume.
+    var selectedStation: GTFSStation? {
+        didSet {
+            guard oldValue?.id != selectedStation?.id else { return }
+            if let id = selectedStation?.id {
+                UserDefaults.standard.set(id, forKey: MapBootstrap.userDefaultsKeyLastStation)
+            }
+        }
+    }
+
+    /// Carousel data source: the stations on the currently-focused line.
+    var stationsOnSelectedLine: [GTFSStation] {
+        guard let line = selectedStation?.lineNumber else {
+            return GTFSStations.stations(for: MapBootstrap.defaultSeedLine)
+        }
+        return GTFSStations.stations(for: line)
+    }
+
     /// Returns the line number for a vehicle's routeId, or nil if unknown.
     /// View layer uses this to pick the right `LineColor`.
     func line(forRouteId routeId: String?) -> String? {
@@ -150,5 +170,38 @@ final class RealtimeMapViewModel {
         from referenceCoordinate: CLLocationCoordinate2D
     ) -> GTFSStation? {
         nearestStation(to: referenceCoordinate, on: newLine)
+    }
+
+    // MARK: - Bootstrap
+
+    /// Reads persisted state + supplied auth status, returns the outcome
+    /// the view should render. View layer calls this once on appear and
+    /// re-evaluates after authorization changes.
+    func bootstrapOutcome(authStatus: LocationAuthStatus) -> BootstrapOutcome {
+        let defaults = UserDefaults.standard
+        let persisted = defaults.string(forKey: MapBootstrap.userDefaultsKeyLastStation)
+        let shown = defaults.bool(forKey: MapBootstrap.userDefaultsKeyPrePromptShown)
+        return MapBootstrap.decide(
+            authStatus: authStatus,
+            hasShownPrePrompt: shown,
+            persistedStationId: persisted
+        )
+    }
+
+    /// Resolves a station id (from persisted or seed) to an actual GTFSStation.
+    /// Returns nil only if the id doesn't exist in any line.
+    func resolveStation(byId id: String) -> GTFSStation? {
+        for line in ["1","2","3","4","5","6","7"] {
+            if let match = GTFSStations.stations(for: line).first(where: { $0.id == id }) {
+                return match
+            }
+        }
+        return nil
+    }
+
+    /// User accepted/dismissed the pre-prompt — mark as shown so we don't
+    /// re-prompt next session.
+    func markPrePromptShown() {
+        UserDefaults.standard.set(true, forKey: MapBootstrap.userDefaultsKeyPrePromptShown)
     }
 }
