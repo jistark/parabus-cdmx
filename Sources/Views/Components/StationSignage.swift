@@ -110,14 +110,14 @@ struct StationSignage: View {
         ZStack {
             LineColors.color(for: lineNumber)
             VStack(spacing: 0) {
-                Text(stationName.uppercased())
-                    .font(size.nameFont)
+                Text(stationName)
+                    .brandTitle(size.nameFont)
                     .foregroundStyle(textColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if let subtitle, size == .large {
-                    Text(subtitle.uppercased())
-                        .font(BrandTypography.lineLabel)
+                    Text(subtitle)
+                        .brandTitle(BrandTypography.lineLabel)
                         .foregroundStyle(textColor.opacity(0.85))
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
