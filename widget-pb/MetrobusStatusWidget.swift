@@ -109,23 +109,49 @@ private struct AllClearView: View {
     let data: WidgetData
     let family: WidgetFamily
 
+    /// Sorted list of line numbers found in the snapshot. Falls back to "1"-"7"
+    /// when the data is the placeholder so the badge row always reads as the
+    /// full Metrobús network.
+    private var lineNumbers: [String] {
+        let numbers = data.lines.map(\.lineNumber).sorted { lhs, rhs in
+            (Int(lhs) ?? 99) < (Int(rhs) ?? 99)
+        }
+        return numbers.isEmpty ? ["1", "2", "3", "4", "5", "6", "7"] : numbers
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             WidgetHeader(updatedAt: data.updatedAt, isStale: data.isStale)
-            Spacer()
+            Spacer(minLength: 0)
             WidgetHeroStatus(
                 icon: "checkmark.circle.fill",
                 title: "Todo en orden",
                 subtitle: family == .systemSmall
-                    ? "\(data.lines.count) líneas operando"
-                    : "\(data.lines.count) líneas operando normal",
+                    ? "\(lineNumbers.count) líneas operando"
+                    : "\(lineNumbers.count) líneas operando normal",
                 tint: .green
             )
             .frame(maxWidth: .infinity)
-            Spacer()
+
+            // Mini-badge row reinforces "every line is fine" visually — the
+            // colors land in muscle memory faster than the count text. Tight
+            // spacing on small widget so 7 × 20pt + spacing fits in ~145pt.
+            miniBadgeRow
+                .padding(.top, family == .systemSmall ? 6 : 10)
+                .accessibilityHidden(true) // covered by the combined label below
+            Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Metrobús. Todas las líneas operando normal. Actualizado \(data.updatedAt.formatted(date: .omitted, time: .shortened))")
+    }
+
+    private var miniBadgeRow: some View {
+        HStack(spacing: family == .systemSmall ? 1 : 4) {
+            ForEach(lineNumbers, id: \.self) { lineNumber in
+                WidgetLineBadge(lineNumber: lineNumber, size: .mini)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
