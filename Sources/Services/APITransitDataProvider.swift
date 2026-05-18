@@ -117,7 +117,9 @@ actor APITransitDataProvider: TransitDataProviding {
         return ScrapingResult(
             lines: lines,
             scrapedAt: parseDate(response.lastUpdated) ?? Date(),
-            source: APIConfiguration.baseURL.appendingPathComponent("status")
+            source: APIConfiguration.baseURL.appendingPathComponent("status"),
+            isStale: response.stale ?? false,
+            sourceError: response.error
         )
     }
 
@@ -149,7 +151,9 @@ actor APITransitDataProvider: TransitDataProviding {
         let status = ScrapingResult(
             lines: response.lines.map { convertToLineStatus($0) },
             scrapedAt: scrapedAt,
-            source: source
+            source: source,
+            isStale: response.stale ?? false,
+            sourceError: response.error
         )
         let maintenance = MaintenanceResult(
             closures: response.scheduledMaintenance.map { convertToScheduledClosure($0) },
@@ -174,7 +178,9 @@ actor APITransitDataProvider: TransitDataProviding {
         return ScrapingResult(
             lines: lines,
             scrapedAt: parseDate(response.lastUpdated) ?? Date(),
-            source: url
+            source: url,
+            isStale: response.stale ?? false,
+            sourceError: response.error
         )
     }
 
