@@ -386,16 +386,19 @@ function parseIncidentRowData(rowHtml: string): { lineNumber: string; incident: 
 }
 
 /**
- * Parse affected stations from details text
+ * Parse affected stations from details text.
+ *
+ * Only splits on punctuation. Spanish station names commonly include " y "
+ * ("Insurgentes y Cuauhtémoc"); splitting on `\sy\s` would shred those.
+ * Operators that need to list two stations should separate with a comma.
  */
 function parseAffectedStations(details: string | null): string[] {
   if (!details || details === '-') {
     return [];
   }
 
-  // Split by common separators: comma, "y", "a"
   const stations = details
-    .split(/[,;]|\sy\s/)
+    .split(/[,;]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0 && s !== '-');
 
@@ -605,12 +608,13 @@ function findTableAfterHeading(html: string, headingPattern: RegExp): string | n
  * Extract the "Actualizacion: HH:mm" timestamp from the page
  */
 export function parseSourceTimestamp(html: string): string | null {
-  // Look for various timestamp patterns
+  // Anchored patterns only. A naked `(\d{1,2}:\d{2})\s*hrs?` catch-all used
+  // to match any "HH:MM hrs" on the page (e.g. "Servicio de 5:00 hrs a
+  // 24:00 hrs") and surfaced operating hours as "last updated".
   const patterns = [
     /Actualizaci[oó]n:\s*(\d{1,2}:\d{2})/i,
     /[Úú]ltima\s+actualizaci[oó]n:\s*(\d{1,2}:\d{2})/i,
     /Actualizado:\s*(\d{1,2}:\d{2})/i,
-    /(\d{1,2}:\d{2})\s*hrs?/i,
   ];
 
   for (const pattern of patterns) {

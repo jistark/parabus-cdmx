@@ -30,6 +30,9 @@ export interface ScheduledArrival {
 const KV_STOP_PREFIX = 'gtfs:schedule:';
 const KV_TTL_SECONDS = 30 * 60 * 60; // 30h — matches static GTFS refresh window
 
+/** Module-shared UTF-8 decoder for chunked stop_times.txt streaming. */
+const TEXT_DECODER = new TextDecoder('utf-8');
+
 // ============================================================================
 // Pure functions (exported for testing)
 // ============================================================================
@@ -202,7 +205,7 @@ export async function streamFilterStop(
   wantedStopId: string,
 ): Promise<ScheduledArrival[]> {
   const reader = stream.getReader();
-  const decoder = new TextDecoder('utf-8');
+  const decoder = TEXT_DECODER;
   let buffer = '';
   let headerIndices: { trip: number; arrival: number; stop: number; seq: number } | null = null;
   const out: ScheduledArrival[] = [];

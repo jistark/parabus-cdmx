@@ -64,10 +64,10 @@ async function getDecodedFeed(env: Env, ctx?: ExecutionContext): Promise<CachedF
     feed,
   };
 
-  // Build the cache response (or null if nothing worth caching).
-  // We cache real data with the full TTL; on hard failures, cache briefly so
-  // we don't hammer upstream. Null+no-error (service inactive) isn't cached
-  // so the next request retries immediately.
+  // Build the cache response. Real data → full TTL. Hard failures → short
+  // cache so we don't hammer upstream. Service inactive (null feed + no
+  // error) → 60s sentinel to absorb repeated user requests during outages
+  // without re-billing partnerValidation each time.
   let cacheResp: Response | null = null;
   if (feed) {
     cacheResp = new Response(JSON.stringify(payload), {
@@ -81,6 +81,14 @@ async function getDecodedFeed(env: Env, ctx?: ExecutionContext): Promise<CachedF
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, max-age=5',
+      },
+    });
+  } else {
+    // Service inactive (Sinoptico returned empty validation payload).
+    cacheResp = new Response(JSON.stringify(payload), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=60',
       },
     });
   }

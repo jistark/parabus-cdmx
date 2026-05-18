@@ -43,7 +43,6 @@ interface JdvFetchSuccess {
 interface JdvFetchFailure {
   ok: false;
   error: string;
-  ms?: number;
 }
 
 type JdvFetchResponse = JdvFetchSuccess | JdvFetchFailure;
@@ -86,8 +85,12 @@ export async function jdvFetch(
       console.log(`jdvFetch retry ${attempt} for ${targetUrl}`);
     }
 
+    // Read as text first so non-JSON error pages (HTML 503s, proxy
+    // intermissions, etc.) don't blow up at `await resp.json()`.
+    let resp: Response;
+    let bodyText: string;
     try {
-      const resp = await fetch(endpoint, {
+      resp = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${env.JDV_BOT_SECRET}`,
@@ -95,37 +98,35 @@ export async function jdvFetch(
         },
         body: JSON.stringify(payload),
       });
-
-      const data = (await resp.json()) as JdvFetchResponse;
-
-      if (resp.ok && data.ok) {
-        return data.body;
-      }
-
-      // Non-2xx or ok:false → treat as retryable except 4xx auth errors
-      const errMsg = data.ok === false
-        ? data.error
-        : `jdv-bot HTTP ${resp.status}`;
-
-      // Don't retry auth failures or bad requests
-      if (resp.status === 401 || resp.status === 400 || resp.status === 503) {
-        throw new Error(`jdvFetch: ${errMsg}`);
-      }
-
-      lastError = new Error(`jdvFetch: ${errMsg}`);
+      bodyText = await resp.text();
     } catch (err) {
-      // Network-level failure (DNS, TLS, abort, etc.) — retryable.
-      const msg = err instanceof Error ? err.message : String(err);
-      // Non-retryable errors we threw above also land here; re-throw them.
-      if (msg.startsWith('jdvFetch: ') && (
-        msg.includes('invalid bearer') ||
-        msg.includes('FETCH_SHARED_SECRET') ||
-        msg.includes('field "url"')
-      )) {
-        throw err;
-      }
+      // True network-level failure (DNS, TLS, abort): retryable.
       lastError = err instanceof Error ? err : new Error(String(err));
+      continue;
     }
+
+    let data: JdvFetchResponse | null = null;
+    try {
+      data = JSON.parse(bodyText) as JdvFetchResponse;
+    } catch {
+      // Non-JSON body — fall through to status-based handling.
+    }
+
+    if (resp.ok && data?.ok) {
+      return data.body;
+    }
+
+    const errMsg = data && !data.ok
+      ? data.error
+      : `jdv-bot HTTP ${resp.status}: ${bodyText.slice(0, 200)}`;
+
+    // Auth / bad-request / explicit-unavailable — surface immediately,
+    // no retry.
+    if (resp.status === 401 || resp.status === 400 || resp.status === 503) {
+      throw new Error(`jdvFetch: ${errMsg}`);
+    }
+
+    lastError = new Error(`jdvFetch: ${errMsg}`);
   }
 
   throw lastError ?? new Error('jdvFetch: exhausted retries with no error captured');
