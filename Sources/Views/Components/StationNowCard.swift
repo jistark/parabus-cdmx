@@ -299,7 +299,7 @@ struct StationNowCard: View {
 
     private func tone(_ tone: ArrivalRowPresentation.Tone) -> Color {
         switch tone {
-        case .positive: .green
+        case .positive: StatusColors.good
         case .negative: StatusColors.critical
         case .neutral: .primary
         case .muted: .secondary
