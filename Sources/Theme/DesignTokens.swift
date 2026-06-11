@@ -828,3 +828,13 @@ struct DesignTokensPreview: View {
     .preferredColorScheme(.dark)
 }
 #endif
+
+// MARK: - Hex colors (cenefa service colors from /static/cenefas)
+
+extension Color {
+    /// nil on malformed input — callers fall back to LineColors.
+    init?(hexString: String) {
+        guard let c = ColorHex.components(hexString) else { return nil }
+        self.init(red: c.r, green: c.g, blue: c.b)
+    }
+}
