@@ -120,3 +120,58 @@ struct HomeDeckTests {
         #expect(deck[0].station.lineNumber == "3")
     }
 }
+
+@Suite("Home arrivals + legacy fallback")
+@MainActor
+struct HomeArrivalsTests {
+
+    /// ArrivalsResponse is Decodable-only — build via JSON.
+    nonisolated private static func response(rows: [(state: String, source: String)], warning: String? = nil) -> ArrivalsResponse {
+        let rowsJSON = rows.map {
+            """
+            {"serviceId":"s","line":"1","destination":"d","state":"\($0.state)","etaMinutes":null,"vehicleId":null,"source":"\($0.source)"}
+            """
+        }.joined(separator: ",")
+        let json = """
+        {"serviceActive":true,"feedTimestamp":1,"feedAgeSeconds":1,"realtimeStale":false,"stop":"X",\(warning.map { "\"warning\":\"\($0)\"," } ?? "")"rows":[\(rowsJSON)]}
+        """.data(using: .utf8)!
+        return try! JSONDecoder().decode(ArrivalsResponse.self, from: json)
+    }
+
+    @Test func publishesArrivalsOnRefresh() async {
+        let vm = HomeViewModel(fetchArrivals: { _ in Self.response(rows: [("arriving", "realtime")]) })
+        await vm.refreshArrivals(for: "ST1")
+        #expect(vm.arrivals["ST1"]?.rows.count == 1)
+        #expect(!vm.legacyStations.contains("ST1"))
+    }
+
+    @Test func emptyRowsWithWarningEntersLegacy() async {
+        let vm = HomeViewModel(fetchArrivals: { _ in Self.response(rows: [], warning: "stop not covered") })
+        await vm.refreshArrivals(for: "ST1")
+        #expect(vm.legacyStations.contains("ST1"))
+    }
+
+    @Test func nilResponseEntersLegacyAndRecovers() async {
+        let gate = FailGate()
+        let vm = HomeViewModel(fetchArrivals: { _ in
+            await gate.shouldFail ? nil : Self.response(rows: [("arriving", "realtime")])
+        })
+        await vm.refreshArrivals(for: "ST1")
+        #expect(vm.legacyStations.contains("ST1"))
+        await gate.setShouldFail(false)
+        await vm.refreshArrivals(for: "ST1")
+        #expect(!vm.legacyStations.contains("ST1"))
+        #expect(vm.arrivals["ST1"] != nil)
+    }
+
+    @Test func visibleEntryClampsToDeckBounds() {
+        let vm = HomeViewModel(fetchArrivals: { _ in nil })
+        #expect(vm.visibleEntry == nil) // empty deck
+    }
+}
+
+/// Sendable mutable flag for the recovery test (closures must be @Sendable).
+private actor FailGate {
+    var shouldFail = true
+    func setShouldFail(_ value: Bool) { shouldFail = value }
+}
