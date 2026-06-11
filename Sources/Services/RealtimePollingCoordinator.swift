@@ -34,7 +34,12 @@ actor RealtimePollingCoordinator {
         self.onPoll = onPoll
     }
 
-    /// nil = no active surface (backgrounded / no realtime tab visible).
+    /// Set the active surface. Pass `nil` when the app backgrounds or the
+    /// realtime tab is no longer visible; this cancels the polling loop to
+    /// avoid background timer wakeups. **After a nil, callers must invoke
+    /// `startLoop()` again when the surface becomes active** — `setSurface`
+    /// does not auto-restart the loop, because surface changes during an
+    /// active session (e.g. station swipes) must not cause task churn.
     func setSurface(_ newSurface: RealtimeSurface?) {
         surface = newSurface
         if newSurface == nil {
