@@ -8,7 +8,7 @@ import { CENEFAS } from './data/cenefas';
 import { buildStopIndex, type StopServiceHit } from './data/cenefas-types';
 import type { VehiclePosition } from './gtfs-rt';
 import { getDecodedFeed } from './realtime-handlers';
-import { loadStopSchedule, populateStopSchedule, travelTime, nextArrivals, type ScheduledArrival } from './gtfs-schedule';
+import { loadStopSchedule, populateStopSchedule, travelTime, nextArrivals, currentCDMXMinutes, type ScheduledArrival } from './gtfs-schedule';
 
 export function handleCenefas(): Response {
   return new Response(JSON.stringify(CENEFAS), {
@@ -205,7 +205,7 @@ export async function handleArrivals(request: Request, env: Env, ctx: ExecutionC
       try { arrivals = await populateStopSchedule(env, stopId); }
       catch { return []; }
     }
-    const nowMinutes = nowMinutesCDMX();
+    const nowMinutes = currentCDMXMinutes();
     return scheduleToFallbacks(nextArrivals(arrivals, nowMinutes, 20), hits, nowMinutes);
   };
 
@@ -234,23 +234,14 @@ export async function handleArrivals(request: Request, env: Env, ctx: ExecutionC
   return response;
 }
 
-function nowMinutesCDMX(): number {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: false,
-  });
-  const parts = fmt.formatToParts(new Date());
-  const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
-  const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
-  return h * 60 + m;
-}
-
 function arrivalsJson(data: unknown, status: number): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       ...CORS_HEADERS,
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': `public, max-age=${ARRIVALS_CACHE_TTL}`,
+      // Errors must never linger in client/CDN caches.
+      'Cache-Control': status === 200 ? `public, max-age=${ARRIVALS_CACHE_TTL}` : 'no-store',
     },
   });
 }

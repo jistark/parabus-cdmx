@@ -25,9 +25,15 @@ export interface ScheduledArrival {
   tripId: string;
   arrivalMinutes: number;
   sequence: number;
+  /** Direction the bus is heading (trips.txt trip_headsign) — "Tepalcates",
+   *  "Tacubaya", etc. Lets clients show per-platform arrivals instead of an
+   *  undifferentiated list. Null when trips.txt lacks it. */
+  headsign?: string | null;
 }
 
-const KV_STOP_PREFIX = 'gtfs:schedule:';
+// v2: arrivals now carry trip headsigns. Bumping the prefix forces a
+// rebuild instead of serving headsign-less v1 entries for up to 30h.
+const KV_STOP_PREFIX = 'gtfs:schedule:v2:';
 const KV_TTL_SECONDS = 30 * 60 * 60; // 30h — matches static GTFS refresh window
 
 /** Module-shared UTF-8 decoder for chunked stop_times.txt streaming. */
@@ -184,6 +190,22 @@ export async function populateStopSchedule(env: Env, stopId: string): Promise<Sc
   const arrivals = await streamFilterStop(stream, stopId);
   arrivals.sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 
+  // Attach direction headsigns from trips.txt — bounded: only the trips
+  // this stop actually sees (~hundreds), streamed the same way as
+  // stop_times. Non-fatal: a missing trips.txt just means null headsigns.
+  const tripsStream = extractZipFileStream(dl.bytes, 'trips.txt');
+  if (tripsStream) {
+    try {
+      const wanted = new Set(arrivals.map((a) => a.tripId));
+      const headsigns = await streamTripHeadsigns(tripsStream, wanted);
+      for (const arrival of arrivals) {
+        arrival.headsign = headsigns[arrival.tripId] ?? null;
+      }
+    } catch (err) {
+      console.error(`schedule: headsign extraction failed for ${stopId}:`, err);
+    }
+  }
+
   await env.METROBUS_CACHE.put(
     KV_STOP_PREFIX + stopId,
     JSON.stringify(arrivals),
@@ -239,6 +261,63 @@ export async function streamFilterStop(
   return out;
 }
 
+/**
+ * Stream-scan trips.txt collecting trip_headsign for the wanted trip ids
+ * only. Same bounded-memory discipline as `streamFilterStop`: one chunk +
+ * one in-progress line + the (small) result map.
+ *
+ * Exported for testing.
+ */
+export async function streamTripHeadsigns(
+  stream: ReadableStream<Uint8Array>,
+  wantedTripIds: Set<string>,
+): Promise<Record<string, string>> {
+  const reader = stream.getReader();
+  const decoder = TEXT_DECODER;
+  let buffer = '';
+  let cols: { trip: number; headsign: number } | null = null;
+  const out: Record<string, string> = {};
+
+  const processTripLine = (line: string): void => {
+    if (cols === null) return;
+    const parts = line.split(',');
+    const tripId = parts[cols.trip]?.trim();
+    if (!tripId || !wantedTripIds.has(tripId)) return;
+    const headsign = parts[cols.headsign]?.trim().replace(/^"|"$/g, '');
+    if (headsign) out[tripId] = headsign;
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (value) {
+      buffer += decoder.decode(value, { stream: true });
+      let eol: number;
+      while ((eol = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, eol).replace(/\r$/, '');
+        buffer = buffer.slice(eol + 1);
+        if (line.length === 0) continue;
+
+        if (cols === null) {
+          const header = line.split(',');
+          const trip = header.indexOf('trip_id');
+          const headsign = header.indexOf('trip_headsign');
+          if (trip < 0 || headsign < 0) {
+            throw new Error(`trips.txt: missing required columns (have: ${header.join(',')})`);
+          }
+          cols = { trip, headsign };
+          continue;
+        }
+        processTripLine(line);
+      }
+    }
+    if (done) break;
+  }
+  if (buffer.length > 0) {
+    processTripLine(buffer.replace(/\r$/, ''));
+  }
+  return out;
+}
+
 function parseHeaderLine(line: string): { trip: number; arrival: number; stop: number; seq: number } {
   const cols = line.split(',');
   const trip = cols.indexOf('trip_id');
@@ -280,7 +359,7 @@ function processLine(
 export async function handleSchedule(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const stopId = url.searchParams.get('stop');
-  const limit = Math.max(1, Math.min(10, parseInt(url.searchParams.get('limit') ?? '3', 10) || 3));
+  const limit = Math.max(1, Math.min(20, parseInt(url.searchParams.get('limit') ?? '3', 10) || 3));
 
   if (!stopId) {
     return jsonResponse({ error: 'stop query param required' }, 400);
@@ -417,7 +496,7 @@ function parseRow(
  * Current time in minutes from midnight in Mexico City local time. Uses the
  * `America/Mexico_City` timezone for correct DST handling.
  */
-function currentCDMXMinutes(): number {
+export function currentCDMXMinutes(): number {
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Mexico_City',
     hour: '2-digit',
