@@ -1,5 +1,6 @@
 # Xcode
 **/xcuserdata/
+build/
 *.xcodeproj/project.xcworkspace/xcshareddata/
 DerivedData/
 *.hmap
@@ -17,9 +18,13 @@ Package.resolved
 *.swp
 *~
 
+# PDF-page extraction intermediates (PNG siblings are the keepers)
+*.ppm
+
 # Secrets
 *.xcconfig
 !*.example.xcconfig
 
 # Claude Code local state
 .claude/
+
