@@ -44,6 +44,10 @@ import {
   handleTravelTime,
 } from './gtfs-schedule';
 
+import {
+  handleCenefas,
+} from './arrivals';
+
 // ============================================================================
 // Main Entry Point
 // ============================================================================
@@ -124,6 +128,9 @@ export default {
         case '/static/travel-time':
           return await handleTravelTime(request, env);
 
+        case '/static/cenefas':
+          return handleCenefas();
+
         case '/':
           return jsonResponse({
             name: 'Metrobus CDMX Status API',
@@ -138,6 +145,7 @@ export default {
               '/static/stops': 'GET — Stops catalog from daily GTFS',
               '/static/schedule': 'GET — Next arrivals at a stop. Query: ?stop=<id>&limit=N',
               '/static/travel-time': 'GET — Avg travel time between two stops. Query: ?from=A&to=B',
+              '/static/cenefas': 'GET — Official line services (cenefas) with stop sequences',
             },
           });
 
