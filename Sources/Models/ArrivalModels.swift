@@ -4,19 +4,19 @@ import Foundation
 /// Wire types for GET /arrivals — the worker derives all states; the app
 /// only decodes and displays. Spec: 2026-06-11 cenefas/arrivals data layer.
 
-enum ArrivalState: String, Decodable, Sendable {
+enum ArrivalState: String, Decodable, Sendable, Hashable {
     case arriving
     case eta
     case departed
     case scheduled
 }
 
-enum ArrivalSource: String, Decodable, Sendable {
+enum ArrivalSource: String, Decodable, Sendable, Hashable {
     case realtime
     case schedule
 }
 
-struct ArrivalRow: Decodable, Sendable, Equatable {
+struct ArrivalRow: Decodable, Sendable, Equatable, Hashable {
     let serviceId: String
     let line: String
     let destination: String
