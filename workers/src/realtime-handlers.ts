@@ -29,7 +29,7 @@ interface CachedFeedPayload {
  * ctx.waitUntil — cron-side callers (prewarmRealtime) don't have it so the
  * write awaits inline. HTTP request callers always pass it.
  */
-async function getDecodedFeed(env: Env, ctx?: ExecutionContext): Promise<CachedFeedPayload> {
+export async function getDecodedFeed(env: Env, ctx?: ExecutionContext): Promise<CachedFeedPayload> {
   const cache = caches.default;
   const cacheKey = new Request(FEED_CACHE_URL, { method: 'GET' });
 
