@@ -63,7 +63,8 @@ struct AlertCard: View {
         let seconds = max(0, Int(Date().timeIntervalSince(line.lastUpdated)))
         if seconds < 5 { return String(localized: "ahora") }
         if seconds < 60 { return String(localized: "hace \(seconds) s") }
-        return String(localized: "hace \(seconds / 60) min")
+        if seconds < 3600 { return String(localized: "hace \(seconds / 60) min") }
+        return String(localized: "hace \(seconds / 3600) h")
     }
 }
 
