@@ -106,4 +106,23 @@ describe('cenefa dataset ↔ GTFS cross-validation', () => {
       }
     }
   });
+
+  it('two-direction services start at the opposite terminal', () => {
+    for (const line of CENEFAS.lines) {
+      for (const service of line.services) {
+        if (service.directions.length !== 2) continue;
+        service.directions.forEach((dir, i) => {
+          const opposite = service.directions[1 - i]!.destination;
+          expect(dir.stops[0]!.name.toLowerCase()).toContain(opposite.toLowerCase().slice(0, 6));
+        });
+      }
+    }
+  });
+
+  it('L1 regular service has the full 46-station sequence per direction', () => {
+    const l1 = CENEFAS.lines.find((l) => l.line === '1')!.services.find((s) => s.id === 'L1-regular')!;
+    for (const dir of l1.directions) {
+      expect(dir.stops).toHaveLength(46);
+    }
+  });
 });

@@ -24,7 +24,8 @@ import type { CenefaDataset } from './cenefas-types';
  *     and the dotted variant ("Insurgentes.", "Indios Verdes L1.", …) is the
  *     northbound (Volta → Indios Verdes) platform. Each assignment was
  *     confirmed empirically via /static/schedule stop sequences (e.g.
- *     319cb7 → Ida seq 1; 244d59 → Volta seq 46; fa078b → Volta seq 1).
+ *     319cb7 → Ida seq 1; 244d59 → Volta seq 46; fa078b → Volta seq 1)
+ *     (stop_sequence in the GTFS trip, not array index).
  *   - trip_headsign in this feed is the vendor's "Ida"/"Volta" pair
  *     (outbound/return), NOT a destination name. Ida = toward El Caminero,
  *     Volta = toward Indios Verdes; route_id suffix -1 = Ida, -2 = Volta.
@@ -32,9 +33,13 @@ import type { CenefaDataset } from './cenefas-types';
  * gtfsRouteIds per direction: all L1 route variants whose trips terminate at
  * that direction's cenefa terminal (their stop sequences are contiguous
  * sub-slices of the full sequence, so positional derivation stays valid).
- * Variants terminating mid-line (e.g. 19492 indios verdes → dr. gálvez,
- * 19997 indios verdes → col. del valle) and interlínea routes are excluded
- * until they are curated as their own services.
+ * Variants whose trips do NOT reach this direction's cenefa terminal
+ * (short-turns that stop mid-line) are excluded (e.g. 19492 indios verdes →
+ * dr. gálvez, 19997 indios verdes → col. del valle). Variants that start
+ * mid-line but terminate at the cenefa terminal are included — their stop
+ * sequence is a suffix of the full sequence, so positional derivation remains
+ * valid. Interlínea routes are excluded until they are curated as their own
+ * services.
  */
 export const CENEFAS: CenefaDataset = {
   version: '2026-06-11',
