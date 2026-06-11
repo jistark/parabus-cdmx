@@ -63,7 +63,8 @@ export interface StopServiceHit {
   destination: string;
   gtfsRouteIds: string[];
   gtfsHeadsigns: string[];
-  stops: CenefaStop[];
+  /** Shared reference into the direction's sequence — never mutate. */
+  stops: readonly CenefaStop[];
 }
 
 /**
