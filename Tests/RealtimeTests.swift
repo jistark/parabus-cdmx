@@ -12,8 +12,13 @@ import Testing
 @Suite("Realtime", .serialized)
 struct RealtimeTests {
 
+    // RealtimeService only ever hits /static/routes — register/clear under
+    // that exact sub-path, not bare "/static". clearHandlers(path:) also
+    // wipes *recorded* URLs by prefix, so a bare "/static" clear here erases
+    // the /static/schedule recordings of GTFSScheduleServiceTests running in
+    // a parallel suite (flaky URL-construction assertions).
     private static let vehiclesPath = "/vehicles"
-    private static let staticPath = "/static"
+    private static let staticPath = "/static/routes"
 
     private static let emptyFeedJSON = """
     {
@@ -328,7 +333,7 @@ struct RealtimeTests {
         }
 
         private static let vehiclesPath = "/vehicles"
-        private static let staticPath = "/static"
+        private static let staticPath = "/static/routes"
         private static let emptyFeedJSON = RealtimeTests.emptyFeedJSON
         private static let sampleStaticRoutesJSON = RealtimeTests.sampleStaticRoutesJSON
     }
