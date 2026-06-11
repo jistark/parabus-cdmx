@@ -24,11 +24,13 @@ struct AlertCard: View {
             .padding(Layout.cardInset)
             .surface(.elevated, cornerRadius: Layout.cornerRadiusMedium, tint: statusColor)
             .overlay(
-                RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium)
+                RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium, style: .continuous)
                     .strokeBorder(statusColor.opacity(SurfaceOpacity.border), lineWidth: 1)
             )
+            .contentShape(RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(line.lineName), \(line.status.accessibilityLabel), \(relativeAge)")
         .accessibilityHint(String(localized: "Toca para ver el detalle de la línea"))
     }
 
@@ -55,10 +57,13 @@ struct AlertCard: View {
         }
     }
 
+    /// Manual age formatting — RelativeDateTimeFormatter renders a
+    /// just-fetched timestamp as the future-tense "dentro de 0 s".
     private var relativeAge: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: line.lastUpdated, relativeTo: Date())
+        let seconds = max(0, Int(Date().timeIntervalSince(line.lastUpdated)))
+        if seconds < 5 { return String(localized: "ahora") }
+        if seconds < 60 { return String(localized: "hace \(seconds) s") }
+        return String(localized: "hace \(seconds / 60) min")
     }
 }
 
