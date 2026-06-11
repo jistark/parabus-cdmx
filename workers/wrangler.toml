@@ -49,6 +49,28 @@ id = "b69bcf3d451e4515b06ab17eaf28eeeb"
 ENVIRONMENT = "production"
 
 # ============================================================================
+# Observability (Workers Logs — enabled with the paid plan, 2026-06-11)
+# ============================================================================
+# Dashboard-generated config translated from JSON. Logs persisted with full
+# sampling; traces declared but off. head_sampling_rate=1 keeps every request
+# while we learn the new endpoints' behavior — dial down if log volume costs.
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
+# ============================================================================
 # Required Secrets (set via `wrangler secret put`, NEVER commit values)
 # ============================================================================
 #   JDV_BOT_URL       — Base URL of jdv-bot (e.g. https://jdv-bot.onrender.com)
