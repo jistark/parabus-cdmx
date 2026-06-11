@@ -1,6 +1,6 @@
 // workers/src/arrivals.test.ts
 import { describe, it, expect } from 'vitest';
-import { handleCenefas } from './arrivals';
+import { handleCenefas, scheduleToFallbacks } from './arrivals';
 
 describe('GET /static/cenefas', () => {
   it('returns the dataset with version and 24h cache header', async () => {
@@ -124,5 +124,31 @@ describe('deriveArrivalRows', () => {
       NOW, NOW, hops, async () => [],
     );
     expect(rows[0]).toMatchObject({ state: 'arriving' });
+  });
+});
+
+describe('scheduleToFallbacks', () => {
+  it('maps GTFS headsigns to official destinations and minutes-from-now', () => {
+    const hits = index.get('S2N')!;
+    const out = scheduleToFallbacks(
+      [{ tripId: 'T1', arrivalMinutes: 610, sequence: 2, headsign: 'Norte' }],
+      hits,
+      600, // nowMinutes
+    );
+    expect(out).toEqual([{ destination: 'Norte', etaMinutes: 10 }]);
+  });
+
+  it('keeps only the earliest arrival per destination and drops unknown headsigns', () => {
+    const hits = index.get('S2N')!;
+    const out = scheduleToFallbacks(
+      [
+        { tripId: 'T1', arrivalMinutes: 620, sequence: 2, headsign: 'Norte' },
+        { tripId: 'T2', arrivalMinutes: 605, sequence: 2, headsign: 'Norte' },
+        { tripId: 'T3', arrivalMinutes: 606, sequence: 2, headsign: 'Mystery' },
+      ],
+      hits,
+      600,
+    );
+    expect(out).toEqual([{ destination: 'Norte', etaMinutes: 5 }]);
   });
 });

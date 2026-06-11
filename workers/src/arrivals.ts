@@ -3,10 +3,12 @@
  * arrival states. State derivation is pure (exported for testing); the
  * handlers stay thin, matching gtfs-schedule.ts house style.
  */
-import { CORS_HEADERS } from './types';
+import { type Env, CORS_HEADERS } from './types';
 import { CENEFAS } from './data/cenefas';
 import { buildStopIndex, type StopServiceHit } from './data/cenefas-types';
 import type { VehiclePosition } from './gtfs-rt';
+import { getDecodedFeed } from './realtime-handlers';
+import { loadStopSchedule, populateStopSchedule, travelTime, nextArrivals, type ScheduledArrival } from './gtfs-schedule';
 
 export function handleCenefas(): Response {
   return new Response(JSON.stringify(CENEFAS), {
@@ -145,4 +147,110 @@ function row(hit: StopServiceHit, state: ArrivalState, etaMinutes: number | null
     vehicleId,
     source: 'realtime',
   };
+}
+
+// ============================================================================
+// /arrivals handler + pure helpers
+// ============================================================================
+
+const ARRIVALS_CACHE_TTL = 20; // seconds — matches the feed TTL on purpose
+
+/**
+ * Map raw schedule arrivals to per-destination fallbacks using gtfsHeadsigns.
+ * Arrivals with no matching headsign in the cenefa dataset are silently dropped.
+ * When multiple trips serve the same destination, only the earliest eta is kept.
+ */
+export function scheduleToFallbacks(
+  arrivals: ScheduledArrival[],
+  hits: StopServiceHit[],
+  nowMinutes: number,
+): ScheduledFallback[] {
+  const byDestination = new Map<string, number>();
+  for (const a of arrivals) {
+    if (!a.headsign || a.arrivalMinutes < nowMinutes) continue;
+    const hit = hits.find((h) => h.gtfsHeadsigns.includes(a.headsign!));
+    if (!hit) continue;
+    const eta = a.arrivalMinutes - nowMinutes;
+    const existing = byDestination.get(hit.destination);
+    if (existing === undefined || eta < existing) byDestination.set(hit.destination, eta);
+  }
+  return [...byDestination.entries()].map(([destination, etaMinutes]) => ({ destination, etaMinutes }));
+}
+
+/** GET /arrivals?stop=<id> */
+export async function handleArrivals(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  const stopId = url.searchParams.get('stop');
+  if (!stopId) return arrivalsJson({ error: 'stop query param required' }, 400);
+
+  // Per-stop Cache-API, same pattern as the feed cache in realtime-handlers.
+  const cache = caches.default;
+  const cacheKey = new Request(`https://internal.parabus/arrivals?stop=${encodeURIComponent(stopId)}`);
+  const hit = await cache.match(cacheKey);
+  if (hit) return new Response(hit.body, hit);
+
+  const hits = stopIndex().get(stopId) ?? [];
+  const { feed } = await getDecodedFeed(env, ctx);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  const travelTimeLookup = async (from: string, to: string): Promise<number | null> => {
+    const [a, b] = await Promise.all([loadStopSchedule(env, from), loadStopSchedule(env, to)]);
+    if (!a || !b) return null; // don't trigger zip downloads on the eta path
+    return travelTime(a, b);
+  };
+
+  const scheduleLookup = async (): Promise<ScheduledFallback[]> => {
+    let arrivals = await loadStopSchedule(env, stopId);
+    if (arrivals === null) {
+      try { arrivals = await populateStopSchedule(env, stopId); }
+      catch { return []; }
+    }
+    const nowMinutes = nowMinutesCDMX();
+    return scheduleToFallbacks(nextArrivals(arrivals, nowMinutes, 20), hits, nowMinutes);
+  };
+
+  // feedTimestamp is number|null in DecodedFeed. When null (feed header missing
+  // timestamp), fall back to 0 — this makes feedAgeSeconds large and
+  // realtimeStale=true, which correctly forces all rows to scheduled-only.
+  // Conservative but honest: we never show stale realtime data as fresh.
+  const feedTimestamp = feed?.feedTimestamp ?? 0;
+  const rows = await deriveArrivalRows(
+    stopIndex(), stopId, feed?.vehicles ?? [], feedTimestamp, nowSeconds,
+    travelTimeLookup, scheduleLookup,
+  );
+
+  const body = {
+    serviceActive: feed !== null,
+    feedTimestamp: feed?.feedTimestamp ?? null,
+    feedAgeSeconds: feed ? Math.max(0, nowSeconds - feedTimestamp) : null,
+    realtimeStale: feed !== null && nowSeconds - feedTimestamp > FEED_STALE_SECONDS,
+    stop: stopId,
+    warning: hits.length === 0 ? 'stop not covered by cenefa dataset' : undefined,
+    rows,
+  };
+
+  const response = arrivalsJson(body, 200);
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  return response;
+}
+
+function nowMinutesCDMX(): number {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date());
+  const h = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
+  const m = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
+  return h * 60 + m;
+}
+
+function arrivalsJson(data: unknown, status: number): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': `public, max-age=${ARRIVALS_CACHE_TTL}`,
+    },
+  });
 }

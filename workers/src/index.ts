@@ -46,6 +46,7 @@ import {
 
 import {
   handleCenefas,
+  handleArrivals,
 } from './arrivals';
 
 // ============================================================================
@@ -116,6 +117,9 @@ export default {
         case '/etas':
           return await handleEtas(request, env, ctx);
 
+        case '/arrivals':
+          return await handleArrivals(request, env, ctx);
+
         case '/static/routes':
           return await handleStaticRoutes(env);
 
@@ -141,6 +145,7 @@ export default {
               '/vehicles': 'GET — Realtime vehicle positions. Query: ?line=1',
               '/trip/{trip_id}': 'GET — Single vehicle currently serving a trip',
               '/etas': 'GET — Vehicles approaching a stop. Query: ?stop=<id>',
+              '/arrivals': 'GET — Per-service arrival states at a stop. Query: ?stop=<id>',
               '/static/routes': 'GET — Routes catalog from daily GTFS',
               '/static/stops': 'GET — Stops catalog from daily GTFS',
               '/static/schedule': 'GET — Next arrivals at a stop. Query: ?stop=<id>&limit=N',
