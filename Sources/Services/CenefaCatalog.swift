@@ -101,7 +101,9 @@ actor CenefaCatalog {
     private func fetchRemote() async -> CenefaDataset? {
         let url = APIConfiguration.baseURL.appendingPathComponent("static/cenefas")
         var request = URLRequest(url: url)
-        request.timeoutInterval = 15
+        request.timeoutInterval = APIConfiguration.timeoutInterval
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Parabus-iOS/1.0", forHTTPHeaderField: "User-Agent")
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return try? JSONDecoder().decode(CenefaDataset.self, from: data)

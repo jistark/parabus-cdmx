@@ -68,3 +68,12 @@ struct ArrivalModelsTests {
         }
     }
 }
+
+@Suite("Arrivals service cache rule")
+struct ArrivalsServiceCacheTests {
+    @Test func cacheFreshWithin25Seconds() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        #expect(!ArrivalsService.isExpired(fetchedAt: now.addingTimeInterval(-24), now: now))
+        #expect(ArrivalsService.isExpired(fetchedAt: now.addingTimeInterval(-26), now: now))
+    }
+}
