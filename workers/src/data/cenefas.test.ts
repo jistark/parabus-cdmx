@@ -176,5 +176,41 @@ describe('cenefa dataset ↔ GTFS cross-validation', () => {
     const pantEast = ids('L4-pantitlan', 'Pantitlán');
     // Bellas Artes .. Archivo General de la Nación (9 platforms) are identical.
     expect(pantEast.slice(1, 10)).toEqual(norteEast.slice(5, 14));
+    // Alameda Oriente eastbound shared segment equals the Ruta Norte slice.
+    const alamedaEast = ids('L4-alameda-oriente', 'Alameda Oriente');
+    expect(alamedaEast.slice(1, 10)).toEqual(norteEast.slice(5, 14));
+  });
+
+  it('L2 one-way couplet direction-locks: Volta-only stops absent from Tacubaya (Ida)', () => {
+    const l2 = CENEFAS.lines.flatMap((l) => l.services).find((s) => s.id === 'L2-regular')!;
+    const idaIds = new Set(l2.directions.find((d) => d.destination === 'Tacubaya')!.stops.map((s) => s.stopId));
+    expect(idaIds.has('f8578e')).toBe(false); // Antonio Maceo
+    expect(idaIds.has('f857aa')).toBe(false); // Del Moral
+    expect(idaIds.has('f85791')).toBe(false); // Canal de San Juan
+    expect(idaIds.has('f85846')).toBe(false); // Nicolás Bravo
+  });
+
+  it('L2 one-way couplet direction-locks: Ida-only stops absent from Tepalcates (Volta)', () => {
+    const l2 = CENEFAS.lines.flatMap((l) => l.services).find((s) => s.id === 'L2-regular')!;
+    const voltaIds = new Set(l2.directions.find((d) => d.destination === 'Tepalcates')!.stops.map((s) => s.stopId));
+    expect(voltaIds.has('f857d6')).toBe(false); // Parque Lira
+    expect(voltaIds.has('f85854')).toBe(false); // Río Frío
+    expect(voltaIds.has('f85749')).toBe(false); // Gral. Antonio de León
+  });
+
+  it('L6 one-way couplet direction-locks', () => {
+    const l6 = CENEFAS.lines.flatMap((l) => l.services).find((s) => s.id === 'L6-regular')!;
+    const rosarioIds = new Set(l6.directions.find((d) => d.destination === 'El Rosario')!.stops.map((s) => s.stopId));
+    const aragonIds = new Set(l6.directions.find((d) => d.destination === 'Villa de Aragón')!.stops.map((s) => s.stopId));
+    expect(rosarioIds.has('f8577b')).toBe(false); // 482 Ote — Volta-only, absent from El Rosario direction
+    expect(aragonIds.has('f8580f')).toBe(false);  // Volcán de Fuego — Ida-only, absent from Villa de Aragón direction
+  });
+
+  it('L7 one-way couplet direction-locks', () => {
+    const l7 = CENEFAS.lines.flatMap((l) => l.services).find((s) => s.id === 'L7-regular')!;
+    const campoIds = new Set(l7.directions.find((d) => d.destination === 'Campo Marte')!.stops.map((s) => s.stopId));
+    const indiosIds = new Set(l7.directions.find((d) => d.destination === 'Indios Verdes')!.stops.map((s) => s.stopId));
+    expect(campoIds.has('f857b3')).toBe(false);  // Gustavo A. Madero — Volta-only, absent from Campo Marte direction
+    expect(indiosIds.has('f857c1')).toBe(false); // De los Misterios L7 — Ida-only, absent from Indios Verdes direction
   });
 });

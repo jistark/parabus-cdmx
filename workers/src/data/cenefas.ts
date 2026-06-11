@@ -105,7 +105,8 @@ import type { CenefaDataset } from './cenefas-types';
  *   - Glorieta Cuitláhuac is two physical stations southbound (Nte b315cb,
  *     then Sur b46d55); northbound uses the single dotted "Sur." (b315d3).
  *   - Gustavo A. Madero exists only as the dotted northbound stop (f857b3);
- *     southbound through-trips run Indios Verdes → De los Misterios direct.
+ *     southbound through-trips run Indios Verdes → De los Misterios direct
+ *     (without stopping at Gustavo A. Madero).
  *   - The Hospital Infantil La Villa / De los Misterios couplet: southbound
  *     serves De los Misterios L7 (f857c1); Hospital Infantil L7 (f8578f) is
  *     only the origin/terminus of short-turn variants (19578/19579/19956),
