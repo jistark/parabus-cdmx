@@ -220,12 +220,12 @@ describe('cenefa dataset ↔ GTFS cross-validation', () => {
     });
   });
 
-  it('interlínea L2/L7 service exists, spans both lines, and shares stops with L2', () => {
+  it('interlínea L2/L7 service exists and spans both lines', () => {
     const inter = CENEFAS.lines
       .flatMap((l) => l.services)
       .find((s) => s.type === 'interlinea');
     expect(inter).toBeDefined();
-    expect(inter!.lines.sort()).toEqual(['2', '7']);
+    expect([...inter!.lines].sort()).toEqual(['2', '7']);
   });
 
   it('aeropuerto service exists', () => {
