@@ -15,7 +15,7 @@ describe('GET /static/cenefas', () => {
 
 import { deriveArrivalRows, VEHICLE_STALE_SECONDS, FEED_STALE_SECONDS } from './arrivals';
 import { buildStopIndex } from './data/cenefas-types';
-import { SYNTH } from './data/cenefas.test';
+import { SYNTH } from './data/cenefas-fixtures';
 import type { VehiclePosition } from './gtfs-rt';
 
 const NOW = 1_750_000_000; // unix seconds, arbitrary fixed
