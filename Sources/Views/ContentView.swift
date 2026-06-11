@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -7,16 +8,34 @@ struct ContentView: View {
     @Environment(MetrobusViewModel.self) private var viewModel
     @State private var selectedLine: LineStatus?
 
-    @AppStorage("favoriteLines") private var favoriteLines: String = "1,2,3"
+    /// Location for the "Ahora" card. The home never prompts — it only
+    /// requests a fix when permission was already granted (the map view
+    /// owns the pre-prompt flow).
+    @State private var locationCoordinator = LocationCoordinator()
+    @State private var homeVM = HomeViewModel()
+    @State private var showingSettings = false
+    @State private var showingStationDetail = false
+    @Namespace private var heroNamespace
+
+    @AppStorage(ParabusConstants.favoriteLinesKey, store: ParabusConstants.sharedDefaults)
+    private var favoriteLines: String = ParabusConstants.defaultFavoriteLines
+    @AppStorage("homeLineFilter") private var homeLineFilter = "favorites"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var favoriteLinesArray: [String] {
-        favoriteLines.split(separator: ",").map(String.init)
+        FavoriteLines.parse(favoriteLines)
     }
 
     /// True when showing skeleton (first load with no cached data)
     private var showSkeleton: Bool {
         viewModel.lines.isEmpty && viewModel.isLoading && !viewModel.hasError
+    }
+
+    /// Stale data indicator: upstream flagged its response as cached/partial,
+    /// or the last refresh failed while showing cached data.
+    private var showsStaleWarning: Bool {
+        viewModel.isStale || viewModel.sourceWarning != nil
     }
 
     var body: some View {
@@ -41,10 +60,42 @@ struct ContentView: View {
                 await viewModel.refresh()
             }
             .task {
+                if locationCoordinator.authStatus == .authorized {
+                    locationCoordinator.requestLocation()
+                }
+                homeVM.resolveDeck(userCoordinate: locationCoordinator.latestLocation, favoriteLines: favoriteLinesArray)
+                await homeVM.loadServiceColors()
+                await homeVM.activate()
                 await viewModel.loadStatus()
             }
+            .onChange(of: locationCoordinator.latestLocation) { _, _ in
+                homeVM.resolveDeck(userCoordinate: locationCoordinator.latestLocation, favoriteLines: favoriteLinesArray)
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                Task {
+                    if newPhase == .active { await homeVM.activate() }
+                    else { await homeVM.deactivate() }
+                }
+            }
+            .onDisappear { Task { await homeVM.deactivate() } }
             .sheet(item: $selectedLine) { line in
                 LineDetailSheet(line: line)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showingStationDetail) {
+                if let entry = homeVM.visibleEntry {
+                    StationDetailSheet(
+                        station: entry.station,
+                        lineStatus: lineStatus(for: entry.station)
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .modifier(ZoomFromHero(id: "nowCard", namespace: heroNamespace))
+                }
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
@@ -59,11 +110,50 @@ struct ContentView: View {
     // switcher still pick up "Parabús" with normal pronunciation.
 
     private var heroHeader: some View {
-        HStack {
+        HStack(spacing: Spacing.sm) {
+            Button {
+                showingSettings = true
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44, alignment: .leading)
+            }
+            .accessibilityLabel(String(localized: "Ajustes"))
+
             Text("PARABÚS")
                 .brandTitle(BrandTypography.displayLarge)
-                .accessibilityHidden(true)   // navigationTitle reads instead
+                // VoiceOver: the title announces the network state up front
+                // ("Parabús. 2 líneas con incidentes") while the gear stays
+                // a separately reachable element.
+                .accessibilityLabel(Text("Parabús. \(viewModel.statusSummary)"))
+                .accessibilityAddTraits(.isHeader)
+
             Spacer()
+
+            if viewModel.isRefreshing {
+                RefreshingIndicator()
+            } else if let description = viewModel.lastUpdatedDescription {
+                // Warning tint when the data is stale (upstream served
+                // cache, refresh failed, or cache aged out) — the
+                // timestamp itself is the staleness signal.
+                HStack(spacing: 4) {
+                    if showsStaleWarning {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                    }
+                    Text(description)
+                        .monospacedDigit()
+                }
+                .font(.caption)
+                .foregroundStyle(showsStaleWarning ? StatusColors.warning : Color.secondary)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    showsStaleWarning
+                        ? "Datos desactualizados. \(description)"
+                        : description
+                )
+            }
         }
         .padding(.horizontal, Layout.screenMargin)
         .padding(.top, Spacing.xs)
@@ -82,25 +172,65 @@ struct ContentView: View {
             VStack(spacing: Layout.sectionSpacing) {
                 heroHeader
 
-                // 1. Lines Carousel (all lines at a glance)
+                // 1. "Ahora": the swipeable station deck — the station the
+                // traveler needs right now (plus commute stations), with
+                // next arrivals. Fills the answer-shaped hole the home had
+                // when service was all-normal. Cards pad inside the pager.
+                if !homeVM.deck.isEmpty {
+                    NowDeck(deck: homeVM.deck, visibleIndex: Binding(
+                        get: { homeVM.visibleIndex },
+                        set: { newValue in
+                            homeVM.visibleIndex = newValue
+                            Task { await homeVM.visibleCardChanged() }
+                        }
+                    )) { entry in
+                        Button {
+                            triggerHaptic()
+                            showingStationDetail = true
+                        } label: {
+                            StationNowCard(
+                                station: entry.station,
+                                source: entry.source,
+                                distanceMeters: distanceMeters(to: entry.station),
+                                commute: entry.id == homeVM.deck.first?.id ? homeVM.commuteContext : nil,
+                                lineStatus: lineStatus(for: entry.station)?.status,
+                                liveRows: homeVM.legacyStations.contains(entry.id)
+                                    ? nil
+                                    : homeVM.arrivals[entry.id]?.rows,
+                                serviceColors: homeVM.serviceColors
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(String(localized: "Ver todas las llegadas"))
+                    }
+                    .matchedTransitionSource(id: "nowCard", in: heroNamespace)
+                }
+
+                // 2. Lines Carousel — "Tus líneas" by default, switchable to
+                // all lines via the header menu (timestamp moved to the hero
+                // header).
                 VStack(alignment: .leading, spacing: Layout.inlineSpacing) {
                     HStack {
-                        Text("Líneas")
-                            .brandTitle(BrandTypography.lineLabel)
-                        Spacer()
-
-                        if viewModel.isRefreshing {
-                            RefreshingIndicator()
-                        } else if let description = viewModel.lastUpdatedDescription {
-                            Text(description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
+                        Menu {
+                            Picker("Filtro", selection: $homeLineFilter) {
+                                Text("Tus líneas").tag("favorites")
+                                Text("Todas las líneas").tag("all")
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(homeLineFilter == "favorites" ? "Tus líneas" : "Todas las líneas")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        Spacer()
                     }
                     .padding(.horizontal, Layout.screenMargin)
 
-                    LinesCarousel(lines: viewModel.allLines) { line in
+                    LinesCarousel(lines: carouselLines) { line in
                         triggerHaptic()
                         selectedLine = line
                     }
@@ -120,23 +250,52 @@ struct ContentView: View {
                 if viewModel.hasMaintenanceToday {
                     scheduledClosuresSection
                 }
+
+                // 5. All clear: when nothing above rendered, say so instead
+                // of trailing off into empty space.
+                if urgentIncidents.isEmpty && interventionIncidents.isEmpty && !viewModel.hasMaintenanceToday {
+                    AllClearBanner(
+                        title: String(localized: "Todo bien"),
+                        message: String(localized: "Sin incidentes al momento")
+                    )
+                }
             }
             .padding(.vertical, Layout.cardInset)
         }
+        // Without this, a content set shorter than the viewport (e.g. a day
+        // with zero incidents) doesn't bounce, so pull-to-refresh never
+        // engages and its spinner never appears.
+        .scrollBounceBehavior(.always, axes: .vertical)
         .animation(
             reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8),
             value: viewModel.lines.map(\.id)
         )
     }
 
+    // MARK: - Lines Carousel Filter
+
+    /// Carousel content for the "Tus líneas" / "Todas las líneas" toggle.
+    /// Falls back to all lines whenever the favorites filter would yield an
+    /// empty section.
+    private var carouselLines: [LineStatus] {
+        guard homeLineFilter == "favorites", !favoriteLinesArray.isEmpty else {
+            return viewModel.allLines
+        }
+        let favorites = FavoriteLines.asSet(favoriteLines)
+        let filtered = viewModel.allLines.filter { favorites.contains($0.lineNumber) }
+        return filtered.isEmpty ? viewModel.allLines : filtered // never an empty section
+    }
+
     // MARK: - Incident Categories
 
-    /// Lines with urgent real-time issues (delays, suspensions) - filtered by favorites
+    /// Lines with urgent real-time issues (delays, suspensions) - filtered
+    /// by favorites, most severe first (shared severity ordering).
     private var urgentIncidents: [LineStatus] {
-        viewModel.linesWithIssues
-            .filter { favoriteLinesArray.contains($0.lineNumber) }
-            .filter { $0.status == .delayed || $0.status == .suspended || $0.status == .protest }
-            .sorted { $0.status > $1.status }
+        IncidentGrouping.grouped(
+            viewModel.linesWithIssues
+                .filter { favoriteLinesArray.contains($0.lineNumber) }
+                .filter { $0.status == .delayed || $0.status == .suspended || $0.status == .protest }
+        )
     }
 
     /// Lines with station interventions (maintenance/obras) - filtered by favorites
@@ -160,10 +319,10 @@ struct ContentView: View {
             }
             .padding(.horizontal, Layout.screenMargin)
 
-            // Alert banners
+            // Alert cards (full story with zero taps)
             VStack(spacing: Spacing.xs) {
                 ForEach(urgentIncidents) { line in
-                    IncidentAlertBanner(line: line) {
+                    AlertCard(line: line) {
                         triggerHaptic()
                         selectedLine = line
                     }
@@ -186,10 +345,10 @@ struct ContentView: View {
             }
             .padding(.horizontal, Layout.screenMargin)
 
-            // Intervention banners
+            // Intervention cards
             VStack(spacing: Spacing.xs) {
                 ForEach(interventionIncidents) { line in
-                    IncidentAlertBanner(line: line) {
+                    AlertCard(line: line) {
                         triggerHaptic()
                         selectedLine = line
                     }
@@ -251,6 +410,20 @@ struct ContentView: View {
         }
     }
 
+    /// Real-time status for the line serving a station.
+    private func lineStatus(for station: GTFSStation) -> LineStatus? {
+        viewModel.allLines.first { $0.lineNumber == station.lineNumber }
+    }
+
+    private func distanceMeters(to station: GTFSStation) -> Double? {
+        guard let coordinate = locationCoordinator.latestLocation else { return nil }
+        return CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            .distance(from: CLLocation(
+                latitude: station.coordinate.latitude,
+                longitude: station.coordinate.longitude
+            ))
+    }
+
     // MARK: - Haptic Feedback
 
     private func triggerHaptic() {
@@ -273,7 +446,7 @@ struct ContentView: View {
 
     private var emptyView: some View {
         ContentUnavailableView {
-            Label("Sin informacion", systemImage: "tray")
+            Label("Sin información", systemImage: "tray")
         } description: {
             Text("No hay datos de servicio disponibles.\nDesliza hacia abajo para actualizar.")
         } actions: {
@@ -290,9 +463,9 @@ struct ContentView: View {
 
     private var errorView: some View {
         ContentUnavailableView {
-            Label("Sin conexion", systemImage: "wifi.slash")
+            Label("Sin conexión", systemImage: "wifi.slash")
         } description: {
-            Text("No pudimos obtener el estado del servicio.\nVerifica tu conexion a internet.")
+            Text("No pudimos obtener el estado del servicio.\nVerifica tu conexión a internet.")
         } actions: {
             Button {
                 Task { await viewModel.loadStatus() }
@@ -301,6 +474,21 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
         }
+    }
+}
+
+/// Zoom transition from the hero card (iOS-only API; no-op on the SwiftPM
+/// macOS test target).
+private struct ZoomFromHero: ViewModifier {
+    let id: String
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.navigationTransition(.zoom(sourceID: id, in: namespace))
+        #else
+        content
+        #endif
     }
 }
 
