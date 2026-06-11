@@ -53,8 +53,19 @@ import type { CenefaDataset } from './cenefas-types';
  *   (→ Tepalcates). All other stations share one stop both directions.
  *   "Rojo Gómez." (34b450) is the L21 interlínea berth, NOT an L2 platform
  *   (L21c21 rojo gómez ↔ dr. gálvez trips start/end there); L2 uses f8579f
- *   both ways. L72 interlínea trips also traverse L2 stops — note their
- *   vendor headsigns are oriented to the L72 route, not to L2.
+ *   both ways. The L72 interlínea (curated below as
+ *   L2L7-tacubaya-cuitlahuac) shares NO L2 platform: it uses its own
+ *   Alameda Tacubaya (ba0966) and De la Salle L72 (0b47bb/f7f029) berths
+ *   beside the L2 corridor — verified in stop_times 2026-06-11.
+ *
+ *   Vendor interlínea route families (GTFS color 42A76B), decoded from
+ *   routes.txt + trips 2026-06-11: the prefix is "L<line><other line>" —
+ *   L21c21 (19983/19984) = interlínea L2/L1 rojo gómez ↔ dr. gálvez;
+ *   L31a31 (20295/20296) = interlínea L3/L1 indios verdes ↔ pueblo sta.
+ *   cruz atoyac; L72h72/h73 (20263/20264, 20439/20440) = interlínea L7/L2
+ *   alameda tacubaya ↔ parís / glorieta cuitláhuac. Only the L72 corridor
+ *   is an official published service (servicioL2L7); L21/L31 remain
+ *   uncurated.
  *
  * Línea 3 — Eje 1 Poniente (Tenayuca ↔ Pueblo Sta. Cruz Atoyac),
  * ME_L3_2022.pdf prints 38 stations, but current GTFS through-trips skip
@@ -71,8 +82,9 @@ import type { CenefaDataset } from './cenefas-types';
  * Línea 4 — Centro Histórico (ME_Linea4C_BO_2024 map) is FOUR services, not
  * directions: Ruta Norte (Buenavista ↔ San Lázaro Pte, route e08), Ruta Sur
  * (Buenavista ↔ San Lázaro Ote, route e02), Ruta Pantitlán (Hidalgo ↔
- * Pantitlán, e04) and Ruta Alameda Oriente (Hidalgo ↔ Alameda Ote, e05).
- * Ruta Aeropuerto (27054–27057) is excluded (next task). Notes:
+ * Pantitlán, e04) and Ruta Alameda Oriente (Hidalgo ↔ Alameda Ote, e05),
+ * plus the Ruta Aeropuerto curated as the fifth service (see its own
+ * comment block below). Notes:
  *   - trip_headsign orientation is PER ROUTE: on e02/e08 Ida = eastbound,
  *     while on e04/e05 Ida = westbound (toward Hidalgo) — the eastbound
  *     Pantitlán/Alameda trips carry headsign "Volta".
@@ -117,7 +129,7 @@ import type { CenefaDataset } from './cenefas-types';
  *     full-line trips use the Amajac ids, so those are used here.
  */
 export const CENEFAS: CenefaDataset = {
-  version: '2026-06-11b',
+  version: '2026-06-11c',
   lines: [
     {
       line: '1',
@@ -343,6 +355,95 @@ export const CENEFAS: CenefaDataset = {
           ],
           // App LineColors.line2 — PANTONE 2602 C (Sources/Theme/DesignTokens.swift).
           style: { colors: ['#87189D'] },
+        },
+        {
+          // Interlínea L2/L7 — "Servicio Alameda Tacubaya – Glorieta
+          // Cuitláhuac" (metrobus.cdmx.gob.mx/servicioL2L7 +
+          // Mapa_Tacubaya_Paris.pdf): support service introduced during the
+          // Metro L1 modernization, extending the original Alameda
+          // Tacubaya – París route. From the dedicated Alameda Tacubaya
+          // berth (ba0966, beside L2's Tacubaya terminal) it climbs the
+          // Circuito Interior to Chapultepec and then runs the full L7
+          // Reforma corridor to Glorieta Cuitláhuac.
+          //
+          // Platforms (verified in stop_times 2026-06-11): Alameda Tacubaya
+          // and the "De la Salle L72(.)" berths (0b47bb/f7f029) are
+          // exclusive to this service — no L2 platform is shared. From
+          // Chapultepec onward every platform is shared with L7-regular
+          // (dotted ids toward Glorieta Cuitláhuac = L7 northbound; base
+          // ids on the return = L7 southbound). Deviations from L7-regular:
+          //   - It calls at the "Glorieta de Colón L7(.)" ids
+          //     (f8583d/f85793) instead of the Amajac ids — the same
+          //     physical station, which both the L7 cenefa and the official
+          //     extension map print as AMAJAC, so that name is used here.
+          //   - Northbound it terminates at the dotted "Glorieta Cuitláhuac
+          //     Sur." (b315d3, the L7 northbound platform); the return
+          //     departs the base "Glorieta Cuitláhuac Sur" (b46d55).
+          // Headsign quirk (per-route orientation, like L4 e04/e05): route
+          // suffix -1 (20439, → Glorieta Cuitláhuac) carries headsign
+          // "Volta" and -2 (20440/20263, → Alameda Tacubaya) carries "Ida".
+          id: 'L2L7-tacubaya-cuitlahuac',
+          type: 'interlinea',
+          lines: ['2', '7'],
+          directions: [
+            {
+              destination: 'Glorieta Cuitláhuac',
+              // 20439 = L72h73-1 alameda tacubaya - glorieta cuitláhuac sur. (full)
+              // 20264 = L72h72-1 alameda tacubaya - parís is excluded: it
+              //   short-turns mid-line and never reaches the cenefa terminal.
+              gtfsRouteIds: ['20439'],
+              gtfsHeadsigns: ['Volta'],
+              stops: [
+                { stopId: 'ba0966', name: 'Alameda Tacubaya', pictogram: 'alameda-tacubaya' },
+                { stopId: '0b47bb', name: 'De la Salle', pictogram: 'de-la-salle' },
+                { stopId: 'f85775', name: 'Chapultepec', pictogram: 'chapultepec' },
+                { stopId: 'f8582a', name: 'La Diana', pictogram: 'la-diana' },
+                { stopId: 'f857a4', name: 'El Ángel', pictogram: 'el-angel' },
+                { stopId: 'aefdfc', name: 'El Ahuehuete', pictogram: 'el-ahuehuete' },
+                { stopId: 'f8578b', name: 'Hamburgo', pictogram: 'hamburgo' },
+                { stopId: 'f85790', name: 'Reforma', pictogram: 'reforma' },
+                { stopId: 'f85803', name: 'París', pictogram: 'paris' },
+                { stopId: 'f8583d', name: 'Amajac', pictogram: 'amajac' },
+                { stopId: 'f8580e', name: 'El Caballito', pictogram: 'el-caballito' },
+                { stopId: 'f8578a', name: 'Hidalgo', pictogram: 'hidalgo' },
+                { stopId: 'f857ee', name: 'Glorieta Violeta', pictogram: 'glorieta-violeta' },
+                { stopId: 'f85769', name: 'Garibaldi / Lagunilla', pictogram: 'garibaldi-lagunilla' },
+                { stopId: 'b315d3', name: 'Glorieta Cuitláhuac', pictogram: 'glorieta-cuitlahuac' },
+              ],
+            },
+            {
+              destination: 'Alameda Tacubaya',
+              // 20440 = L72h73-2 glorieta cuitláhuac sur - alameda tacubaya (full)
+              // 20263 = L72h72-2 parís - alameda tacubaya: its sequence is a
+              //   suffix of the full sequence and terminates at the cenefa
+              //   terminal — included per the route-inclusion rule.
+              gtfsRouteIds: ['20440', '20263'],
+              gtfsHeadsigns: ['Ida'],
+              stops: [
+                { stopId: 'b46d55', name: 'Glorieta Cuitláhuac', pictogram: 'glorieta-cuitlahuac' },
+                { stopId: 'f85800', name: 'Garibaldi / Lagunilla', pictogram: 'garibaldi-lagunilla' },
+                { stopId: 'f8575e', name: 'Glorieta Violeta', pictogram: 'glorieta-violeta' },
+                { stopId: 'f85833', name: 'Hidalgo', pictogram: 'hidalgo' },
+                { stopId: 'f85785', name: 'El Caballito', pictogram: 'el-caballito' },
+                { stopId: 'f85793', name: 'Amajac', pictogram: 'amajac' },
+                { stopId: 'f857c5', name: 'París', pictogram: 'paris' },
+                { stopId: 'f85754', name: 'Reforma', pictogram: 'reforma' },
+                { stopId: 'f85743', name: 'Hamburgo', pictogram: 'hamburgo' },
+                { stopId: '749a60', name: 'El Ahuehuete', pictogram: 'el-ahuehuete' },
+                { stopId: 'f85780', name: 'El Ángel', pictogram: 'el-angel' },
+                { stopId: 'f8580a', name: 'La Diana', pictogram: 'la-diana' },
+                { stopId: 'f85751', name: 'Chapultepec', pictogram: 'chapultepec' },
+                { stopId: 'f7f029', name: 'De la Salle', pictogram: 'de-la-salle' },
+                { stopId: 'ba0966', name: 'Alameda Tacubaya', pictogram: 'alameda-tacubaya' },
+              ],
+            },
+          ],
+          // Both lines' identities, L2 first then L7 — app LineColors.line2
+          // + line7 (Sources/Theme/DesignTokens.swift).
+          style: {
+            colors: ['#87189D', '#046A38'],
+            notes: 'Interlínea Alameda Tacubaya – Glorieta Cuitláhuac',
+          },
         },
       ],
     },
@@ -670,6 +771,95 @@ export const CENEFAS: CenefaDataset = {
             },
           ],
           style: { colors: ['#FE5000'], notes: 'Ruta Alameda Oriente' },
+        },
+        {
+          // Ruta Aeropuerto — official "Ruta Amajac - Aeropuerto T1 Y T2",
+          // aka Ruta Quetzalcóatl (metrobus.cdmx.gob.mx/ruta-aeropuerto):
+          // dedicated electric buses from Amajac on Paseo de la Reforma to
+          // AICM. Placed under line '4' because it IS an L4 service
+          // operationally: vendor route ids L04e10/e11, GTFS lineRoutes
+          // maps 27054–27057 to line "4", and the official page presents it
+          // as part of Línea 4 — so lines: ['4'] and the app's L4 identity
+          // #FE5000 (DesignTokens even names line4 "Buenavista-Aeropuerto").
+          //
+          // Trip patterns verified in stop_times 2026-06-11:
+          //   - L04e10 (27054 → AICM "Ida" / 27055 → Amajac "Volta"),
+          //     ~453 trips/day each — the published Amajac ↔ AICM service
+          //     modeled here.
+          //   - L04e11 (27056/27057, ~25/28 trips/day) is a limited-hour
+          //     Buenavista extension. EXCLUDED: its sequences extend BEYOND
+          //     the cenefa arrays (4 extra stops Buenavista ↔ Plaza de la
+          //     República), i.e. they are super-sequences, not contiguous
+          //     sub-slices, so positional derivation cannot place their
+          //     pre-Amajac portion (and 27057 also skips the ef2555 berth).
+          //   - T1/T2 are NOT branches: outbound trips end at Terminal 1;
+          //     the return serves the two Terminal 2 berths (ef2555 drop-off
+          //     then f857c3, both printed TERMINAL 2) right after departing
+          //     T1, then heads back to the city — one service, two
+          //     directions, no extra branching needed.
+          // Corridor sharing: outbound equals L4 Ruta Sur eastbound from
+          // Amajac (605459 …) plus the airport leg; the return runs the
+          // Ruta Sur westbound couplet but enters the city via "San Lázaro
+          // L4 Pte" (f857d8, the Ruta Norte platform) instead of Ote.
+          id: 'L4-aeropuerto',
+          type: 'aeropuerto',
+          lines: ['4'],
+          directions: [
+            {
+              destination: 'Amajac',
+              // 27055 = L04e10-2 aicm - amajac
+              gtfsRouteIds: ['27055'],
+              gtfsHeadsigns: ['Volta'],
+              stops: [
+                { stopId: 'f85770', name: 'Aeropuerto Terminal 1', pictogram: 'aeropuerto-terminal-1' },
+                { stopId: 'ef2555', name: 'Aeropuerto Terminal 2', pictogram: 'aeropuerto-terminal-2' },
+                { stopId: 'f857c3', name: 'Aeropuerto Terminal 2', pictogram: 'aeropuerto-terminal-2' },
+                { stopId: 'f857d8', name: 'San Lázaro', pictogram: 'san-lazaro' },
+                { stopId: 'f85852', name: 'Ing. Eduardo Molina', pictogram: 'ing-eduardo-molina' },
+                { stopId: 'f8582e', name: 'Hospital Balbuena', pictogram: 'hospital-balbuena' },
+                { stopId: 'f85847', name: 'Cecilio Robelo', pictogram: 'cecilio-robelo' },
+                { stopId: 'f85855', name: 'Mercado Sonora Sur', pictogram: 'mercado-sonora-sur' },
+                { stopId: 'b50ecd', name: 'San Pablo', pictogram: 'san-pablo' },
+                { stopId: '80cd40', name: 'Pino Suárez Sur', pictogram: 'pino-suarez-sur' },
+                { stopId: '0c8439', name: '20 de Noviembre', pictogram: '20-de-noviembre' },
+                { stopId: 'f85798', name: 'Isabel la Católica', pictogram: 'isabel-la-catolica' },
+                { stopId: 'f85745', name: 'El Salvador', pictogram: 'el-salvador' },
+                { stopId: 'f857d5', name: 'Eje Central', pictogram: 'eje-central' },
+                { stopId: 'f85850', name: 'Mercados de San Juan', pictogram: 'mercados-de-san-juan' },
+                { stopId: 'f8583a', name: 'Juárez', pictogram: 'juarez' },
+                { stopId: 'f857f0', name: 'Vocacional 5', pictogram: 'vocacional-5' },
+                { stopId: '80cc0b', name: 'Defensoría Pública', pictogram: 'defensoria-publica' },
+                { stopId: 'aefe05', name: 'Amajac', pictogram: 'amajac' },
+              ],
+            },
+            {
+              destination: 'Aeropuerto T1 y T2',
+              // 27054 = L04e10-1 amajac - aicm
+              gtfsRouteIds: ['27054'],
+              gtfsHeadsigns: ['Ida'],
+              stops: [
+                { stopId: '605459', name: 'Amajac', pictogram: 'amajac' },
+                { stopId: 'f85853', name: 'Defensoría Pública', pictogram: 'defensoria-publica' },
+                { stopId: 'f8577a', name: 'Vocacional 5', pictogram: 'vocacional-5' },
+                { stopId: 'f857a8', name: 'Juárez', pictogram: 'juarez' },
+                { stopId: 'f857a6', name: 'Mercados de San Juan', pictogram: 'mercados-de-san-juan' },
+                { stopId: 'f8585b', name: 'Eje Central', pictogram: 'eje-central' },
+                { stopId: 'f857e0', name: 'El Salvador', pictogram: 'el-salvador' },
+                { stopId: 'f857bc', name: 'Isabel la Católica', pictogram: 'isabel-la-catolica' },
+                { stopId: 'f857a3', name: 'Museo de la Ciudad', pictogram: 'museo-de-la-ciudad' },
+                { stopId: 'f8577f', name: 'Pino Suárez', pictogram: 'pino-suarez' },
+                { stopId: 'f85766', name: 'Las Cruces', pictogram: 'las-cruces' },
+                { stopId: 'f85826', name: 'La Merced', pictogram: 'la-merced' },
+                { stopId: 'f857f2', name: 'Mercado Sonora', pictogram: 'mercado-sonora' },
+                { stopId: 'f857b6', name: 'Cecilio Robelo', pictogram: 'cecilio-robelo' },
+                { stopId: 'f85852', name: 'Ing. Eduardo Molina', pictogram: 'ing-eduardo-molina' },
+                { stopId: 'f8575d', name: 'Moctezuma', pictogram: 'moctezuma' },
+                { stopId: 'f85863', name: 'San Lázaro', pictogram: 'san-lazaro' },
+                { stopId: 'f85770', name: 'Aeropuerto Terminal 1', pictogram: 'aeropuerto-terminal-1' },
+              ],
+            },
+          ],
+          style: { colors: ['#FE5000'], notes: 'Ruta Aeropuerto (Amajac – AICM T1 y T2)' },
         },
       ],
     },

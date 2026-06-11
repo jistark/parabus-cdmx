@@ -206,6 +206,45 @@ describe('cenefa dataset ↔ GTFS cross-validation', () => {
     expect(aragonIds.has('f8580f')).toBe(false);  // Volcán de Fuego — Ida-only, absent from Villa de Aragón direction
   });
 
+  it('interlínea L2/L7 has the full 15-station sequence per direction', () => {
+    expect(directionLengths('L2L7-tacubaya-cuitlahuac')).toEqual({
+      'Glorieta Cuitláhuac': 15,
+      'Alameda Tacubaya': 15,
+    });
+  });
+
+  it('aeropuerto service has the full per-direction sequences (T2 berths on the return)', () => {
+    expect(directionLengths('L4-aeropuerto')).toEqual({
+      Amajac: 19,
+      'Aeropuerto T1 y T2': 18,
+    });
+  });
+
+  it('interlínea L2/L7 service exists, spans both lines, and shares stops with L2', () => {
+    const inter = CENEFAS.lines
+      .flatMap((l) => l.services)
+      .find((s) => s.type === 'interlinea');
+    expect(inter).toBeDefined();
+    expect(inter!.lines.sort()).toEqual(['2', '7']);
+  });
+
+  it('aeropuerto service exists', () => {
+    const aero = CENEFAS.lines.flatMap((l) => l.services).find((s) => s.type === 'aeropuerto');
+    expect(aero).toBeDefined();
+  });
+
+  it('stops shared between a regular line and the interlínea index to multiple services', () => {
+    // Closes a Task-1 review gap: buildStopIndex must return one hit per
+    // (service, direction) for stops served by more than one service.
+    const index = buildStopIndex(CENEFAS);
+    const inter = CENEFAS.lines.flatMap((l) => l.services).find((s) => s.type === 'interlinea')!;
+    const sharedStop = inter.directions[0]!.stops.find((stop) =>
+      (index.get(stop.stopId) ?? []).some((h) => h.serviceId !== inter.id));
+    expect(sharedStop).toBeDefined();
+    const hits = index.get(sharedStop!.stopId)!;
+    expect(new Set(hits.map((h) => h.serviceId)).size).toBeGreaterThanOrEqual(2);
+  });
+
   it('L7 one-way couplet direction-locks', () => {
     const l7 = CENEFAS.lines.flatMap((l) => l.services).find((s) => s.id === 'L7-regular')!;
     const campoIds = new Set(l7.directions.find((d) => d.destination === 'Campo Marte')!.stops.map((s) => s.stopId));
