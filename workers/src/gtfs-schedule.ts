@@ -29,11 +29,19 @@ export interface ScheduledArrival {
    *  "Tacubaya", etc. Lets clients show per-platform arrivals instead of an
    *  undifferentiated list. Null when trips.txt lacks it. */
   headsign?: string | null;
+  /** GTFS route_id of the trip (trips.txt route_id). Vendor headsigns are
+   *  just "Ida"/"Volta", so at platforms shared by several services the
+   *  route id is the only key that attributes an arrival to the right
+   *  service. Null for entries cached before this field existed. */
+  routeId?: string | null;
 }
 
 // v2: arrivals now carry trip headsigns. Bumping the prefix forces a
 // rebuild instead of serving headsign-less v1 entries for up to 30h.
-const KV_STOP_PREFIX = 'gtfs:schedule:v2:';
+// v3: arrivals now carry route ids too — same rationale: forcing a rebuild
+// avoids serving routeId-less v2 entries for up to 30h, during which the
+// scheduled fallback would mis-attribute arrivals at shared platforms.
+const KV_STOP_PREFIX = 'gtfs:schedule:v3:';
 const KV_TTL_SECONDS = 30 * 60 * 60; // 30h — matches static GTFS refresh window
 
 /** Module-shared UTF-8 decoder for chunked stop_times.txt streaming. */
@@ -190,16 +198,18 @@ export async function populateStopSchedule(env: Env, stopId: string): Promise<Sc
   const arrivals = await streamFilterStop(stream, stopId);
   arrivals.sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 
-  // Attach direction headsigns from trips.txt — bounded: only the trips
-  // this stop actually sees (~hundreds), streamed the same way as
-  // stop_times. Non-fatal: a missing trips.txt just means null headsigns.
+  // Attach direction headsigns + route ids from trips.txt — bounded: only
+  // the trips this stop actually sees (~hundreds), streamed the same way as
+  // stop_times. Non-fatal: a missing trips.txt just means null fields.
   const tripsStream = extractZipFileStream(dl.bytes, 'trips.txt');
   if (tripsStream) {
     try {
       const wanted = new Set(arrivals.map((a) => a.tripId));
-      const headsigns = await streamTripHeadsigns(tripsStream, wanted);
+      const trips = await streamTripHeadsigns(tripsStream, wanted);
       for (const arrival of arrivals) {
-        arrival.headsign = headsigns[arrival.tripId] ?? null;
+        const trip = trips[arrival.tripId];
+        arrival.headsign = trip?.headsign ?? null;
+        arrival.routeId = trip?.routeId ?? null;
       }
     } catch (err) {
       console.error(`schedule: headsign extraction failed for ${stopId}:`, err);
@@ -261,22 +271,28 @@ export async function streamFilterStop(
   return out;
 }
 
+/** Per-trip fields extracted from trips.txt. */
+export interface TripInfo {
+  headsign: string | null;
+  routeId: string | null;
+}
+
 /**
- * Stream-scan trips.txt collecting trip_headsign for the wanted trip ids
- * only. Same bounded-memory discipline as `streamFilterStop`: one chunk +
- * one in-progress line + the (small) result map.
+ * Stream-scan trips.txt collecting trip_headsign + route_id for the wanted
+ * trip ids only. Same bounded-memory discipline as `streamFilterStop`: one
+ * chunk + one in-progress line + the (small) result map.
  *
  * Exported for testing.
  */
 export async function streamTripHeadsigns(
   stream: ReadableStream<Uint8Array>,
   wantedTripIds: Set<string>,
-): Promise<Record<string, string>> {
+): Promise<Record<string, TripInfo>> {
   const reader = stream.getReader();
   const decoder = TEXT_DECODER;
   let buffer = '';
-  let cols: { trip: number; headsign: number } | null = null;
-  const out: Record<string, string> = {};
+  let cols: { trip: number; headsign: number; route: number } | null = null;
+  const out: Record<string, TripInfo> = {};
 
   const processTripLine = (line: string): void => {
     if (cols === null) return;
@@ -284,7 +300,8 @@ export async function streamTripHeadsigns(
     const tripId = parts[cols.trip]?.trim();
     if (!tripId || !wantedTripIds.has(tripId)) return;
     const headsign = parts[cols.headsign]?.trim().replace(/^"|"$/g, '');
-    if (headsign) out[tripId] = headsign;
+    const routeId = parts[cols.route]?.trim().replace(/^"|"$/g, '');
+    out[tripId] = { headsign: headsign || null, routeId: routeId || null };
   };
 
   while (true) {
@@ -301,10 +318,11 @@ export async function streamTripHeadsigns(
           const header = line.split(',');
           const trip = header.indexOf('trip_id');
           const headsign = header.indexOf('trip_headsign');
-          if (trip < 0 || headsign < 0) {
+          const route = header.indexOf('route_id'); // required GTFS field
+          if (trip < 0 || headsign < 0 || route < 0) {
             throw new Error(`trips.txt: missing required columns (have: ${header.join(',')})`);
           }
-          cols = { trip, headsign };
+          cols = { trip, headsign, route };
           continue;
         }
         processTripLine(line);

@@ -5,6 +5,7 @@ import {
   nextArrivals,
   travelTime,
   streamFilterStop,
+  streamTripHeadsigns,
   type ScheduledArrival,
 } from './gtfs-schedule';
 
@@ -234,5 +235,63 @@ describe('streamFilterStop', () => {
     const out = await streamFilterStop(stream, 'México_A');
     expect(out).toHaveLength(1);
     expect(out[0]!.tripId).toBe('T1');
+  });
+});
+
+describe('streamTripHeadsigns', () => {
+  it('collects headsigns and route ids only for wanted trips', async () => {
+    const csv = [
+      'route_id,service_id,trip_id,trip_headsign,direction_id',
+      'R1,S1,T1,Tepalcates,0',
+      'R1,S1,T2,Tacubaya,1',
+      'R2,S1,T3,Col. del Valle,0',
+    ].join('\n');
+    const result = await streamTripHeadsigns(
+      streamFromChunks([csv]),
+      new Set(['T1', 'T3']),
+    );
+    expect(result).toEqual({
+      T1: { headsign: 'Tepalcates', routeId: 'R1' },
+      T3: { headsign: 'Col. del Valle', routeId: 'R2' },
+    });
+  });
+
+  it('survives chunk boundaries mid-line and no trailing newline', async () => {
+    const chunks = [
+      'route_id,trip_id,trip_head',
+      'sign\nR1,T1,Tepal',
+      'cates\nR2,T2,Tacubaya',
+    ];
+    const result = await streamTripHeadsigns(
+      streamFromChunks(chunks),
+      new Set(['T1', 'T2']),
+    );
+    expect(result).toEqual({
+      T1: { headsign: 'Tepalcates', routeId: 'R1' },
+      T2: { headsign: 'Tacubaya', routeId: 'R2' },
+    });
+  });
+
+  it('throws on missing trip_headsign column', async () => {
+    const csv = 'route_id,trip_id\nR1,T1\n';
+    await expect(
+      streamTripHeadsigns(streamFromChunks([csv]), new Set(['T1'])),
+    ).rejects.toThrow('trips.txt');
+  });
+
+  it('throws on missing route_id column', async () => {
+    const csv = 'trip_id,trip_headsign\nT1,Tepalcates\n';
+    await expect(
+      streamTripHeadsigns(streamFromChunks([csv]), new Set(['T1'])),
+    ).rejects.toThrow('trips.txt');
+  });
+
+  it('records null headsign when the field is empty', async () => {
+    const csv = 'route_id,trip_id,trip_headsign\nR1,T1,\n';
+    const result = await streamTripHeadsigns(
+      streamFromChunks([csv]),
+      new Set(['T1']),
+    );
+    expect(result).toEqual({ T1: { headsign: null, routeId: 'R1' } });
   });
 });

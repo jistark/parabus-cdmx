@@ -14,7 +14,7 @@ describe('GET /static/cenefas', () => {
 });
 
 import { deriveArrivalRows, VEHICLE_STALE_SECONDS, FEED_STALE_SECONDS } from './arrivals';
-import { buildStopIndex } from './data/cenefas-types';
+import { buildStopIndex, type CenefaDataset } from './data/cenefas-types';
 import { SYNTH } from './data/cenefas-fixtures';
 import type { VehiclePosition } from './gtfs-rt';
 
@@ -150,5 +150,67 @@ describe('scheduleToFallbacks', () => {
       600,
     );
     expect(out).toEqual([{ destination: 'Norte', etaMinutes: 5 }]);
+  });
+
+  it('scheduled fallback attributes arrivals by route id at shared platforms', () => {
+    // Two services share a platform and the vendor headsign "Volta" (the
+    // real L4 Pantitlán / Alameda Oriente eastbound situation) — only the
+    // route id can attribute an arrival to the right service.
+    const shared: CenefaDataset = {
+      version: '2026-06-11',
+      lines: [{
+        line: '4',
+        services: [
+          {
+            id: 'L4-pantitlan', type: 'regular', lines: ['4'],
+            directions: [{
+              destination: 'Pantitlán',
+              gtfsRouteIds: ['e04'],
+              gtfsHeadsigns: ['Volta'],
+              stops: [{ stopId: 'SHARED', name: 'Bellas Artes', pictogram: 'ba' }],
+            }],
+            style: { colors: ['#000000'] },
+          },
+          {
+            id: 'L4-alameda-ote', type: 'regular', lines: ['4'],
+            directions: [{
+              destination: 'Alameda Oriente',
+              gtfsRouteIds: ['e05'],
+              gtfsHeadsigns: ['Volta'],
+              stops: [{ stopId: 'SHARED', name: 'Bellas Artes', pictogram: 'ba' }],
+            }],
+            style: { colors: ['#000000'] },
+          },
+        ],
+      }],
+    };
+    const sharedHits = buildStopIndex(shared).get('SHARED')!;
+    const out = scheduleToFallbacks(
+      [
+        { tripId: 'T-PAN', arrivalMinutes: 612, sequence: 3, headsign: 'Volta', routeId: 'e04' },
+        { tripId: 'T-ALA', arrivalMinutes: 607, sequence: 3, headsign: 'Volta', routeId: 'e05' },
+      ],
+      sharedHits,
+      600,
+    );
+    // Each destination must get ITS OWN eta — headsign-only matching would
+    // collapse both arrivals onto whichever service comes first in `hits`.
+    expect(out.sort((a, b) => a.destination.localeCompare(b.destination))).toEqual([
+      { destination: 'Alameda Oriente', etaMinutes: 7 },
+      { destination: 'Pantitlán', etaMinutes: 12 },
+    ]);
+  });
+
+  it('routeId-less arrivals still match by headsign (old cached entries)', () => {
+    const hits = index.get('S2N')!;
+    const out = scheduleToFallbacks(
+      [
+        { tripId: 'T1', arrivalMinutes: 610, sequence: 2, headsign: 'Norte' },
+        { tripId: 'T2', arrivalMinutes: 615, sequence: 2, headsign: 'Norte', routeId: null },
+      ],
+      hits,
+      600,
+    );
+    expect(out).toEqual([{ destination: 'Norte', etaMinutes: 10 }]);
   });
 });

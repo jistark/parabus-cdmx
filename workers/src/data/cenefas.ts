@@ -127,6 +127,21 @@ import type { CenefaDataset } from './cenefas-types';
  *     at the same coordinates as Amajac L7 — a renamed duplicate used by
  *     some La Diana short-turn variants; the cenefa prints AMAJAC and the
  *     full-line trips use the Amajac ids, so those are used here.
+ *
+ * ── SNAPSHOT REFRESH / RE-CURATION ────────────────────────────────────────
+ * The stop-id validity of this dataset is tested against a PINNED snapshot
+ * (`gtfs-stops-snapshot.json`) — CI does NOT track the live GTFS. To refresh
+ * after an operator update:
+ *   1. curl https://metrobus-status.starkji.workers.dev/static/stops \
+ *        -o src/data/gtfs-stops-snapshot.json
+ *   2. npx vitest run src/data/cenefas.test.ts
+ *      Missing-stop failures list exactly which stations need re-curation
+ *      against the official PDFs named per line above (ME_LX line maps).
+ *   3. Re-verify the pin tests (station/service counts) and bump the
+ *      dataset `version`.
+ * Until that happens, an operator update surfaces at runtime as vehicles
+ * matching nothing → scheduled fallback; for renamed stops, /arrivals
+ * returns its empty-rows + warning contract (see handleArrivals).
  */
 export const CENEFAS: CenefaDataset = {
   version: '2026-06-11c',

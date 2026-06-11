@@ -156,8 +156,15 @@ function row(hit: StopServiceHit, state: ArrivalState, etaMinutes: number | null
 const ARRIVALS_CACHE_TTL = 20; // seconds — matches the feed TTL on purpose
 
 /**
- * Map raw schedule arrivals to per-destination fallbacks using gtfsHeadsigns.
- * Arrivals with no matching headsign in the cenefa dataset are silently dropped.
+ * Map raw schedule arrivals to per-destination fallbacks.
+ *
+ * Matching is by gtfsRouteIds first: vendor headsigns are just "Ida"/"Volta",
+ * so at platforms shared by several services (e.g. L4 Pantitlán vs Alameda
+ * Oriente eastbound, both "Volta") headsigns cannot distinguish them — only
+ * the route id can. Headsign matching remains as a fallback for arrivals
+ * cached before routeId existed (and as a defensive net).
+ *
+ * Arrivals matching nothing in the cenefa dataset are silently dropped.
  * When multiple trips serve the same destination, only the earliest eta is kept.
  */
 export function scheduleToFallbacks(
@@ -167,8 +174,12 @@ export function scheduleToFallbacks(
 ): ScheduledFallback[] {
   const byDestination = new Map<string, number>();
   for (const a of arrivals) {
-    if (!a.headsign || a.arrivalMinutes < nowMinutes) continue;
-    const hit = hits.find((h) => h.gtfsHeadsigns.includes(a.headsign!));
+    if (a.arrivalMinutes < nowMinutes) continue;
+    const hit = a.routeId != null
+      ? hits.find((h) => h.gtfsRouteIds.includes(a.routeId!))
+      : a.headsign
+        ? hits.find((h) => h.gtfsHeadsigns.includes(a.headsign!))
+        : undefined;
     if (!hit) continue;
     const eta = a.arrivalMinutes - nowMinutes;
     const existing = byDestination.get(hit.destination);
@@ -177,7 +188,16 @@ export function scheduleToFallbacks(
   return [...byDestination.entries()].map(([destination, etaMinutes]) => ({ destination, etaMinutes }));
 }
 
-/** GET /arrivals?stop=<id> */
+/**
+ * GET /arrivals?stop=<id>
+ *
+ * Contract for stops not covered by the cenefa dataset (e.g. after an
+ * operator GTFS update renames stop ids, before re-curation): 200 + warning
+ * + empty rows. Clients (ArrivalsService) treat empty rows as "fall back to
+ * the schedule-only path (GTFSScheduleService)". This is a deliberate
+ * deviation from spec §4.4: synthesizing rows from raw vendor headsigns
+ * would surface "Ida/Volta" as destinations.
+ */
 export async function handleArrivals(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const stopId = url.searchParams.get('stop');
@@ -223,7 +243,9 @@ export async function handleArrivals(request: Request, env: Env, ctx: ExecutionC
     serviceActive: feed !== null,
     feedTimestamp: feed?.feedTimestamp ?? null,
     feedAgeSeconds: feed ? Math.max(0, nowSeconds - feedTimestamp) : null,
-    realtimeStale: feed !== null && nowSeconds - feedTimestamp > FEED_STALE_SECONDS,
+    // A null feed (partner down / outside service hours) is also "stale":
+    // clients get one consistent "don't trust realtime" signal either way.
+    realtimeStale: feed === null || nowSeconds - feedTimestamp > FEED_STALE_SECONDS,
     stop: stopId,
     warning: hits.length === 0 ? 'stop not covered by cenefa dataset' : undefined,
     rows,
