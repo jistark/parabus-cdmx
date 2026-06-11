@@ -5,6 +5,12 @@ name = "metrobus-status"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
+# Custom domain (zone parab.us in this Cloudflare account). The workers.dev
+# URL stays active during the transition; the app targets bus.parab.us.
+[[routes]]
+pattern = "bus.parab.us"
+custom_domain = true
+
 # Workers Paid plan is required for cron triggers
 # https://developers.cloudflare.com/workers/platform/cron-triggers/
 

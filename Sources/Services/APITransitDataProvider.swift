@@ -73,8 +73,9 @@ struct APIElevatorInfo: Codable, Sendable {
 /// Swift 6 strict-concurrency race and the dishonest mutability hint.
 /// If env switching is needed later, inject via initializer instead.
 enum APIConfiguration {
-    /// Base URL for the Cloudflare Worker API.
-    static let baseURL: URL = URL(string: "https://metrobus-status.starkji.workers.dev")!
+    /// Base URL for the Cloudflare Worker API (custom domain; the old
+    /// metrobus-status.starkji.workers.dev stays alive as fallback).
+    static let baseURL: URL = URL(string: "https://bus.parab.us")!
 
     /// Timeout for API requests in seconds.
     static let timeoutInterval: TimeInterval = 15.0
@@ -251,7 +252,11 @@ actor APITransitDataProvider: TransitDataProviding {
         if let apiIncidents = apiLine.incidents, !apiIncidents.isEmpty {
             // Map all incidents from the API
             incidents = apiIncidents.compactMap { apiIncident -> Incident? in
-                let status = convertAPIStatus(apiIncident.status)
+                let status = resolveStatus(
+                    apiIncident.status,
+                    statusText: apiIncident.statusText,
+                    details: apiIncident.details
+                )
                 // Skip normal status incidents with no affected stations
                 if status == .regular && apiIncident.affectedStations.isEmpty {
                     return nil
@@ -264,7 +269,11 @@ actor APITransitDataProvider: TransitDataProviding {
             }
         } else {
             // Fall back to top-level fields (backwards compatibility)
-            let status = convertAPIStatus(apiLine.status)
+            let status = resolveStatus(
+                apiLine.status,
+                statusText: apiLine.statusText,
+                details: apiLine.details
+            )
             if status != .regular || !apiLine.affectedStations.isEmpty {
                 incidents = [
                     Incident(
@@ -285,6 +294,19 @@ actor APITransitDataProvider: TransitDataProviding {
             incidents: incidents,
             lastUpdated: Date()
         )
+    }
+
+    /// Resolve the final status with a second chance: when the worker's
+    /// classifier returns "unknown" (its vocabulary can lag the operator's —
+    /// e.g. "obstrucción en el carril confinado" predated it), re-classify
+    /// from the operator's own words via `ServiceStatus(from:)`. An
+    /// unclassified bucket helps nobody; the text usually says exactly
+    /// what's happening.
+    private func resolveStatus(_ raw: String, statusText: String, details: String?) -> ServiceStatus {
+        let mapped = convertAPIStatus(raw)
+        guard mapped == .unknown else { return mapped }
+        let text = [statusText, details].compactMap { $0 }.joined(separator: " ")
+        return ServiceStatus(from: text)
     }
 
     /// Convert API status string to ServiceStatus enum

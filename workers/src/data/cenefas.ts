@@ -132,7 +132,7 @@ import type { CenefaDataset } from './cenefas-types';
  * The stop-id validity of this dataset is tested against a PINNED snapshot
  * (`gtfs-stops-snapshot.json`) — CI does NOT track the live GTFS. To refresh
  * after an operator update:
- *   1. curl https://metrobus-status.starkji.workers.dev/static/stops \
+ *   1. curl https://bus.parab.us/static/stops \
  *        -o src/data/gtfs-stops-snapshot.json
  *   2. npx vitest run src/data/cenefas.test.ts
  *      Missing-stop failures list exactly which stations need re-curation
