@@ -15,7 +15,8 @@ struct AlertsView: View {
     @State private var selectedLine: LineStatus?
     @State private var showPermissionPrePrompt = false
 
-    @AppStorage("favoriteLines") private var favoriteLines: String = "1,2,3"
+    @AppStorage(ParabusConstants.favoriteLinesKey, store: ParabusConstants.sharedDefaults)
+    private var favoriteLines: String = ParabusConstants.defaultFavoriteLines
     /// Tracks whether we've already shown the in-app pre-prompt offering
     /// to enable notifications. Once true, never shown again — user can
     /// still flip the master toggle in Settings.
@@ -24,7 +25,7 @@ struct AlertsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var favoriteLinesSet: Set<String> {
-        Set(favoriteLines.split(separator: ",").map(String.init))
+        FavoriteLines.asSet(favoriteLines)
     }
 
     var body: some View {
@@ -47,9 +48,11 @@ struct AlertsView: View {
             .navigationTitle("Alertas")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
             .background(Color(.systemGroupedBackground))
             #endif
+            // .always: short content (no incidents) otherwise doesn't bounce,
+            // so pull-to-refresh can't engage.
+            .scrollBounceBehavior(.always, axes: .vertical)
             .refreshable {
                 await viewModel.refresh()
             }
@@ -130,7 +133,7 @@ struct AlertsView: View {
 
     private var filterPicker: some View {
         Picker("Filtro", selection: $showFavoritesOnly) {
-            Text("Mis Lineas").tag(true)
+            Text("Mis líneas").tag(true)
             Text("Todas").tag(false)
         }
         .pickerStyle(.segmented)
@@ -220,49 +223,8 @@ struct AlertsView: View {
 
             // Grouped by severity
             VStack(spacing: Spacing.xs) {
-                // Protests (most urgent)
-                ForEach(protestLines) { line in
-                    TimelineEntryCard(
-                        line: line,
-                        isActive: true,
-                        onTap: { selectedLine = line }
-                    )
-                }
-
-                // Suspended
-                ForEach(suspendedLines) { line in
-                    TimelineEntryCard(
-                        line: line,
-                        isActive: true,
-                        onTap: { selectedLine = line }
-                    )
-                }
-
-                // Delayed
-                ForEach(delayedLines) { line in
-                    TimelineEntryCard(
-                        line: line,
-                        isActive: true,
-                        onTap: { selectedLine = line }
-                    )
-                }
-
-                // Limited
-                ForEach(limitedLines) { line in
-                    TimelineEntryCard(
-                        line: line,
-                        isActive: true,
-                        onTap: { selectedLine = line }
-                    )
-                }
-
-                // Intervention
-                ForEach(interventionLines) { line in
-                    TimelineEntryCard(
-                        line: line,
-                        isActive: true,
-                        onTap: { selectedLine = line }
-                    )
+                ForEach(IncidentGrouping.grouped(filteredLinesWithIssues)) { line in
+                    TimelineEntryCard(line: line, isActive: true, onTap: { selectedLine = line })
                 }
             }
             .padding(.horizontal, Spacing.md)
@@ -297,26 +259,6 @@ struct AlertsView: View {
         return closures
     }
 
-    private var protestLines: [LineStatus] {
-        filteredLinesWithIssues.filter { $0.status == .protest }
-    }
-
-    private var suspendedLines: [LineStatus] {
-        filteredLinesWithIssues.filter { $0.status == .suspended }
-    }
-
-    private var delayedLines: [LineStatus] {
-        filteredLinesWithIssues.filter { $0.status == .delayed }
-    }
-
-    private var limitedLines: [LineStatus] {
-        filteredLinesWithIssues.filter { $0.status == .limited }
-    }
-
-    private var interventionLines: [LineStatus] {
-        filteredLinesWithIssues.filter { $0.status == .intervention }
-    }
-
     // MARK: - All Clear Banner
 
     private var allClearBanner: some View {
@@ -330,8 +272,8 @@ struct AlertsView: View {
                     .font(.headline)
 
                 Text(showFavoritesOnly
-                    ? "Tus lineas favoritas operan con normalidad"
-                    : "Todas las lineas operan con normalidad")
+                    ? "Tus líneas favoritas operan con normalidad"
+                    : "Todas las líneas operan con normalidad")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -345,7 +287,7 @@ struct AlertsView: View {
 
     private var emptyAlertsView: some View {
         ContentUnavailableView {
-            Label("Sin informacion", systemImage: "tray")
+            Label("Sin información", systemImage: "tray")
         } description: {
             Text("No hay datos disponibles.\nDesliza hacia abajo para actualizar.")
         } actions: {
@@ -362,9 +304,9 @@ struct AlertsView: View {
 
     private var errorView: some View {
         ContentUnavailableView {
-            Label("Sin conexion", systemImage: "wifi.slash")
+            Label("Sin conexión", systemImage: "wifi.slash")
         } description: {
-            Text("No pudimos obtener las alertas.\nVerifica tu conexion a internet.")
+            Text("No pudimos obtener las alertas.\nVerifica tu conexión a internet.")
         } actions: {
             Button {
                 Task { await viewModel.loadStatus() }
