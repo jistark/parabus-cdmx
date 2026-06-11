@@ -112,4 +112,17 @@ describe('deriveArrivalRows', () => {
     const rows = await deriveArrivalRows(index, 'S3N', [veh({ stopId: 'S1N' })], NOW, NOW, noData, async () => []);
     expect(rows[0]!.etaMinutes).toBe(8); // 2 hops × 4
   });
+
+  it('arriving fires at the first stop of a direction (no upstream to scan)', async () => {
+    const rows = await deriveArrivalRows(index, 'S1N', [veh({ stopId: 'S1N' })], NOW, NOW, hops, async () => []);
+    expect(rows[0]).toMatchObject({ state: 'arriving' });
+  });
+
+  it('vehicle exactly VEHICLE_STALE_SECONDS old is still fresh (inclusive bound)', async () => {
+    const rows = await deriveArrivalRows(
+      index, 'S2N', [veh({ stopId: 'S2N', timestamp: NOW - VEHICLE_STALE_SECONDS })],
+      NOW, NOW, hops, async () => [],
+    );
+    expect(rows[0]).toMatchObject({ state: 'arriving' });
+  });
 });
