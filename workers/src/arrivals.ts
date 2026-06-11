@@ -9,6 +9,8 @@ import { buildStopIndex, type StopServiceHit } from './data/cenefas-types';
 import type { VehiclePosition } from './gtfs-rt';
 import { getDecodedFeed } from './realtime-handlers';
 import { loadStopSchedule, populateStopSchedule, travelTime, nextArrivals, currentCDMXMinutes, type ScheduledArrival } from './gtfs-schedule';
+import { projectOntoSequence, type LatLon } from './geo';
+import { loadStaticMeta } from './gtfs-static';
 
 export function handleCenefas(): Response {
   return new Response(JSON.stringify(CENEFAS), {
@@ -27,6 +29,17 @@ export const FEED_STALE_SECONDS = 90;
 export const MAX_UPSTREAM_HOPS = 5;
 /** Fallback minutes per hop when schedule travel-time is unavailable. */
 const FALLBACK_MINUTES_PER_HOP = 4;
+/**
+ * Projection-path thresholds. The Sinóptico feed does not populate
+ * stop_id/current_stop_sequence, so live states are inferred by projecting
+ * vehicle lat/lon onto the direction's ordered stop sequence (geo.ts).
+ */
+/** Vehicles farther than this from every route segment are ignored (deadheading). */
+export const MAX_OFF_ROUTE_METERS = 500;
+/** Within this distance of our stop, an approaching vehicle reads "arriving". */
+export const ARRIVING_RADIUS_METERS = 300;
+/** Beyond this distance past our stop, "departed" is no longer useful — drop it. */
+export const DEPARTED_RADIUS_METERS = 300;
 
 export type ArrivalState = 'arriving' | 'eta' | 'departed' | 'scheduled';
 
@@ -56,10 +69,15 @@ export function stopIndex(): Map<string, StopServiceHit[]> {
  * Derive one row per service-direction covering `stopId`.
  *
  * Positional semantics (no per-request state needed):
- *   vehicle.stopId == our stop          → arriving
- *   vehicle.stopId k hops upstream      → eta (Σ scheduled hop times)
- *   vehicle.stopId == stop after ours   → departed
+ *   vehicle's next stop == our stop        → arriving
+ *   vehicle's next stop k hops upstream    → eta (Σ scheduled hop times)
+ *   vehicle's next stop == stop after ours → departed
  * Priority within a direction: arriving > nearest eta > departed.
+ *
+ * The vehicle's next stop comes from feed stop_id when present; otherwise it
+ * is inferred geometrically by projecting the vehicle's lat/lon onto the
+ * direction's stop sequence (`stopCoords` resolves stop ids to coordinates —
+ * return null to disable projection and degrade to scheduled).
  *
  * `travelTimeLookup(from, to)` returns scheduled minutes between two stops
  * (null when they never share a trip). `scheduleLookup()` resolves the
@@ -71,6 +89,7 @@ export async function deriveArrivalRows(
   vehicles: VehiclePosition[],
   feedTimestamp: number,
   nowSeconds: number,
+  stopCoords: (stopId: string) => LatLon | null,
   travelTimeLookup: (fromStopId: string, toStopId: string) => Promise<number | null>,
   scheduleLookup: () => Promise<ScheduledFallback[]>,
 ): Promise<ArrivalRow[]> {
@@ -89,34 +108,31 @@ export async function deriveArrivalRows(
     const routeIds = new Set(hit.gtfsRouteIds);
     const onRoute = fresh.filter((v) => v.routeId !== null && routeIds.has(v.routeId));
 
+    // Direction coord array for the projection path, built lazily once per
+    // hit. null = at least one stop lacks coordinates → projection disabled.
+    let coords: LatLon[] | null | undefined;
+    const coordsFor = (): LatLon[] | null => {
+      if (coords === undefined) {
+        const built: LatLon[] = [];
+        for (const s of hit.stops) {
+          const c = stopCoords(s.stopId);
+          if (c === null) return (coords = null);
+          built.push(c);
+        }
+        coords = built;
+      }
+      return coords;
+    };
+
     let best: ArrivalRow | null = null;
 
     for (const v of onRoute) {
-      if (!v.stopId) continue;
-
-      if (v.stopId === stopId) {
-        best = row(hit, 'arriving', null, v.vehicleId);
-        break; // arriving always wins
-      }
-
-      // Upstream: next stop is k positions before ours in this direction.
-      for (let k = 1; k <= Math.min(MAX_UPSTREAM_HOPS, hit.position); k++) {
-        if (v.stopId === hit.stops[hit.position - k]!.stopId) {
-          const scheduledMin = await travelTimeLookup(v.stopId, stopId);
-          const eta = Math.max(1, scheduledMin ?? k * FALLBACK_MINUTES_PER_HOP);
-          if (best === null || best.state === 'departed' || (best.state === 'eta' && eta <= best.etaMinutes!)) {
-            best = row(hit, 'eta', eta, v.vehicleId);
-          }
-          break;
-        }
-      }
-
-      // Departed: next stop is the one right after ours.
-      if (hit.position + 1 < hit.stops.length
-          && v.stopId === hit.stops[hit.position + 1]!.stopId
-          && best === null) {
-        best = row(hit, 'departed', null, v.vehicleId);
-      }
+      const cand = v.stopId
+        ? await exactCandidate(hit, stopId, v, travelTimeLookup)
+        : await projectedCandidate(hit, stopId, v, coordsFor(), travelTimeLookup);
+      if (cand === null) continue;
+      best = better(best, cand);
+      if (best.state === 'arriving') break; // arriving always wins
     }
 
     if (best === null) {
@@ -135,6 +151,98 @@ export async function deriveArrivalRows(
     rows.push(best);
   }
   return rows;
+}
+
+/**
+ * Shared priority reducer for both candidate paths (exact stop_id and
+ * geometric projection): arriving > nearest eta > departed. Ties between
+ * equal etas go to the later vehicle (`<=`); departed never displaces
+ * anything.
+ */
+function better(best: ArrivalRow | null, cand: ArrivalRow): ArrivalRow {
+  if (best === null || cand.state === 'arriving') return cand;
+  if (cand.state === 'eta'
+      && (best.state === 'departed' || (best.state === 'eta' && cand.etaMinutes! <= best.etaMinutes!))) {
+    return cand;
+  }
+  return best;
+}
+
+/** Candidate from a feed-provided stop_id (exact membership in the sequence). */
+async function exactCandidate(
+  hit: StopServiceHit,
+  stopId: string,
+  v: VehiclePosition,
+  travelTimeLookup: (fromStopId: string, toStopId: string) => Promise<number | null>,
+): Promise<ArrivalRow | null> {
+  if (v.stopId === stopId) return row(hit, 'arriving', null, v.vehicleId);
+
+  // Upstream: next stop is k positions before ours in this direction.
+  for (let k = 1; k <= Math.min(MAX_UPSTREAM_HOPS, hit.position); k++) {
+    if (v.stopId === hit.stops[hit.position - k]!.stopId) {
+      return row(hit, 'eta', await etaMinutes(travelTimeLookup, v.stopId!, stopId, k), v.vehicleId);
+    }
+  }
+
+  // Departed: next stop is the one right after ours.
+  if (hit.position + 1 < hit.stops.length && v.stopId === hit.stops[hit.position + 1]!.stopId) {
+    return row(hit, 'departed', null, v.vehicleId);
+  }
+  return null;
+}
+
+/**
+ * Candidate inferred geometrically: project the vehicle's lat/lon onto the
+ * direction's stop sequence and reason about the resulting next-stop index
+ * relative to ours. Off-route vehicles (projection null) yield nothing.
+ */
+async function projectedCandidate(
+  hit: StopServiceHit,
+  stopId: string,
+  v: VehiclePosition,
+  coords: LatLon[] | null,
+  travelTimeLookup: (fromStopId: string, toStopId: string) => Promise<number | null>,
+): Promise<ArrivalRow | null> {
+  if (v.lat === null || v.lon === null || coords === null) return null;
+  const pos = projectOntoSequence({ lat: v.lat, lon: v.lon }, coords, MAX_OFF_ROUTE_METERS);
+  if (pos === null) return null;
+
+  // Our stop is the vehicle's next stop.
+  if (pos.nextIndex === hit.position) {
+    if (pos.metersToNext <= ARRIVING_RADIUS_METERS) return row(hit, 'arriving', null, v.vehicleId);
+    // Mid-segment but not yet close: charge the full previous-segment travel
+    // time. This overestimates by at most one segment's worth (the part the
+    // vehicle has already covered) — acceptable, and it errs on the side of
+    // the rider not missing the bus. At position 0 there is no previous
+    // segment, so use the flat per-hop fallback.
+    const eta = hit.position > 0
+      ? await etaMinutes(travelTimeLookup, hit.stops[hit.position - 1]!.stopId, stopId, 1)
+      : FALLBACK_MINUTES_PER_HOP;
+    return row(hit, 'eta', eta, v.vehicleId);
+  }
+
+  // Upstream: vehicle's next stop is `hops` positions before ours.
+  const hops = hit.position - pos.nextIndex;
+  if (hops >= 1 && hops <= MAX_UPSTREAM_HOPS) {
+    return row(hit, 'eta', await etaMinutes(travelTimeLookup, hit.stops[pos.nextIndex]!.stopId, stopId, hops), v.vehicleId);
+  }
+
+  // Departed: just past our stop, still within the useful radius.
+  if (pos.nextIndex === hit.position + 1 && pos.metersPastPrev <= DEPARTED_RADIUS_METERS) {
+    return row(hit, 'departed', null, v.vehicleId);
+  }
+  return null;
+}
+
+/** Scheduled minutes from→to, falling back to hops × flat per-hop estimate; floored at 1. */
+async function etaMinutes(
+  travelTimeLookup: (fromStopId: string, toStopId: string) => Promise<number | null>,
+  fromStopId: string,
+  toStopId: string,
+  hops: number,
+): Promise<number> {
+  const scheduledMin = await travelTimeLookup(fromStopId, toStopId);
+  return Math.max(1, scheduledMin ?? hops * FALLBACK_MINUTES_PER_HOP);
 }
 
 function row(hit: StopServiceHit, state: ArrivalState, etaMinutes: number | null, vehicleId: string | null): ArrivalRow {
@@ -213,6 +321,15 @@ export async function handleArrivals(request: Request, env: Env, ctx: ExecutionC
   const { feed } = await getDecodedFeed(env, ctx);
   const nowSeconds = Math.floor(Date.now() / 1000);
 
+  // Stop coordinates for the geometric projection path (the feed carries no
+  // stop_id). Meta is KV-cached + isolate-memoized; load once per request.
+  // Unavailable meta degrades projection to scheduled fallbacks, as before.
+  const meta = await loadStaticMeta(env);
+  const stopCoords = (id: string): LatLon | null => {
+    const s = meta?.stops[id];
+    return s ? { lat: s.lat, lon: s.lon } : null;
+  };
+
   const travelTimeLookup = async (from: string, to: string): Promise<number | null> => {
     const [a, b] = await Promise.all([loadStopSchedule(env, from), loadStopSchedule(env, to)]);
     if (!a || !b) return null; // don't trigger zip downloads on the eta path
@@ -236,7 +353,7 @@ export async function handleArrivals(request: Request, env: Env, ctx: ExecutionC
   const feedTimestamp = feed?.feedTimestamp ?? 0;
   const rows = await deriveArrivalRows(
     stopIndex(), stopId, feed?.vehicles ?? [], feedTimestamp, nowSeconds,
-    travelTimeLookup, scheduleLookup,
+    stopCoords, travelTimeLookup, scheduleLookup,
   );
 
   const body = {
