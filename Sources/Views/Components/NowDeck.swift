@@ -31,10 +31,9 @@ struct NowDeck<Card: View>: View {
         #endif
     }
 
-    /// Fixed height keeps the pager from jumping between cards with
-    /// different row counts (3 arrival rows + header + commute row).
+    /// Scales with Dynamic Type so the pager frame grows with the text.
     /// Budget: cardInset×2 (32) + mini-cenefa header (36) + 12 spacing
     /// + 3 rows (~73 with xs gaps) + commute divider+row (~45) ≈ 198,
-    /// plus ~26 of page-dot clearance below → 224.
-    private var deckHeight: CGFloat { 224 }
+    /// plus ~26 of page-dot clearance below → 224 at default size.
+    @ScaledMetric(relativeTo: .body) private var deckHeight: CGFloat = 224
 }

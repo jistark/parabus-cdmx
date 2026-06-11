@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Rich inline alert for the home (spec 2 §4, Figma "Con Alert"): the full
 /// story with zero taps — type + affected segment + descriptions + age.
-/// Tap still opens LineDetailSheet. Supersedes IncidentAlertBanner on the
-/// home; the banner remains for other surfaces until spec 3.
+/// Tap still opens LineDetailSheet. Superseded the old compact banner
+/// (deleted with spec 2).
 struct AlertCard: View {
     let line: LineStatus
     let onTap: () -> Void

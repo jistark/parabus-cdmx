@@ -69,7 +69,10 @@ struct ContentView: View {
                 await viewModel.loadStatus()
             }
             .onChange(of: locationCoordinator.latestLocation) { _, _ in
-                homeVM.resolveDeck(userCoordinate: locationCoordinator.latestLocation, favoriteLines: favoriteLinesArray)
+                reResolveDeck()
+            }
+            .onChange(of: favoriteLines) { _, _ in
+                reResolveDeck()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 Task {
@@ -150,7 +153,7 @@ struct ContentView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(
                     showsStaleWarning
-                        ? "Datos desactualizados. \(description)"
+                        ? String(localized: "Datos desactualizados. \(description)")
                         : description
                 )
             }
@@ -164,11 +167,11 @@ struct ContentView: View {
     private var mainContent: some View {
         ScrollView {
             // No LiquidGlassContainer here — wrapping all sections in
-            // GlassEffectContainer made the IncidentAlertBanner's tinted glass
-            // blur into a smeary block that hid its content. The container is
-            // designed for cards that morph as they appear/disappear, not for
-            // static stacked sections. Each `.surface(_:)` already renders its
-            // own glass; that's enough.
+            // GlassEffectContainer made AlertCard's tinted glass blur into a
+            // smeary block that hid its content. The container is designed for
+            // cards that morph as they appear/disappear, not for static stacked
+            // sections. Each `.surface(_:)` already renders its own glass;
+            // that's enough.
             VStack(spacing: Layout.sectionSpacing) {
                 heroHeader
 
@@ -236,22 +239,22 @@ struct ContentView: View {
                     }
                 }
 
-                // 2. Active Incidents (real-time urgent issues: delays, suspensions)
+                // 3. Active Incidents (real-time urgent issues: delays, suspensions)
                 if !urgentIncidents.isEmpty {
                     urgentIncidentsSection
                 }
 
-                // 3. Station Interventions (maintenance/obras at specific stations)
+                // 4. Station Interventions (maintenance/obras at specific stations)
                 if !interventionIncidents.isEmpty {
                     stationInterventionsSection
                 }
 
-                // 4. Scheduled closures (from maintenance calendar, filtered for deduplication)
+                // 5. Scheduled closures (from maintenance calendar, filtered for deduplication)
                 if viewModel.hasMaintenanceToday {
                     scheduledClosuresSection
                 }
 
-                // 5. All clear: when nothing above rendered, say so instead
+                // 6. All clear: when nothing above rendered, say so instead
                 // of trailing off into empty space.
                 if urgentIncidents.isEmpty && interventionIncidents.isEmpty && !viewModel.hasMaintenanceToday {
                     AllClearBanner(
@@ -407,6 +410,16 @@ struct ContentView: View {
                     isToday: true
                 )
             }
+        }
+    }
+
+    /// Re-resolve the deck and re-point the polling surface if the visible
+    /// entry actually changed. Called on location updates and favorites changes.
+    private func reResolveDeck() {
+        let before = homeVM.visibleEntry?.id
+        homeVM.resolveDeck(userCoordinate: locationCoordinator.latestLocation, favoriteLines: favoriteLinesArray)
+        if homeVM.visibleEntry?.id != before {
+            Task { await homeVM.visibleCardChanged() }
         }
     }
 
