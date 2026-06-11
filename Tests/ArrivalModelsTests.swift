@@ -32,6 +32,7 @@ struct ArrivalModelsTests {
         #expect(response.rows[0].state == .arriving)
         #expect(response.rows[0].etaMinutes == nil)
         #expect(response.rows[0].source == .realtime)
+        #expect(response.warning == nil)
     }
 
     @Test func decodesScheduledFallbackAndStaleFlags() throws {
@@ -59,13 +60,26 @@ struct ArrivalModelsTests {
         #expect(response.rows[0].etaMinutes == 7)
     }
 
-    @Test func unknownStateFailsLoudly() {
+    @Test func unknownStateRowIsDroppedNotFatal() throws {
         let json = """
-        {"serviceActive":true,"feedTimestamp":1,"feedAgeSeconds":1,"realtimeStale":false,"stop":"X","rows":[{"serviceId":"s","line":"1","destination":"d","state":"teleporting","etaMinutes":null,"vehicleId":null,"source":"realtime"}]}
+        {"serviceActive":true,"feedTimestamp":1,"feedAgeSeconds":1,"realtimeStale":false,"stop":"X","rows":[
+          {"serviceId":"s","line":"1","destination":"d","state":"teleporting","etaMinutes":null,"vehicleId":null,"source":"realtime"},
+          {"serviceId":"s2","line":"1","destination":"d2","state":"arriving","etaMinutes":null,"vehicleId":null,"source":"realtime"}
+        ]}
         """.data(using: .utf8)!
-        #expect(throws: (any Error).self) {
-            _ = try JSONDecoder().decode(ArrivalsResponse.self, from: json)
-        }
+        let response = try JSONDecoder().decode(ArrivalsResponse.self, from: json)
+        #expect(response.rows.count == 1)
+        #expect(response.rows[0].state == .arriving)
+    }
+
+    @Test func decodesWarningWhenStopNotCoveredByCenefa() throws {
+        let json = """
+        {"serviceActive":true,"feedTimestamp":1,"feedAgeSeconds":1,"realtimeStale":false,"stop":"X",
+         "warning":"stop not covered by cenefa dataset","rows":[]}
+        """.data(using: .utf8)!
+        let response = try JSONDecoder().decode(ArrivalsResponse.self, from: json)
+        #expect(response.warning != nil)
+        #expect(response.rows.isEmpty)
     }
 }
 
