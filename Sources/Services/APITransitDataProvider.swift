@@ -109,7 +109,9 @@ actor APITransitDataProvider: TransitDataProviding {
         self.session = session ?? {
             let config = URLSessionConfiguration.default
             config.timeoutIntervalForRequest = APIConfiguration.timeoutInterval
-            config.timeoutIntervalForResource = APIConfiguration.timeoutInterval * 2
+            // Must exceed forceRefreshTimeoutInterval — the resource timeout
+            // caps every request regardless of per-request timeoutInterval.
+            config.timeoutIntervalForResource = APIConfiguration.forceRefreshTimeoutInterval + 15
             config.requestCachePolicy = .reloadIgnoringLocalCacheData
             return URLSession(configuration: config)
         }()
