@@ -181,46 +181,44 @@ struct RealtimeTests {
     @Suite("RealtimeMapViewModel")
     struct ViewModelTests {
 
-        @Test("startPolling is idempotent — does not spawn parallel loops")
+        @Test("startPolling is idempotent — repeated claims fetch once")
         @MainActor
         func startPollingIdempotent() async throws {
             let counter = Counter()
             let service = Self.makeService(counter: counter, vehiclesJSON: Self.emptyFeedJSON)
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .milliseconds(50))
-            vm.startPolling()
-            vm.startPolling()
-            vm.startPolling()
-            try await Task.sleep(for: .milliseconds(120))
-            vm.stopPolling()
-            #expect(counter.value <= 4, "expected ≤4 fetches; got \(counter.value)")
+            let vm = RealtimeMapViewModel(service: service, polling: RealtimePolling())
+            await vm.startPolling()
+            await vm.startPolling()
+            await vm.startPolling()
+            await vm.stopPolling()
+            #expect(counter.value == 1, "expected 1 immediate fetch; got \(counter.value)")
         }
 
-        @Test("stopPolling cancels in-flight refresh")
+        @Test("stopPolling releases the surface — further ticks fetch nothing")
         @MainActor
         func stopPollingCancels() async throws {
             let counter = Counter()
             let service = Self.makeService(counter: counter, vehiclesJSON: Self.emptyFeedJSON)
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .seconds(1))
-            vm.startPolling()
-            try await Task.sleep(for: .milliseconds(80))
+            let polling = RealtimePolling()
+            let vm = RealtimeMapViewModel(service: service, polling: polling)
+            await vm.startPolling()
             let baseline = counter.value
-            vm.stopPolling()
-            try await Task.sleep(for: .milliseconds(300))
+            await vm.stopPolling()
+            await polling.coordinator.requestImmediatePoll() // surface gone → no-op
             #expect(counter.value == baseline)
         }
 
-        @Test("selectedLine.didSet triggers an immediate refresh")
+        @Test("selectedLine.didSet re-points the surface + immediate refresh")
         @MainActor
         func selectedLineTriggersRefresh() async throws {
             let counter = Counter()
             let service = Self.makeService(counter: counter, vehiclesJSON: Self.emptyFeedJSON)
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .seconds(60))
-            vm.startPolling()
-            try await Task.sleep(for: .milliseconds(80))
+            let vm = RealtimeMapViewModel(service: service, polling: RealtimePolling())
+            await vm.startPolling()
             let baseline = counter.value
             vm.selectedLine = "1"
-            try await Task.sleep(for: .milliseconds(80))
-            vm.stopPolling()
+            try await Task.sleep(for: .milliseconds(150)) // didSet spawns a Task
+            await vm.stopPolling()
             #expect(counter.value > baseline)
         }
 
@@ -229,13 +227,12 @@ struct RealtimeTests {
         func selectedLineSameValueNoRefetch() async throws {
             let counter = Counter()
             let service = Self.makeService(counter: counter, vehiclesJSON: Self.emptyFeedJSON)
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .seconds(60))
-            vm.startPolling()
-            try await Task.sleep(for: .milliseconds(80))
+            let vm = RealtimeMapViewModel(service: service, polling: RealtimePolling())
+            await vm.startPolling()
             let baseline = counter.value
             vm.selectedLine = nil
             try await Task.sleep(for: .milliseconds(80))
-            vm.stopPolling()
+            await vm.stopPolling()
             #expect(counter.value == baseline)
         }
 
@@ -261,7 +258,7 @@ struct RealtimeTests {
             }
             """
             let service = Self.makeService(counter: Counter(), vehiclesJSON: json)
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .seconds(60))
+            let vm = RealtimeMapViewModel(service: service, polling: RealtimePolling())
             await vm.refresh()
             #expect(vm.vehicles.count == 1)
             #expect(vm.vehicles[0].vehicleId == "V42")
@@ -278,7 +275,7 @@ struct RealtimeTests {
                 (MockSession.response(for: request.url!, status: 503), Data("oops".utf8))
             }
             let service = RealtimeService(session: MockSession.make())
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .seconds(60))
+            let vm = RealtimeMapViewModel(service: service, polling: RealtimePolling())
             await vm.refresh()
             #expect(vm.errorMessage != nil)
             #expect(vm.vehicles.isEmpty)
@@ -298,7 +295,7 @@ struct RealtimeTests {
             }
             """
             let service = Self.makeService(counter: Counter(), vehiclesJSON: json)
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .seconds(60))
+            let vm = RealtimeMapViewModel(service: service, polling: RealtimePolling())
             await vm.refresh()
             #expect(vm.serviceInactive == true)
             #expect(vm.vehicles.isEmpty)
@@ -309,10 +306,10 @@ struct RealtimeTests {
         func routeIndexLoads() async throws {
             let counter = Counter()
             let service = Self.makeService(counter: counter, vehiclesJSON: Self.emptyFeedJSON)
-            let vm = RealtimeMapViewModel(service: service, pollInterval: .seconds(60))
-            vm.startPolling()
+            let vm = RealtimeMapViewModel(service: service, polling: RealtimePolling())
+            await vm.startPolling()
             try await Task.sleep(for: .milliseconds(120))
-            vm.stopPolling()
+            await vm.stopPolling()
             #expect(vm.line(forRouteId: "100") == "1")
             #expect(vm.line(forRouteId: "200") == "3")
             #expect(vm.line(forRouteId: "999") == nil)

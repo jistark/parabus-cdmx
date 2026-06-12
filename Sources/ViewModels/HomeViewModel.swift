@@ -3,8 +3,9 @@ import Foundation
 import Observation
 
 /// Owns the home's "Ahora" experience: the swipeable station deck, the
-/// per-station arrival rows, and ALL contact with RealtimePollingCoordinator
-/// (spec 2 §1). MetrobusViewModel keeps owning line status/alerts.
+/// per-station arrival rows, and the home surface of the app-wide
+/// RealtimePolling router (spec 2 §1; surface unification in spec 3 B3).
+/// MetrobusViewModel keeps owning line status/alerts.
 @MainActor
 @Observable
 final class HomeViewModel {
@@ -29,12 +30,18 @@ final class HomeViewModel {
     var visibleIndex: Int = 0
 
     private let fetchArrivals: @Sendable (String) async -> ArrivalsResponse?
-    private var coordinator: RealtimePollingCoordinator?
+    /// The app-wide polling router (single coordinator, global budget).
+    /// Injectable so tests can use an isolated instance instead of `.shared`.
+    private let polling: RealtimePolling
 
-    init(fetchArrivals: @escaping @Sendable (String) async -> ArrivalsResponse? = { stopId in
-        await ArrivalsService.shared.arrivals(at: stopId)
-    }) {
+    init(
+        fetchArrivals: @escaping @Sendable (String) async -> ArrivalsResponse? = { stopId in
+            await ArrivalsService.shared.arrivals(at: stopId)
+        },
+        polling: RealtimePolling = .shared
+    ) {
         self.fetchArrivals = fetchArrivals
+        self.polling = polling
     }
 
     var visibleEntry: DeckEntry? {
@@ -46,16 +53,22 @@ final class HomeViewModel {
     /// call startLoop() again).
     func activate() async {
         guard let entry = visibleEntry else { return }
-        let coordinator = ensureCoordinator()
-        await coordinator.setSurface(.home(stationId: entry.id))
-        await coordinator.startLoop()
-        await coordinator.requestImmediatePoll()
+        polling.homeHandler = { [weak self] stationId in
+            await self?.refreshArrivals(for: stationId)
+        }
+        await polling.coordinator.setSurface(.home(stationId: entry.id))
+        await polling.coordinator.startLoop()
+        await polling.coordinator.requestImmediatePoll()
     }
 
     /// Home left the screen / app backgrounded (spec 4 replaces this with
-    /// the background trip mode).
+    /// the background trip mode). Conditional clear: if the map tab already
+    /// claimed the surface (tab-switch ordering is not guaranteed), leave it.
     func deactivate() async {
-        await coordinator?.setSurface(nil)
+        await polling.coordinator.clearSurface(where: { surface in
+            if case .home = surface { return true }
+            return false
+        })
     }
 
     /// Swipe landed on a new card: re-point the surface and ask for an
@@ -63,9 +76,8 @@ final class HomeViewModel {
     /// poll just leaves the 25s-cached or skeleton state until next tick).
     func visibleCardChanged() async {
         guard let entry = visibleEntry else { return }
-        let coordinator = ensureCoordinator()
-        await coordinator.setSurface(.home(stationId: entry.id))
-        await coordinator.requestImmediatePoll()
+        await polling.coordinator.setSurface(.home(stationId: entry.id))
+        await polling.coordinator.requestImmediatePoll()
     }
 
     func refreshArrivals(for stationId: String) async {
@@ -116,16 +128,6 @@ final class HomeViewModel {
         } else {
             commuteContext = nil
         }
-    }
-
-    private func ensureCoordinator() -> RealtimePollingCoordinator {
-        if let coordinator { return coordinator }
-        let created = RealtimePollingCoordinator(onPoll: { [weak self] surface in
-            guard case .home(let stationId) = surface else { return }
-            await self?.refreshArrivals(for: stationId)
-        })
-        coordinator = created
-        return created
     }
 
     /// Deck = the resolver's pick first (commute-window > nearest >

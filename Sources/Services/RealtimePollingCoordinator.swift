@@ -48,6 +48,16 @@ actor RealtimePollingCoordinator {
         }
     }
 
+    /// Clears the surface only when the current one matches `predicate`.
+    /// Tab-switch handoff guard: SwiftUI does not guarantee the outgoing
+    /// tab's `onDisappear` fires before the incoming tab's `.task`, so a
+    /// surface owner tearing down must never clobber a surface that another
+    /// owner has already claimed.
+    func clearSurface(where predicate: @Sendable (RealtimeSurface) -> Bool) {
+        guard let surface, predicate(surface) else { return }
+        setSurface(nil)
+    }
+
     /// One cadence tick: poll the active surface if the budget allows.
     func tick() async {
         guard let surface else { return }
@@ -82,5 +92,48 @@ actor RealtimePollingCoordinator {
         guard recentPolls.count < Self.budgetLimit else { return false }
         recentPolls.append(now())
         return true
+    }
+}
+
+/// App-wide router over a SINGLE coordinator: every realtime surface shares
+/// the one 4 req/min budget, making the documented contract ("one active
+/// surface, 4 req/min global") true across home and map — not per-screen.
+/// Owning view models register their handler and point the surface at
+/// themselves; whoever holds the surface gets the polls.
+@MainActor
+final class RealtimePolling {
+    static let shared = RealtimePolling()
+
+    /// "Ahora" arrivals refresh, registered by HomeViewModel.activate().
+    /// Receives the surface's stationId.
+    var homeHandler: (@MainActor (String) async -> Void)?
+    /// Map vehicles refresh, registered by RealtimeMapViewModel.startPolling().
+    /// Receives the surface's line filter (nil = all lines).
+    var mapHandler: (@MainActor (String?) async -> Void)?
+
+    private(set) lazy var coordinator = RealtimePollingCoordinator(
+        now: now,
+        onPoll: { [weak self] surface in
+            await self?.dispatch(surface)
+        }
+    )
+
+    private let now: @Sendable () -> Date
+
+    /// `init` is internal (not private) so tests can build isolated routers
+    /// with a manual clock; production code uses `.shared`.
+    init(now: @escaping @Sendable () -> Date = { Date() }) {
+        self.now = now
+    }
+
+    private func dispatch(_ surface: RealtimeSurface) async {
+        switch surface {
+        case .home(let stationId):
+            await homeHandler?(stationId)
+        case .map(let line):
+            await mapHandler?(line)
+        case .background:
+            break // Spec 4 hook — no handler yet.
+        }
     }
 }

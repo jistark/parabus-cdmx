@@ -10,62 +10,63 @@ struct RealtimeMapView: View {
     @State private var locationCoordinator = LocationCoordinator()
     @State private var cameraPosition: MapCameraPosition = .region(Self.cdmxRegion)
     @State private var showingLineChange = false
+    @State private var showingStationPicker = false
     @State private var showingPrePrompt = false
+    /// Hybrid (satellite + labels) vs standard-muted base map.
+    @State private var useImagery = false
+    /// Tab visibility gate for the scenePhase handler (same role as
+    /// ContentView.isHomeVisible) — only the visible tab may (re)claim the
+    /// shared realtime polling surface.
+    @State private var isMapVisible = false
+    @Namespace private var mapScope
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var selectedStationIdBinding: Binding<String?> {
-        Binding(
-            get: { viewModel.selectedStation?.id },
-            set: { newId in
-                guard let id = newId,
-                      let station = viewModel.resolveStation(byId: id) else { return }
-                viewModel.selectedStation = station
-                animateCamera(to: station.coordinate)
-            }
-        )
-    }
-
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
+            ZStack(alignment: .top) {
                 map
                     .ignoresSafeArea(edges: .bottom)
 
-                VStack(alignment: .leading, spacing: 0) {
-                    statusBar
-                        .padding(.horizontal, Layout.screenMargin)
-                        .padding(.top, Spacing.xs)
-                    Spacer()
-                    StationCarousel(
-                        stations: viewModel.stationsOnSelectedLine,
-                        selectedStationId: selectedStationIdBinding,
-                        onMBTap: { showingLineChange = true }
-                    )
-                    .frame(height: 88)
+                // The mini-cenefa is the single navigator: line block →
+                // line switcher, station area → station picker. The bottom
+                // carousel was a second affordance for the same job and
+                // covered the map — removed.
+                statusBar
+                    .padding(.horizontal, Layout.screenMargin)
+                    .padding(.top, Spacing.xs)
+            }
+            // Controls live bottom-trailing in the thumb zone, like Apple
+            // Maps — top placement read as decoration, not affordance.
+            .overlay(alignment: .bottomTrailing) {
+                mapControlStack
+                    .padding(.trailing, Layout.screenMargin)
                     .padding(.bottom, Spacing.md)
-                }
             }
             .navigationTitle("Mapa en vivo")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
             #endif
             .task {
-                viewModel.startPolling()
+                isMapVisible = true
+                await viewModel.startPolling()
                 handleBootstrap()
             }
+            .onAppear { isMapVisible = true }
             .onDisappear {
-                viewModel.stopPolling()
+                isMapVisible = false
+                Task { await viewModel.stopPolling() }
             }
+            // Mirror ContentView's pattern: gate on tab visibility so a
+            // scene-activation while ANOTHER tab is frontmost can't steal
+            // the shared polling surface from it.
             .onChange(of: scenePhase) { _, newPhase in
-                switch newPhase {
-                case .background, .inactive:
-                    viewModel.stopPolling()
-                case .active:
-                    viewModel.startPolling()
-                @unknown default:
-                    break
+                Task {
+                    if newPhase == .active && isMapVisible {
+                        await viewModel.startPolling()
+                    } else if newPhase != .active {
+                        await viewModel.stopPolling()
+                    }
                 }
             }
             .onChange(of: locationCoordinator.authStatus) { _, _ in
@@ -87,6 +88,17 @@ struct RealtimeMapView: View {
                     onSelect: handleLineChange
                 )
                 .presentationDetents([.medium])
+            }
+            .sheet(isPresented: $showingStationPicker) {
+                StationPicker(
+                    title: String(localized: "Estaciones"),
+                    selectedStation: nil,
+                    onSelect: { picked in
+                        guard let station = viewModel.resolveStation(byId: picked.id) else { return }
+                        viewModel.selectedStation = station
+                        animateCamera(to: station.coordinate)
+                    }
+                )
             }
             .sheet(isPresented: $showingPrePrompt) {
                 LocationPrePromptSheet(
@@ -150,8 +162,11 @@ struct RealtimeMapView: View {
     // MARK: - Map
 
     private var map: some View {
-        Map(position: $cameraPosition) {
-            ForEach(viewModel.vehicles, id: \.stableId) { vehicle in
+        Map(position: $cameraPosition, scope: mapScope) {
+            if locationCoordinator.authStatus == .authorized {
+                UserAnnotation()
+            }
+            ForEach(viewModel.visibleVehicles, id: \.stableId) { vehicle in
                 if let coord = vehicle.coordinate {
                     Annotation(
                         vehicle.vehicleLabel ?? vehicle.vehicleId ?? "",
@@ -165,38 +180,108 @@ struct RealtimeMapView: View {
                 }
             }
         }
-        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+        // Muted emphasis per HIG maps guidance: our own content (buses,
+        // cenefa) is information-rich and should stand out against a
+        // desaturated base map.
+        .mapStyle(useImagery
+            ? .hybrid(elevation: .flat, pointsOfInterest: .excludingAll)
+            : .standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll))
     }
 
-    // MARK: - Status bar
+    // MARK: - Map controls
+    //
+    // Native MapKit controls (location button gets the system Liquid Glass
+    // treatment and the camera-follow behavior for free) plus a map-type
+    // toggle, stacked trailing under the cenefa like Apple Maps.
+
+    private var mapControlStack: some View {
+        VStack(spacing: Spacing.xs) {
+            MapUserLocationButton(scope: mapScope)
+                .mapControlVisibility(locationCoordinator.authStatus == .denied ? .hidden : .visible)
+            MapCompass(scope: mapScope)
+
+            Button {
+                withAnimation(reduceMotion ? nil : .snappy) {
+                    useImagery.toggle()
+                }
+            } label: {
+                Image(systemName: useImagery ? "map.fill" : "globe.americas.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
+            .surface(.floating, cornerRadius: 22)
+            .accessibilityLabel(useImagery
+                ? String(localized: "Cambiar a mapa estándar")
+                : String(localized: "Cambiar a vista satelital"))
+        }
+    }
+
+    // MARK: - Status mini-cenefa
+    //
+    // Cenefa-coded status over native Liquid Glass: the solid line-color
+    // block with the numeral is the MB signage anchor (same vocabulary as
+    // the physical cenefa and the bottom carousel), while the chrome stays
+    // a system glass surface so it reads native over the map instead of
+    // competing with it. Tapping opens the line switcher — same affordance
+    // as the MB block below.
 
     private var statusBar: some View {
         HStack(spacing: Spacing.sm) {
-            statusIndicator
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(statusTitle)
-                    .font(.subheadline.weight(.semibold))
-                Text(statusSubtitle)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+            if let line = viewModel.selectedStation?.lineNumber,
+               viewModel.errorMessage == nil {
+                Button {
+                    showingLineChange = true
+                } label: {
+                    LineBlock(lineNumber: line)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Línea \(line)"))
+                .accessibilityHint(String(localized: "Cambiar de línea"))
+            } else {
+                statusIndicator
+                    .frame(width: 16, height: 16)
             }
 
-            Spacer()
+            Button {
+                showingStationPicker = true
+            } label: {
+                HStack(spacing: Spacing.sm) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(statusTitle)
+                            .brandTitle(BrandTypography.lineLabel)
+                            .foregroundStyle(.primary)
+                            .contentTransition(.opacity)
+                        Text(statusSubtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                    }
+                    .lineLimit(1)
 
-            if viewModel.isLoading {
-                ProgressView()
-                    .controlSize(.small)
+                    Spacer(minLength: Spacing.sm)
+
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        statusIndicator
+                    }
+                }
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(statusTitle). \(statusSubtitle)")
+            .accessibilityHint(String(localized: "Buscar estación"))
         }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
-        .background(.thinMaterial, in: Capsule())
-        .overlay(
-            Capsule().strokeBorder(.separator.opacity(0.5), lineWidth: 0.5)
-        )
+        .padding(.horizontal, Spacing.sm + 2)
+        .padding(.vertical, Spacing.xs + 2)
+        .surface(.floating, cornerRadius: 22)
+        .animation(reduceMotion ? nil : .snappy, value: viewModel.selectedStation?.id)
+        .animation(reduceMotion ? nil : .snappy, value: viewModel.visibleVehicles.count)
     }
+
 
     private var statusIndicator: some View {
         Circle()
@@ -221,21 +306,63 @@ struct RealtimeMapView: View {
         return .green
     }
 
+    /// The station IS the title — it inherited the carousel's role as the
+    /// what-am-I-looking-at anchor.
     private var statusTitle: String {
         if let err = viewModel.errorMessage { return err }
-        if viewModel.serviceInactive { return "Sin servicio reportado" }
-        let count = viewModel.vehicles.count
-        if let line = viewModel.selectedStation?.lineNumber {
-            return "Línea \(line) · \(count) buses"
+        if viewModel.serviceInactive { return String(localized: "Sin servicio reportado") }
+        if let station = viewModel.selectedStation {
+            return station.name
         }
-        return "\(count) buses en vivo"
+        return String(localized: "Buses en vivo")
     }
 
     private var statusSubtitle: String {
-        guard let date = viewModel.lastUpdated else { return "Cargando…" }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return "Actualizado \(formatter.localizedString(for: date, relativeTo: Date()))"
+        guard let date = viewModel.lastUpdated else { return String(localized: "Cargando…") }
+
+        var parts: [String] = []
+
+        let count = viewModel.visibleVehicles.count
+        if viewModel.selectedStation == nil {
+            parts.append(count == 1 ? String(localized: "1 bus") : String(localized: "\(count) buses"))
+        } else {
+            parts.append(count == 1
+                ? String(localized: "1 bus cerca")
+                : String(localized: "\(count) buses cerca"))
+        }
+
+        parts.append(ageText(date))
+
+        if let distance = distanceToSelectedStation {
+            parts.append(distance)
+        }
+
+        return parts.joined(separator: " · ")
+    }
+
+    /// Manual age formatting — RelativeDateTimeFormatter rendered a
+    /// just-fetched timestamp as the future-tense "dentro de 0 s".
+    private func ageText(_ date: Date) -> String {
+        let seconds = max(0, Int(Date().timeIntervalSince(date)))
+        if seconds < 5 { return String(localized: "ahora") }
+        if seconds < 60 { return String(localized: "hace \(seconds) s") }
+        return String(localized: "hace \(seconds / 60) min")
+    }
+
+    /// "a 450 m" / "a 1.2 km" from the user to the focused station, when we
+    /// have a fix. Rounded to 10 m — GPS precision theater helps no one.
+    private var distanceToSelectedStation: String? {
+        guard let userCoord = locationCoordinator.latestLocation,
+              let station = viewModel.selectedStation else { return nil }
+        let meters = CLLocation(latitude: userCoord.latitude, longitude: userCoord.longitude)
+            .distance(from: CLLocation(
+                latitude: station.coordinate.latitude,
+                longitude: station.coordinate.longitude
+            ))
+        if meters < 950 {
+            return String(localized: "a \(Int(meters / 10) * 10) m")
+        }
+        return String(localized: "a \(String(format: "%.1f", meters / 1000)) km")
     }
 
     // MARK: - Helpers

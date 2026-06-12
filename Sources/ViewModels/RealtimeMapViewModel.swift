@@ -3,10 +3,12 @@ import Foundation
 import Observation
 import SwiftUI
 
-/// Backing state for the realtime map. Polls /vehicles every 20s while the
-/// view is visible. The poll interval matches the worker's Cache-API TTL so
-/// requests outside service hours stay cheap (cache hit), and the cron-based
-/// pre-warm keeps the cache hot — first user request is typically < 200ms.
+/// Backing state for the realtime map. While the view is visible it owns the
+/// `.map` surface of the app-wide RealtimePolling router, so /vehicles is
+/// fetched on the coordinator's 25s cadence under the global 4 req/min
+/// budget (spec 3 B3 — previously a private 20s loop; the slight slowdown
+/// keeps the budget contract honest and still rides the worker's Cache-API
+/// TTL + cron pre-warm, so requests stay cheap).
 @MainActor
 @Observable
 final class RealtimeMapViewModel {
@@ -32,15 +34,43 @@ final class RealtimeMapViewModel {
             if let id = selectedStation?.id {
                 UserDefaults.standard.set(id, forKey: MapBootstrap.userDefaultsKeyLastStation)
             }
+            // Keep the server-side filter in sync with the focused station:
+            // /vehicles?line=N returns ~1/7th of the network instead of all
+            // ~800 buses (cheaper for the worker, lighter for MapKit).
+            // selectedLine.didSet cancels any in-flight fetch and refetches.
+            if let line = selectedStation?.lineNumber, line != selectedLine {
+                selectedLine = line
+            }
         }
     }
 
-    /// Carousel data source: the stations on the currently-focused line.
-    var stationsOnSelectedLine: [GTFSStation] {
-        guard let line = selectedStation?.lineNumber else {
-            return GTFSStations.stations(for: MapBootstrap.defaultSeedLine)
+    /// Radius around the selected station within which buses render.
+    /// Matches the camera span (0.04° ≈ 4.4 km tall) so everything drawn
+    /// is on or near the visible viewport.
+    static let nearbyRadiusMeters: CLLocationDistance = 3000
+
+    /// Vehicles to draw on the map: the (already line-filtered) feed,
+    /// narrowed to those near the focused station. The user's mental model
+    /// is "what's coming to MY station" — not the whole line at once.
+    /// Falls back to the full feed before any station is selected.
+    var visibleVehicles: [VehiclePosition] {
+        guard let center = selectedStation?.coordinate else { return vehicles }
+        return Self.vehicles(vehicles, near: center, radius: Self.nearbyRadiusMeters)
+    }
+
+    /// Pure helper (testable without the actor): vehicles within `radius`
+    /// meters of `center`. Vehicles without coordinates are dropped.
+    nonisolated static func vehicles(
+        _ vehicles: [VehiclePosition],
+        near center: CLLocationCoordinate2D,
+        radius: CLLocationDistance
+    ) -> [VehiclePosition] {
+        let centerLocation = CLLocation(latitude: center.latitude, longitude: center.longitude)
+        return vehicles.filter { vehicle in
+            guard let coord = vehicle.coordinate else { return false }
+            let location = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+            return location.distance(from: centerLocation) <= radius
         }
-        return GTFSStations.stations(for: line)
     }
 
     /// Returns the line number for a vehicle's routeId, or nil if unknown.
@@ -53,13 +83,20 @@ final class RealtimeMapViewModel {
     var selectedLine: String? = nil {
         didSet {
             guard oldValue != selectedLine else { return }
-            // User changed filter — cancel any in-flight refresh and start a
-            // fresh one. Without the cancel, rapid filter toggles produce
-            // concurrent fetches racing to set `vehicles` (last-write-wins,
-            // and `isLoading` flickers).
+            guard isPolling else { return }
+            // User changed filter — re-point the surface at the new line and
+            // ask the coordinator for an immediate poll (budget-gated; a
+            // denied poll leaves the previous frame until the next 25s tick).
+            // Cancel any in-flight refresh so rapid filter toggles don't race
+            // to set `vehicles` (last-write-wins, `isLoading` flickers).
             refreshTask?.cancel()
             refreshTask = Task { [weak self] in
-                await self?.fetchOnce()
+                // The cancellation check matters: if stopPolling ran before
+                // this task got scheduled, re-setting the surface here would
+                // resurrect `.map` and steal polling from the incoming tab.
+                guard let self, !Task.isCancelled else { return }
+                await self.polling.coordinator.setSurface(.map(line: self.selectedLine))
+                await self.polling.coordinator.requestImmediatePoll()
             }
         }
     }
@@ -67,33 +104,36 @@ final class RealtimeMapViewModel {
     // MARK: - Polling
 
     private let service: RealtimeService
-    private let pollInterval: Duration
-    private var pollingTask: Task<Void, Never>?
+    /// The app-wide polling router (single coordinator, global budget).
+    /// Injectable so tests can use an isolated instance instead of `.shared`.
+    private let polling: RealtimePolling
+    /// True between startPolling/stopPolling — keeps double-starts (.task +
+    /// scenePhase both fire on first appear) from burning budget.
+    private var isPolling = false
     private var refreshTask: Task<Void, Never>?
 
-    init(service: RealtimeService = .shared, pollInterval: Duration = .seconds(20)) {
+    init(service: RealtimeService = .shared, polling: RealtimePolling = .shared) {
         self.service = service
-        self.pollInterval = pollInterval
+        self.polling = polling
     }
 
-    /// Start the poll loop. Idempotent — calling twice doesn't spawn two loops.
-    /// Also kicks off a one-shot fetch of /static/routes to populate the
-    /// routeId→line index used for marker coloring.
-    func startPolling() {
-        guard pollingTask == nil else { return }
+    /// Claim the `.map` surface and start the coordinator loop. Idempotent —
+    /// calling twice doesn't re-claim or double-poll. Also kicks off a
+    /// one-shot fetch of /static/routes to populate the routeId→line index
+    /// used for marker coloring.
+    func startPolling() async {
+        guard !isPolling else { return }
+        isPolling = true
         Task { await self.loadRouteIndex() }
-        // Capture the interval up front; the closure's `self?.pollInterval`
-        // pattern would otherwise keep the loop running after self deallocates
-        // (`Task.isCancelled` stays false until stopPolling explicitly runs,
-        // which won't happen if the view dies without onDisappear firing).
-        let interval = pollInterval
-        pollingTask = Task { [weak self] in
-            while !Task.isCancelled {
-                guard let self else { return }
-                await self.fetchOnce()
-                try? await Task.sleep(for: interval)
-            }
+        polling.mapHandler = { [weak self] _ in
+            // The surface's line is advisory — fetch with the CURRENT
+            // selectedLine so a poll racing a filter change can't render
+            // the stale line.
+            await self?.fetchOnce()
         }
+        await polling.coordinator.setSurface(.map(line: selectedLine))
+        await polling.coordinator.startLoop()
+        await polling.coordinator.requestImmediatePoll()
     }
 
     private func loadRouteIndex() async {
@@ -108,16 +148,23 @@ final class RealtimeMapViewModel {
         }
     }
 
-    /// Cancel the poll loop. Safe to call multiple times.
-    func stopPolling() {
-        pollingTask?.cancel()
-        pollingTask = nil
+    /// Release the `.map` surface. Safe to call multiple times. The clear is
+    /// conditional: on a tab switch the incoming tab may have already claimed
+    /// the surface (SwiftUI's onDisappear ordering is not guaranteed), and we
+    /// must not clobber it.
+    func stopPolling() async {
+        isPolling = false
         refreshTask?.cancel()
         refreshTask = nil
+        await polling.coordinator.clearSurface(where: { surface in
+            if case .map = surface { return true }
+            return false
+        })
     }
 
     /// Pull-to-refresh entry point. Forces an immediate fetch independent of
-    /// the polling cadence.
+    /// the polling cadence — an explicit user gesture stays out-of-band of
+    /// the 4/min polling budget (same behavior as before B3).
     func refresh() async {
         // Coalesce against in-flight work so pull-to-refresh during a poll
         // tick doesn't double-decode.
@@ -191,12 +238,7 @@ final class RealtimeMapViewModel {
     /// Resolves a station id (from persisted or seed) to an actual GTFSStation.
     /// Returns nil only if the id doesn't exist in any line.
     func resolveStation(byId id: String) -> GTFSStation? {
-        for line in ["1","2","3","4","5","6","7"] {
-            if let match = GTFSStations.stations(for: line).first(where: { $0.id == id }) {
-                return match
-            }
-        }
-        return nil
+        GTFSStations.station(byId: id)
     }
 
     /// User accepted/dismissed the pre-prompt — mark as shown so we don't
