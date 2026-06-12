@@ -28,8 +28,10 @@ struct MainTabView: View {
             }
             .badge(incidentBadge ?? 0)
 
+            // Hybrid map phase 1: the Mapa tab hosts the line timeline;
+            // RealtimeMapView returns in phase 2 as the per-station inspector.
             SwiftUI.Tab("Mapa", systemImage: "map.fill", value: Tab.map) {
-                RealtimeMapView()
+                LineTimelineView()
             }
 
             SwiftUI.Tab("Tus rutas", systemImage: "point.topleft.down.to.point.bottomright.curvepath.fill", value: Tab.commute) {
