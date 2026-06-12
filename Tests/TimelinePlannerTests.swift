@@ -198,4 +198,96 @@ struct TimelinePlannerTests {
         guard segments.count == 1 else { Issue.record("segments=\(segments.count)"); return }
         #expect(segments[0].incident.status == .protest)
     }
+
+    /// Transfers sintéticos: Bravo→Metro 1; Delta→Metro 9; Fox→Metro 12 y Suburbano.
+    /// Carlos→MB 2 (cross-MB NO es ruta de escape; debe ignorarse).
+    static func synTransfers(_ name: String, _ line: String) -> [Correspondence] {
+        switch name {
+        case "Bravo": return [Correspondence(system: .metro, line: "1", brandColorHex: "#F04E98")]
+        case "Delta": return [Correspondence(system: .metro, line: "9", brandColorHex: "#512826")]
+        case "Fox": return [
+            Correspondence(system: .metro, line: "12", brandColorHex: "#B49759"),
+            Correspondence(system: .suburbano, line: "1", brandColorHex: "#D2006E"),
+        ]
+        case "Carlos": return [Correspondence(system: .metrobus, line: "2", brandColorHex: "#C8102E")]
+        default: return []
+        }
+    }
+
+    @Test("alternativas: fronteras primero, luego colapsadas, sin duplicados, máx 3")
+    func alternativesPriority() {
+        // Colapsa Carlos-Eco → fronteras Bravo y Fox; colapsada Delta.
+        let items = TimelinePlanner.resolve(
+            stations: Self.synthetic, incidents: [suspension(["Carlos - Eco"])],
+            reversed: false, transfers: Self.synTransfers)
+        guard items.count == 5, case .interruptedSegment(let seg) = items[2] else {
+            Issue.record("estructura inesperada"); return
+        }
+        guard seg.alternatives.count == 3 else {
+            Issue.record("alternatives=\(seg.alternatives)"); return
+        }
+        // 1º y 2º: transbordos en fronteras (Bravo Metro 1, Fox Metro 12);
+        // el walk siempre cierra. Delta (colapsada) queda fuera por el cap,
+        // y el MB cross de Carlos nunca califica.
+        guard case .transfer(let c0, let s0) = seg.alternatives[0],
+              case .transfer(let c1, let s1) = seg.alternatives[1],
+              case .walk(let minutes, let from, let to) = seg.alternatives[2] else {
+            Issue.record("estructura inesperada: \(seg.alternatives)"); return
+        }
+        #expect(c0.line == "1" && s0.name == "Bravo")
+        #expect(c1.line == "12" && s1.name == "Fox")
+        // Bravo→Fox: 4 × 0.009° ≈ 4003 m → 4003/75 = 53.4 min → techo a múltiplo de 5 = 55.
+        #expect(minutes == 55)
+        #expect(from.name == "Bravo" && to.name == "Fox")
+    }
+
+    @Test("sin frontera (tramo en terminal): sin chip de caminata")
+    func noWalkAtTerminal() {
+        let items = TimelinePlanner.resolve(
+            stations: Self.synthetic, incidents: [suspension(["Alfa - Bravo"])],
+            reversed: false, transfers: Self.synTransfers)
+        guard case .interruptedSegment(let seg) = items.first else {
+            Issue.record("items[0] no es segmento"); return
+        }
+        #expect(!seg.alternatives.contains { if case .walk = $0 { return true } else { return false } })
+        // Bravo está colapsada: su Metro 1 sí aplica como escape de colapsada.
+        #expect(seg.alternatives.contains {
+            if case .transfer(let c, _) = $0 { return c.line == "1" } else { return false }
+        })
+    }
+
+    @Test("cobertura total por incidentes distintos: el banner toma el más severo")
+    func fullCoverageBannerTakesWorst() {
+        // A (.suspended) cubre Alfa-Carlos; B (.protest) cubre Delta-Golf → toda la línea.
+        let a = Incident(status: .suspended, affectedStations: ["Alfa - Carlos"], info: "obras")
+        let b = Incident(status: .protest, affectedStations: ["Delta - Golf"], info: "marcha")
+        let items = TimelinePlanner.resolve(
+            stations: Self.synthetic, incidents: [a, b],
+            reversed: false, transfers: Self.noTransfers)
+        guard case .wholeLineBanner(let incident) = items.first else {
+            Issue.record("items[0] no es banner: \(items.map(\.id))"); return
+        }
+        #expect(incident.status == .protest)
+        #expect(incident.info == "marcha")
+    }
+
+    @Test("caminata mínima de 5 min")
+    func walkFloor() {
+        // Fronteras pegadas (~222 m) → 3 min → piso 5.
+        let tight = ["A", "B", "C"].enumerated().map { i, n in
+            GTFSStation(id: "t-\(i)", name: n, lineNumber: "1",
+                        latitude: 19.500 - Double(i) * 0.001, longitude: -99.150)
+        }
+        let items = TimelinePlanner.resolve(
+            stations: tight, incidents: [suspension(["B"])],
+            reversed: false, transfers: Self.noTransfers)
+        guard items.count == 3, case .interruptedSegment(let seg) = items[1] else {
+            Issue.record("estructura inesperada"); return
+        }
+        let walks = seg.alternatives.compactMap { alt -> Int? in
+            if case .walk(let m, _, _) = alt { return m } else { return nil }
+        }
+        guard walks.count == 1 else { Issue.record("walks=\(walks)"); return }
+        #expect(walks[0] == 5)
+    }
 }

@@ -13,15 +13,17 @@ struct TimelineStation: Equatable, Identifiable {
     var id: String { station.id }
 }
 
-struct InterruptedSegment: Equatable {
+struct InterruptedSegment: Equatable, Identifiable {
     let stations: [GTFSStation]        // colapsadas, en orden de render
     let boundaryBefore: GTFSStation?   // última servida antes (nil si arranca en terminal)
     let boundaryAfter: GTFSStation?    // primera servida después
     let alternatives: [Alternative]
     let incident: Incident
+
+    var id: String { stations.first?.id ?? "seg-empty" }
 }
 
-enum Alternative: Equatable {
+enum Alternative: Equatable, Hashable {
     case transfer(Correspondence, at: GTFSStation)
     case walk(minutes: Int, from: GTFSStation, to: GTFSStation)
 }
@@ -85,8 +87,9 @@ enum TimelinePlanner {
 
         // Si todo el corredor quedó suspendido, degrada a banner: un colapso
         // total no deja timeline que mostrar.
-        if suspendedBy.count == ordered.count, let any = suspendedBy.values.first {
-            banner = banner.map { $0.status >= any.status ? $0 : any } ?? any
+        if suspendedBy.count == ordered.count,
+           let strongest = suspendedBy.values.max(by: { $0.status < $1.status }) {
+            banner = banner.map { $0.status >= strongest.status ? $0 : strongest } ?? strongest
             suspendedBy = [:]
         }
 
@@ -99,11 +102,14 @@ enum TimelinePlanner {
                 var end = index
                 while end + 1 < ordered.count, suspendedBy[end + 1] == incident { end += 1 }
                 let collapsed = Array(ordered[index...end])
+                let boundaryBefore = index > 0 ? ordered[index - 1] : nil
+                let boundaryAfter = end + 1 < ordered.count ? ordered[end + 1] : nil
                 items.append(.interruptedSegment(InterruptedSegment(
                     stations: collapsed,
-                    boundaryBefore: index > 0 ? ordered[index - 1] : nil,
-                    boundaryAfter: end + 1 < ordered.count ? ordered[end + 1] : nil,
-                    alternatives: [],   // Task 6 deriva alternativas
+                    boundaryBefore: boundaryBefore,
+                    boundaryAfter: boundaryAfter,
+                    alternatives: alternatives(collapsed: collapsed, before: boundaryBefore,
+                                              after: boundaryAfter, transfers: transfers),
                     incident: incident
                 )))
                 index = end + 1
@@ -118,6 +124,50 @@ enum TimelinePlanner {
             }
         }
         return items
+    }
+
+    /// Velocidad de caminata para estimados frontera-a-frontera (m/min ≈ 4.5 km/h).
+    /// Se aplica a distancia en línea recta (Haversine), así que el resultado es
+    /// optimista — la UI debe presentarlo como estimado ("~N min"), nunca exacto.
+    private static let walkingSpeedMetersPerMinute = 75.0
+    private static let walkRoundingStepMinutes = 5
+    private static let walkMinimumMinutes = 5
+
+    /// Rutas de escape del tramo muerto. Prioridad: transbordos Metro/Suburbano
+    /// en fronteras (escapas ANTES de entrar al tramo), luego en colapsadas;
+    /// la caminata entre fronteras siempre cierra si ambas existen. Máx 3.
+    static func alternatives(
+        collapsed: [GTFSStation],
+        before: GTFSStation?,
+        after: GTFSStation?,
+        transfers: (String, String) -> [Correspondence]
+    ) -> [Alternative] {
+        let escapeSystems: Set<TransitSystem> = [.metro, .suburbano]
+        let hasWalk = before != nil && after != nil
+        let transferCap = hasWalk ? 2 : 3
+
+        var result: [Alternative] = []
+        var seen = Set<String>()
+        let candidates = [before, after].compactMap { $0 } + collapsed
+
+        outer: for station in candidates {
+            for c in transfers(station.name, station.lineNumber)
+            where escapeSystems.contains(c.system) {
+                guard seen.insert("\(c.system.rawValue)-\(c.line)").inserted else { continue }
+                result.append(.transfer(c, at: station))
+                if result.count == transferCap { break outer }
+            }
+        }
+
+        if let before, let after {
+            let meters = CLLocation(latitude: before.latitude, longitude: before.longitude)
+                .distance(from: CLLocation(latitude: after.latitude, longitude: after.longitude))
+            let rawMinutes = meters / walkingSpeedMetersPerMinute
+            let step = Double(walkRoundingStepMinutes)
+            let minutes = max(walkMinimumMinutes, Int((rawMinutes / step).rounded(.up)) * walkRoundingStepMinutes)
+            result.append(.walk(minutes: minutes, from: before, to: after))
+        }
+        return result
     }
 
     /// Índices afectados en el orden actual. Notación "A - B" expande al rango
