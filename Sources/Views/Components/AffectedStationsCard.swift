@@ -44,13 +44,8 @@ struct AffectedStationsCard: View {
         guard !incidents.isEmpty else { return false }
         return incidents.contains { incident in
             if incident.affectedStations.isEmpty { return true }
-            return incident.affectedStations.contains(where: Self.isWholeLineSentinel)
+            return incident.affectedStations.contains(where: StationNameMatcher.isWholeLineSentinel)
         }
-    }
-
-    private static func isWholeLineSentinel(_ name: String) -> Bool {
-        let normalized = name.lowercased().folding(options: .diacriticInsensitive, locale: .current)
-        return normalized.contains("linea completa") || normalized.contains("toda la linea")
     }
 
     /// Worst-status aggregation across all incidents, keyed by display name.
@@ -58,7 +53,7 @@ struct AffectedStationsCard: View {
     private var affectedStations: [AffectedStation] {
         var aggregated: [String: ServiceStatus] = [:]
         for incident in incidents {
-            for rawName in incident.affectedStations where !Self.isWholeLineSentinel(rawName) {
+            for rawName in incident.affectedStations where !StationNameMatcher.isWholeLineSentinel(rawName) {
                 let names = rawName.contains(" - ")
                     ? rawName.components(separatedBy: " - ")
                     : [rawName]
@@ -78,23 +73,10 @@ struct AffectedStationsCard: View {
                 AffectedStation(
                     id: name,
                     displayName: name,
-                    canonicalName: Self.matchToCanonical(name, stations: allLineStations),
+                    canonicalName: StationNameMatcher.match(name, in: allLineStations)?.name,
                     worstStatus: status
                 )
             }
-    }
-
-    /// Fuzzy match — diacritic-insensitive, case-insensitive, both directions
-    /// (incident name might be "Plaza de la República"; canonical might be
-    /// "Plaza de la República L1"). Returns the canonical name if found.
-    private static func matchToCanonical(_ name: String, stations: [GTFSStation]) -> String? {
-        let normalized = name.lowercased().folding(options: .diacriticInsensitive, locale: .current)
-        return stations.first { station in
-            let canonical = station.name.lowercased().folding(options: .diacriticInsensitive, locale: .current)
-            return canonical == normalized
-                || canonical.contains(normalized)
-                || normalized.contains(canonical)
-        }?.name
     }
 
     private var worstStatusOverall: ServiceStatus {
