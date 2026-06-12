@@ -209,6 +209,11 @@ struct ContentView: View {
             // cards that morph as they appear/disappear, not for static stacked
             // sections. Each `.surface(_:)` already renders its own glass;
             // that's enough.
+            // Home rhythm (Figma spacing pass): the deck hugs its content
+            // (NowDeck measures the tallest card), so sectionSpacing (24)
+            // lands header→card ≈ 24pt and dots→"Tus líneas" ≈ 28pt — the
+            // deck's 16pt dot clearance keeps the page dots tight under the
+            // card instead of drifting into the section gap.
             VStack(spacing: Layout.sectionSpacing) {
                 heroHeader
 
