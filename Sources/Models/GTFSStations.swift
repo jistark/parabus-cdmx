@@ -21,9 +21,9 @@ enum GTFSStations {
     static let allLines: [(number: String, name: String, route: String)] = [
         ("1", "Línea 1", "Indios Verdes - El Caminero"),
         ("2", "Línea 2", "Tacubaya - Tepalcates"),
-        ("3", "Línea 3", "Tenayuca - Etiopía"),
+        ("3", "Línea 3", "Tenayuca - Pueblo Sta. Cruz Atoyac"),
         ("4", "Línea 4", "Buenavista - Aeropuerto T1"),
-        ("5", "Línea 5", "San Lázaro - Río de los Remedios"),
+        ("5", "Línea 5", "Río de los Remedios - Preparatoria 1"),
         ("6", "Línea 6", "El Rosario - Villa de Aragón"),
         ("7", "Línea 7", "Indios Verdes - Campo Marte")
     ]
