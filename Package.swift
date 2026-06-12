@@ -24,10 +24,17 @@ let package = Package(
             path: ".",
             exclude: [
                 "Sources/App",
-                "ParabusWidget",
+                // Built by the Xcode project, not SwiftPM. Without this the
+                // Swift 6.4 toolchain trips on widget-pb/Assets.xcassets
+                // colliding with Sources/Resources/Assets.xcassets.
+                "widget-pb",
                 "Parabus.xcodeproj",
                 ".build",
+                "build",
                 "Tests",
+                "workers",
+                "ref",
+                "docs",
                 "Parabus.entitlements",
                 "WIDGET_SETUP.md"
             ],
