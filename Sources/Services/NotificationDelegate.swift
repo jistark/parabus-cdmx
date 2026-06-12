@@ -22,7 +22,7 @@ import UserNotifications
 /// Sendable via its @Observable + @MainActor declarations being final).
 final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
 
-    /// Router shared with the SwiftUI environment. AlertsView observes
+    /// Router shared with the SwiftUI environment. ContentView observes
     /// `pendingDeepLink` and reacts. `@Observable` types are Sendable so
     /// the cross-actor reference is safe; mutations still happen on
     /// MainActor inside the hop below.
@@ -44,8 +44,8 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     }
 
     /// User tapped a notification. Pull the line+status out of userInfo and
-    /// stash on the router so MainTabView can switch to Alerts and
-    /// AlertsView can scroll to the relevant card.
+    /// stash on the router so MainTabView can switch to the home and
+    /// ContentView can scroll to the relevant line's inline detail.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,

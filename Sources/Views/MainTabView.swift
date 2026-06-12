@@ -1,7 +1,8 @@
 import SwiftUI
 
 // MARK: - Main Tab View
-/// Root navigation structure with 4 tabs
+/// Root navigation structure: 3 tabs + native search (spec 3 B2).
+/// Alertas folded into the home; Ajustes lives behind the home gear.
 /// Design: DESIGN_SYSTEM.md Section 2
 
 struct MainTabView: View {
@@ -11,77 +12,77 @@ struct MainTabView: View {
 
     enum Tab: Hashable {
         case status
-        case alerts
         case map
         case commute
-        case settings
+        case search
     }
 
     var body: some View {
+        // Modern Tab API (iOS 18+): the system owns tab identity and the
+        // Liquid Glass tab bar behaviors — the legacy .tabItem/.tag path
+        // re-resolved tab content on rapid re-taps and glitched the glass
+        // transitions. sidebarAdaptable gives the iPad sidebar for free.
         TabView(selection: $selectedTab) {
-            // Tab 1: Status (Home)
-            ContentView()
-                .tabItem {
-                    Label("Estado", systemImage: "bus.fill")
-                }
-                .tag(Tab.status)
-                .badge(statusBadge ?? 0)
+            SwiftUI.Tab("Ahora", systemImage: "bus.fill", value: Tab.status) {
+                ContentView()
+            }
+            .badge(incidentBadge ?? 0)
 
-            // Tab 2: Alerts
-            AlertsView()
-                .tabItem {
-                    Label("Alertas", systemImage: "exclamationmark.triangle.fill")
-                }
-                .tag(Tab.alerts)
-                .badge(alertsBadge ?? 0)
+            SwiftUI.Tab("Mapa", systemImage: "map.fill", value: Tab.map) {
+                RealtimeMapView()
+            }
 
-            // Tab 3: Live Map
-            RealtimeMapView()
-                .tabItem {
-                    Label("Mapa", systemImage: "map.fill")
-                }
-                .tag(Tab.map)
+            SwiftUI.Tab("Tus rutas", systemImage: "point.topleft.down.to.point.bottomright.curvepath.fill", value: Tab.commute) {
+                CommuteTabView()
+            }
 
-            // Tab 4: My Routes
-            CommuteTabView()
-                .tabItem {
-                    Label("Mis rutas", systemImage: "point.topleft.down.to.point.bottomright.curvepath.fill")
-                }
-                .tag(Tab.commute)
-
-            // Tab 5: Settings
-            SettingsView()
-                .tabItem {
-                    Label("Ajustes", systemImage: "gearshape.fill")
-                }
-                .tag(Tab.settings)
+            // role: .search gives the system search affordance (separated
+            // trailing item on the iOS 26 Liquid Glass bar; magnifier label
+            // and search section in the iPad sidebar).
+            SwiftUI.Tab(value: Tab.search, role: .search) {
+                SearchView()
+            }
         }
+        .tabViewStyle(.sidebarAdaptable)
+        .modifier(TabBarMinimizeOnScroll())
         .tint(.accentColor)
         .task {
             await viewModel.loadStatus()
         }
-        // When a tapped notification sets a pending deep link, switch to
-        // the Alerts tab so AlertsView can pick it up. AlertsView is
-        // responsible for clearing pendingDeepLink after handling.
+        // When a tapped notification sets a pending deep link, land on the
+        // home — ContentView consumes the link (opens the line's inline
+        // detail) and is responsible for clearing pendingDeepLink.
         .onChange(of: notificationRouter.pendingDeepLink) { _, newValue in
             if newValue != nil {
-                selectedTab = .alerts
+                selectedTab = .status
             }
         }
     }
 
     // MARK: - Badge Logic
 
-    /// Badge for Status tab: shows count of lines with issues
-    private var statusBadge: Int? {
-        let count = viewModel.linesWithIssues.count
-        return count > 0 ? count : nil
-    }
-
-    /// Badge for Alerts tab: shows total incident count
-    private var alertsBadge: Int? {
+    /// Single badge on the Ahora tab: total incident count across lines
+    /// (the old Alertas-tab badge, consolidated here when that tab retired).
+    private var incidentBadge: Int? {
         let count = viewModel.linesWithIssues.reduce(0) { $0 + $1.incidentCount }
         return count > 0 ? count : nil
+    }
+}
+
+/// Liquid Glass: the tab bar recedes on scroll-down so content leads
+/// (per "Adopting Liquid Glass"). iOS 26-only API; no-op elsewhere so the
+/// SwiftPM macOS test target keeps compiling.
+private struct TabBarMinimizeOnScroll: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 
@@ -144,9 +145,11 @@ struct CommuteTabView: View {
             .navigationTitle("Mis rutas")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
             .background(Color(.systemGroupedBackground))
             #endif
+            // .always: short content (no commute configured) otherwise
+            // doesn't bounce, so pull-to-refresh can't engage.
+            .scrollBounceBehavior(.always, axes: .vertical)
             .refreshable {
                 await viewModel.refresh()
                 reloadSchedule()

@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// Shared notification-driven state that lives at the App root and propagates
-/// to MainTabView and AlertsView via `@Environment`. Two responsibilities:
+/// to MainTabView and ContentView via `@Environment`. Two responsibilities:
 ///   1. Pending deep links (a notification was tapped while the app was in
 ///      background; we need to surface what line/status to highlight).
 ///   2. Permission state mirror (the actual source of truth is
@@ -11,8 +11,8 @@ import Observation
 @Observable
 @MainActor
 final class NotificationRouter {
-    /// Most recently tapped notification, if any. AlertsView consumes and
-    /// clears it after handling.
+    /// Most recently tapped notification, if any. ContentView (the home)
+    /// consumes and clears it after handling.
     var pendingDeepLink: NotificationDeepLink?
 
     /// Cached permission state. Update via `refreshPermission()`.
@@ -33,7 +33,7 @@ final class NotificationRouter {
 }
 
 /// Identifies what a tapped notification wants the app to surface. Currently
-/// only AlertsView with a line filter; expand here if push-notifications or
+/// the home with a line filter; expand here if push-notifications or
 /// new categories arrive.
 struct NotificationDeepLink: Equatable, Sendable {
     let lineNumber: String

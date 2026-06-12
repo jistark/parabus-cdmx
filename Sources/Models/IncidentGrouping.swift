@@ -1,9 +1,9 @@
 // Sources/Models/IncidentGrouping.swift
 import Foundation
 
-/// Severity ordering for incident lists, extracted from AlertsView's five
-/// hand-rolled sections (spec 2 §5). Shared by the home's alert sections
-/// and AlertsView until the latter dies in spec 3.
+/// Severity ordering for incident lists, extracted from the retired
+/// AlertsView's five hand-rolled sections (spec 2 §5). Used by the home's
+/// alert sections.
 enum IncidentGrouping {
     /// Most urgent first — mirrors the old protests > suspended > delayed
     /// > limited > intervention section order exactly.

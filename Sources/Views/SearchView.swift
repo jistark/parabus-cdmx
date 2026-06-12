@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Station and line search — Task B2 will wire this to the tab bar.
+/// Station and line search — the tab bar's native search tab (spec 3 B2).
 /// Results are case- and diacritic-insensitive via `SearchMatcher`.
 struct SearchView: View {
 

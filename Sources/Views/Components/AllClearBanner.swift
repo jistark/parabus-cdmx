@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// "All clear" state shared by the home ("Todo bien") and AlertsView
-/// ("Sin incidentes") — rescued from AlertsView (spec 2 §5).
+/// "All clear" banner for the home ("Todo bien") — rescued from the
+/// retired AlertsView (spec 2 §5).
 struct AllClearBanner: View {
     let title: String
     let message: String

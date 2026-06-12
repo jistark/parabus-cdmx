@@ -3,9 +3,13 @@ import SwiftUI
 #if canImport(UIKit)
 import UIKit
 #endif
+#if os(iOS)
+import UserNotifications
+#endif
 
 struct ContentView: View {
     @Environment(MetrobusViewModel.self) private var viewModel
+    @Environment(NotificationRouter.self) private var notificationRouter
     @State private var selectedLine: LineStatus?
 
     /// Location for the "Ahora" card. The home never prompts — it only
@@ -21,11 +25,19 @@ struct ContentView: View {
     /// Tracks whether the home tab is on screen, so scenePhase changes don't
     /// re-arm home polling while another tab is visible.
     @State private var isHomeVisible = false
+    /// In-app notification pre-prompt (moved from the retired AlertsView,
+    /// spec 3 B2 — same first-visit trigger, now on the home).
+    @State private var showPermissionPrePrompt = false
     @Namespace private var heroNamespace
 
     @AppStorage(ParabusConstants.favoriteLinesKey, store: ParabusConstants.sharedDefaults)
     private var favoriteLines: String = ParabusConstants.defaultFavoriteLines
     @AppStorage("homeLineFilter") private var homeLineFilter = "favorites"
+    /// Tracks whether we've already shown the in-app pre-prompt offering
+    /// to enable notifications. Once true, never shown again — user can
+    /// still flip the master toggle in Settings.
+    @AppStorage("hasShownNotificationPrePrompt") private var hasShownPrePrompt = false
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
@@ -83,6 +95,7 @@ struct ContentView: View {
                 await homeVM.loadServiceColors()
                 await homeVM.activate()
                 await viewModel.loadStatus()
+                await maybeShowPermissionPrePrompt()
             }
             .onChange(of: locationCoordinator.latestLocation) { _, _ in
                 reResolveDeck()
@@ -125,7 +138,75 @@ struct ContentView: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+            .confirmationDialog(
+                "¿Quieres saber cuándo hay incidentes?",
+                isPresented: $showPermissionPrePrompt,
+                titleVisibility: .visible
+            ) {
+                Button("Activar notificaciones") {
+                    Task { await requestNotificationsAndPersist() }
+                }
+                Button("Ahora no", role: .cancel) {
+                    // Persist that we showed it so we don't pester them.
+                    hasShownPrePrompt = true
+                }
+            } message: {
+                Text("Te avisaremos sobre suspensiones, retrasos o manifestaciones en tus líneas favoritas. Puedes ajustar qué tipos en Ajustes.")
+            }
         }
+    }
+
+    // MARK: - Notification permission flow
+
+    /// On first ever visit to the home (and only if the user hasn't already
+    /// answered), show our pre-prompt. Pre-prompts before the system
+    /// dialog have substantially better grant rates than asking cold.
+    /// Moved from the retired AlertsView (spec 3 B2).
+    private func maybeShowPermissionPrePrompt() async {
+        guard !hasShownPrePrompt else { return }
+        // Don't show if the system has already given an answer (e.g., user
+        // toggled the master switch in Settings first, which already
+        // triggered the system dialog).
+        #if os(iOS)
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        guard settings.authorizationStatus == .notDetermined else {
+            hasShownPrePrompt = true
+            return
+        }
+        #endif
+        showPermissionPrePrompt = true
+    }
+
+    private func requestNotificationsAndPersist() async {
+        hasShownPrePrompt = true
+        #if os(iOS)
+        let granted = await BackgroundRefreshManager.shared.requestNotificationPermission()
+        notificationsEnabled = granted
+        await notificationRouter.refreshPermission()
+        #endif
+    }
+
+    /// If the router has a tapped-notification deep link, surface it by
+    /// selecting the corresponding line (the inline detail opens below the
+    /// carousel) and scrolling it into view. Clears the link so it isn't
+    /// re-applied on subsequent appears — same consume semantics as the
+    /// retired AlertsView.
+    private func consumePendingDeepLink(proxy: ScrollViewProxy) {
+        guard let link = notificationRouter.pendingDeepLink else { return }
+        if let line = viewModel.allLines.first(where: { $0.lineNumber == link.lineNumber }) {
+            selectedLine = line
+            // Next runloop hop so the inline detail exists before we scroll.
+            Task { @MainActor in
+                if reduceMotion {
+                    proxy.scrollTo("lineDetail", anchor: .top)
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        proxy.scrollTo("lineDetail", anchor: .top)
+                    }
+                }
+            }
+        }
+        notificationRouter.pendingDeepLink = nil
     }
 
     // MARK: - Hero Header
@@ -205,6 +286,12 @@ struct ContentView: View {
     // MARK: - Main Content
 
     private var mainContent: some View {
+        ScrollViewReader { proxy in
+            scrollContent(proxy: proxy)
+        }
+    }
+
+    private func scrollContent(proxy: ScrollViewProxy) -> some View {
         ScrollView {
             // No LiquidGlassContainer here — wrapping all sections in
             // GlassEffectContainer made AlertCard's tinted glass blur into a
@@ -302,6 +389,7 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, Layout.cardInset)
                     .transition(.opacity.combined(with: .move(edge: .top)))
+                    .id("lineDetail")  // scroll target for deep links
                 }
 
                 if selectedLine == nil {
@@ -344,6 +432,16 @@ struct ContentView: View {
             reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8),
             value: viewModel.lines.map(\.id)
         )
+        // Deep links: mainContent only renders once status has loaded, so a
+        // cold launch from a notification tap consumes here on first appear
+        // (the old AlertsView consumed after loadStatus in its .task); warm
+        // taps land via the onChange.
+        .task {
+            consumePendingDeepLink(proxy: proxy)
+        }
+        .onChange(of: notificationRouter.pendingDeepLink) { _, _ in
+            consumePendingDeepLink(proxy: proxy)
+        }
     }
 
     // MARK: - Lines Carousel Filter
