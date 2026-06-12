@@ -19,14 +19,24 @@ enum GTFSStations {
     }
 
     static let allLines: [(number: String, name: String, route: String)] = [
-        ("1", "Linea 1", "Indios Verdes - El Caminero"),
-        ("2", "Linea 2", "Tacubaya - Tepalcates"),
-        ("3", "Linea 3", "Tenayuca - Etiopia"),
-        ("4", "Linea 4", "Buenavista - Aeropuerto T1"),
-        ("5", "Linea 5", "San Lazaro - Rio de los Remedios"),
-        ("6", "Linea 6", "El Rosario - Villa de Aragon"),
-        ("7", "Linea 7", "Indios Verdes - Campo Marte")
+        ("1", "Línea 1", "Indios Verdes - El Caminero"),
+        ("2", "Línea 2", "Tacubaya - Tepalcates"),
+        ("3", "Línea 3", "Tenayuca - Etiopía"),
+        ("4", "Línea 4", "Buenavista - Aeropuerto T1"),
+        ("5", "Línea 5", "San Lázaro - Río de los Remedios"),
+        ("6", "Línea 6", "El Rosario - Villa de Aragón"),
+        ("7", "Línea 7", "Indios Verdes - Campo Marte")
     ]
+
+    /// Find a station by its GTFS id across every line.
+    static func station(byId id: String) -> GTFSStation? {
+        for line in allLines {
+            if let match = stations(for: line.number).first(where: { $0.id == id }) {
+                return match
+            }
+        }
+        return nil
+    }
 
     static func search(_ query: String) -> [GTFSStation] {
         guard !query.isEmpty else { return [] }
@@ -460,7 +470,7 @@ struct GTFSStation: Identifiable, Hashable, Codable {
     }
     
     var displayName: String { name }
-    var lineDisplayName: String { "Linea \(lineNumber)" }
+    var lineDisplayName: String { "Línea \(lineNumber)" }
     
     func toCommuteStation() -> CommuteStation {
         CommuteStation(id: id, name: name, lineNumber: lineNumber, latitude: latitude, longitude: longitude)
