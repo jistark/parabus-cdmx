@@ -138,10 +138,10 @@ struct ContentView: View {
                 showingSettings = true
             } label: {
                 Image(systemName: "gearshape.fill")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 44, height: 44, alignment: .leading)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.primary)
             }
+            .modifier(GlassCircleButton())
             .accessibilityLabel(String(localized: "Ajustes"))
 
             Text("PARABÚS")
@@ -529,6 +529,36 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
         }
+    }
+}
+
+/// Circular Liquid Glass button for hero-header icon buttons (gear, etc.).
+/// iOS 26: native `.buttonStyle(.glass)` with `.buttonBorderShape(.circle)`.
+/// Pre-26 / macOS: 36-pt ultraThinMaterial circle, gear in `.secondary`.
+/// The 44-pt content shape is preserved on both paths.
+private struct GlassCircleButton: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
+            content
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .contentShape(Circle().size(CGSize(width: 44, height: 44)))
+        } else {
+            legacyCircle(content)
+        }
+        #else
+        legacyCircle(content)
+        #endif
+    }
+
+    @ViewBuilder
+    private func legacyCircle(_ content: Content) -> some View {
+        content
+            .foregroundStyle(.secondary)
+            .frame(width: 36, height: 36)
+            .background(.ultraThinMaterial, in: Circle())
+            .contentShape(Circle().size(CGSize(width: 44, height: 44)))
     }
 }
 
