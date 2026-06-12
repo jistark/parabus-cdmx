@@ -17,9 +17,9 @@ import SwiftUI
 //      "Plaza de la República - Vocacional 5") is split into endpoints and
 //      both are surfaced individually.
 //
-// We deliberately don't draw a geographic timeline: `GTFSStations` is sorted
-// alphabetically (no GTFS route order on the client post HIGH-16), so a
-// vertical "line map" would be a lie. The count + list reads honestly.
+// We deliberately don't draw a geographic timeline here: route order is now
+// available via `MBRouteOrder`, but the alphabetical list remains an intentional
+// choice for this card — geographic rendering is owned by the timeline view.
 
 struct AffectedStationsCard: View {
     let lineNumber: String

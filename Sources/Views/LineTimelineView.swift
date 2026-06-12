@@ -78,6 +78,7 @@ struct LineTimelineView: View {
             }
             .scrollBounceBehavior(.always, axes: .vertical)
             .refreshable { await viewModel.refresh() }
+            .onChange(of: lineNumber) { _, _ in reversed = false }
             .task {
                 await viewModel.loadStatus()
                 locationCoordinator.requestLocation()
@@ -160,7 +161,7 @@ struct LineTimelineView: View {
         case .interruptedSegment(let seg):
             HStack(alignment: .top, spacing: Spacing.sm) {
                 TimelineRail(color: lineColor, style: .dashed, node: .none)
-                    .overlay(ghostNodes)
+                    .overlay(ghostNodes(count: seg.stations.count))
                 InterruptionCard(segment: seg,
                                  lastUpdated: lineStatus?.lastUpdated ?? .now)
                     .padding(.vertical, Spacing.xs)
@@ -172,11 +173,11 @@ struct LineTimelineView: View {
     }
 
     /// Nodos fantasma equiespaciados sobre el punteado — uno por estación
-    /// colapsada hasta un máximo visual de 3 (más sería ruido).
-    private var ghostNodes: some View {
+    /// colapsada, tope visual de 3 (más sería ruido).
+    private func ghostNodes(count: Int) -> some View {
         VStack {
             Spacer()
-            ForEach(0..<3, id: \.self) { _ in
+            ForEach(0..<min(count, 3), id: \.self) { _ in
                 TimelineRail(color: lineColor, style: .none, node: .ghost)
                     .frame(height: 10)
                 Spacer()

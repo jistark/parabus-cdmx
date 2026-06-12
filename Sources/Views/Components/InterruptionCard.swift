@@ -59,9 +59,7 @@ struct InterruptionCard: View {
             ? names[0]
             : "\(names.first ?? "") – \(names.last ?? "")"
         let count = names.count == 1 ? "" : " (\(names.count) estaciones)"
-        return (Text("Sin servicio: ")
-            + Text(range).fontWeight(.semibold)
-            + Text(count))
+        return Text("Sin servicio: \(Text(range).font(.caption.weight(.semibold)))\(count)")
             .font(.caption)
             .foregroundStyle(.primary)
     }
