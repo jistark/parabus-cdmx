@@ -16,7 +16,7 @@ struct AlertCard: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 header
-                CompactStationTimeline(
+                AffectedSegmentTimeline(
                     incidents: line.incidents,
                     lineColor: LineColors.color(for: line.lineNumber)
                 )
