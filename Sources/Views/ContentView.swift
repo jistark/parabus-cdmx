@@ -101,10 +101,13 @@ struct ContentView: View {
                 isHomeVisible = false
                 Task { await homeVM.deactivate() }
             }
-            .sheet(item: $selectedLine) { line in
-                LineDetailSheet(line: line)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+            // Keep the inline detail in sync across refreshes: the view model
+            // rebuilds `LineStatus` values, and `selectedLine` holds a copy —
+            // re-point it at the fresh value (or clear it if the line vanished)
+            // so the inline detail live-updates.
+            .onChange(of: viewModel.allLines) { _, newLines in
+                guard let current = selectedLine else { return }
+                selectedLine = newLines.first { $0.lineNumber == current.lineNumber }
             }
             .sheet(isPresented: $showingStationDetail) {
                 if let entry = homeVM.visibleEntry {
@@ -275,37 +278,63 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, Layout.screenMargin)
 
-                    LinesCarousel(lines: carouselLines) { line in
+                    LinesCarousel(
+                        lines: carouselLines,
+                        selectedLineNumber: selectedLine?.lineNumber
+                    ) { line in
                         triggerHaptic()
-                        selectedLine = line
+                        // Tap toggles: re-tapping the selected line deselects.
+                        if selectedLine?.lineNumber == line.lineNumber {
+                            selectedLine = nil
+                        } else {
+                            selectedLine = line
+                        }
                     }
                 }
 
-                // 3. Active Incidents (real-time urgent issues: delays, suspensions)
-                if !urgentIncidents.isEmpty {
-                    urgentIncidentsSection
+                // 2b. Inline line detail (Figma home polish A2): replaces the
+                // old LineDetailSheet on the home. While a line is selected it
+                // becomes the focus — the general alert sections below hide.
+                if let selectedLine {
+                    LineInlineDetail(line: selectedLine) {
+                        triggerHaptic()
+                        self.selectedLine = nil
+                    }
+                    .padding(.horizontal, Layout.cardInset)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                // 4. Station Interventions (maintenance/obras at specific stations)
-                if !interventionIncidents.isEmpty {
-                    stationInterventionsSection
-                }
+                if selectedLine == nil {
+                    // 3. Active Incidents (real-time urgent issues: delays, suspensions)
+                    if !urgentIncidents.isEmpty {
+                        urgentIncidentsSection
+                    }
 
-                // 5. Scheduled closures (from maintenance calendar, filtered for deduplication)
-                if viewModel.hasMaintenanceToday {
-                    scheduledClosuresSection
-                }
+                    // 4. Station Interventions (maintenance/obras at specific stations)
+                    if !interventionIncidents.isEmpty {
+                        stationInterventionsSection
+                    }
 
-                // 6. All clear: when nothing above rendered, say so instead
-                // of trailing off into empty space.
-                if urgentIncidents.isEmpty && interventionIncidents.isEmpty && !viewModel.hasMaintenanceToday {
-                    AllClearBanner(
-                        title: String(localized: "Todo bien"),
-                        message: String(localized: "Sin incidentes al momento")
-                    )
+                    // 5. Scheduled closures (from maintenance calendar, filtered for deduplication)
+                    if viewModel.hasMaintenanceToday {
+                        scheduledClosuresSection
+                    }
+
+                    // 6. All clear: when nothing above rendered, say so instead
+                    // of trailing off into empty space.
+                    if urgentIncidents.isEmpty && interventionIncidents.isEmpty && !viewModel.hasMaintenanceToday {
+                        AllClearBanner(
+                            title: String(localized: "Todo bien"),
+                            message: String(localized: "Sin incidentes al momento")
+                        )
+                    }
                 }
             }
             .padding(.vertical, Layout.cardInset)
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8),
+                value: selectedLine
+            )
         }
         // Without this, a content set shorter than the viewport (e.g. a day
         // with zero incidents) doesn't bounce, so pull-to-refresh never
@@ -449,7 +478,11 @@ struct ContentView: View {
                     closures: filteredClosures,
                     title: "", // We already show the header
                     icon: "calendar.badge.clock",
-                    isToday: true
+                    isToday: true,
+                    onSelectLine: { lineNumber in
+                        triggerHaptic()
+                        selectedLine = viewModel.allLines.first { $0.lineNumber == lineNumber }
+                    }
                 )
             }
         }

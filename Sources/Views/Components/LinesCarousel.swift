@@ -3,16 +3,25 @@ import SwiftUI
 /// Horizontal scrolling carousel showing all lines
 struct LinesCarousel: View {
     let lines: [LineStatus]
+    /// Line number of the currently selected card (inline detail open on the
+    /// home). When non-nil, the selected card gets a stroke + scale affordance
+    /// and the rest dim so the selection pops. Defaults to nil so call sites
+    /// without a selection model are unaffected.
+    var selectedLineNumber: String? = nil
     let onSelect: (LineStatus) -> Void
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
                 ForEach(sortedLines) { line in
-                    LineCarouselCard(line: line)
-                        .onTapGesture {
-                            onSelect(line)
-                        }
+                    LineCarouselCard(
+                        line: line,
+                        isSelected: line.lineNumber == selectedLineNumber,
+                        isDimmed: selectedLineNumber != nil && line.lineNumber != selectedLineNumber
+                    )
+                    .onTapGesture {
+                        onSelect(line)
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -33,6 +42,14 @@ struct LinesCarousel: View {
 
 struct LineCarouselCard: View {
     let line: LineStatus
+    /// Selected affordance: line-color stroke + slight scale (stroke only
+    /// under Reduce Motion).
+    var isSelected: Bool = false
+    /// True for the non-selected cards while ANY selection is active, so the
+    /// selected one pops (Figma focus behavior).
+    var isDimmed: Bool = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: Spacing.xs) {
@@ -62,9 +79,30 @@ struct LineCarouselCard: View {
                 .lineLimit(1)
         }
         .frame(width: 70)
+        // Selection stroke drawn slightly outside the card bounds so the
+        // 70-pt layout (and inter-card spacing) never shifts; the carousel's
+        // `.scrollClipDisabled()` keeps it from being clipped at the edges.
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: Layout.cornerRadiusMedium, style: .continuous)
+                    .strokeBorder(lineColor, lineWidth: 2)
+                    .padding(-6)
+            }
+        }
+        .scaleEffect(isSelected && !reduceMotion ? 1.05 : 1.0)
+        .opacity(isDimmed ? 0.6 : 1.0)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7),
+            value: isSelected
+        )
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7),
+            value: isDimmed
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Línea \(line.lineNumber), \(statusText)")
         .accessibilityAddTraits(line.hasIssues ? .updatesFrequently : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var lineColor: Color {
@@ -102,7 +140,9 @@ struct LineCarouselCard: View {
         case .delayed: return "Retrasos"
         case .suspended: return "Suspendida"
         case .protest: return "Protestas"
-        case .unknown: return "Otra"
+        // "Aviso" — there IS an incident, we just couldn't bucket it.
+        // The detail sheet shows the operator's words.
+        case .unknown: return "Aviso"
         }
     }
 }
@@ -121,6 +161,25 @@ struct LineCarouselCard: View {
                 LineStatus(lineNumber: "6", transportType: .metrobus, status: .suspended, affectedStations: ["Aragon"]),
                 LineStatus(lineNumber: "7", transportType: .metrobus, status: .regular),
             ],
+            onSelect: { _ in }
+        )
+    }
+    .padding(.vertical)
+    #if os(iOS)
+    .background(Color(.systemGroupedBackground))
+    #endif
+}
+
+#Preview("Selected Line") {
+    VStack {
+        LinesCarousel(
+            lines: [
+                LineStatus(lineNumber: "1", transportType: .metrobus, status: .regular),
+                LineStatus(lineNumber: "2", transportType: .metrobus, status: .intervention, affectedStations: ["Iztacalco"]),
+                LineStatus(lineNumber: "3", transportType: .metrobus, status: .regular),
+                LineStatus(lineNumber: "4", transportType: .metrobus, status: .delayed, affectedStations: ["Buenavista"]),
+            ],
+            selectedLineNumber: "4",
             onSelect: { _ in }
         )
     }

@@ -8,17 +8,24 @@ struct MaintenanceSection: View {
     let title: String
     let icon: String
     let isToday: Bool
+    /// When set, tapping a line group row selects that line (the home uses
+    /// this to open the inline line detail) instead of expanding the group.
+    /// Defaults to nil so existing call sites (AlertsView) keep the
+    /// expand/collapse behavior unchanged.
+    let onSelectLine: ((String) -> Void)?
 
     init(
         closures: [ScheduledClosure],
         title: String = "Cierres por mantenimiento",
         icon: String = "calendar.badge.clock",
-        isToday: Bool = true
+        isToday: Bool = true,
+        onSelectLine: ((String) -> Void)? = nil
     ) {
         self.closures = closures
         self.title = title
         self.icon = icon
         self.isToday = isToday
+        self.onSelectLine = onSelectLine
     }
 
     private var closuresByLine: [String: [ScheduledClosure]] {
@@ -46,7 +53,7 @@ struct MaintenanceSection: View {
 
                     Spacer()
 
-                    Text("\(closures.count) estacion\(closures.count == 1 ? "" : "es")")
+                    Text(closures.count == 1 ? "1 estación" : "\(closures.count) estaciones")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -60,7 +67,8 @@ struct MaintenanceSection: View {
                         MaintenanceLineGroup(
                             lineNumber: lineNumber,
                             closures: lineClosures,
-                            isToday: isToday
+                            isToday: isToday,
+                            onSelectLine: onSelectLine
                         )
                     }
                 }
@@ -76,6 +84,9 @@ struct MaintenanceLineGroup: View {
     let lineNumber: String
     let closures: [ScheduledClosure]
     let isToday: Bool
+    /// When set, the whole row selects the line (home → inline line detail)
+    /// instead of expanding/collapsing the closure list.
+    var onSelectLine: ((String) -> Void)? = nil
 
     @State private var isExpanded = false
 
@@ -83,8 +94,12 @@ struct MaintenanceLineGroup: View {
         VStack(alignment: .leading, spacing: 0) {
             // Line header
             Button {
-                withAnimation(.snappy) {
-                    isExpanded.toggle()
+                if let onSelectLine {
+                    onSelectLine(lineNumber)
+                } else {
+                    withAnimation(.snappy) {
+                        isExpanded.toggle()
+                    }
                 }
             } label: {
                 HStack(spacing: 12) {
@@ -92,7 +107,7 @@ struct MaintenanceLineGroup: View {
                     LineBadgeMini(lineNumber: lineNumber)
 
                     // Station count
-                    Text("\(closures.count) estacion\(closures.count == 1 ? "" : "es")")
+                    Text(closures.count == 1 ? "1 estación" : "\(closures.count) estaciones")
                         .font(.subheadline)
                         .foregroundStyle(.primary)
 
