@@ -24,6 +24,13 @@ enum ServiceStatus: String, Codable, CaseIterable, Comparable {
             self = .suspended
         } else if normalized.contains("retraso") ||
                   normalized.contains("obstrucción") || normalized.contains("obstruccion") ||
+                  normalized.contains("carril confinado") ||
+                  normalized.contains("avería") || normalized.contains("averia") ||
+                  normalized.contains("percance") ||
+                  normalized.contains("descompuest") ||
+                  normalized.contains("accidente") || normalized.contains("choque") ||
+                  normalized.contains("semáforo") || normalized.contains("semaforo") ||
+                  normalized.contains("encharcamiento") ||
                   normalized.contains("congestionamiento") {
             self = .delayed
         } else if normalized.contains("limitado") {
@@ -34,6 +41,23 @@ enum ServiceStatus: String, Codable, CaseIterable, Comparable {
             self = .regular
         } else {
             self = .unknown
+        }
+    }
+
+    /// Human-facing label with proper accents. `rawValue` doubles as the
+    /// Codable representation in cached payloads and the scraper's matching
+    /// vocabulary, so it must stay as-is — display sites use this instead.
+    /// `String(localized:)` so a future String Catalog can translate it;
+    /// without one it returns the key verbatim.
+    var displayName: String {
+        switch self {
+        case .regular: return String(localized: "Servicio regular")
+        case .intervention: return String(localized: "Intervención en la estación")
+        case .limited: return String(localized: "Servicio limitado")
+        case .delayed: return String(localized: "Servicio con retraso")
+        case .suspended: return String(localized: "Servicio suspendido")
+        case .protest: return String(localized: "Manifestación")
+        case .unknown: return String(localized: "Estado desconocido")
         }
     }
 
@@ -140,7 +164,7 @@ struct LineStatus: Identifiable, Codable, Hashable {
         lastUpdated: Date = Date()
     ) {
         self.lineNumber = lineNumber
-        self.lineName = lineName.isEmpty ? "Linea \(lineNumber)" : lineName
+        self.lineName = lineName.isEmpty ? "Línea \(lineNumber)" : lineName
         self.transportType = transportType
         self.incidents = incidents
         self.lastUpdated = lastUpdated
@@ -204,21 +228,21 @@ struct LineStatus: Identifiable, Codable, Hashable {
     /// Texto descriptivo del estado
     var statusDescription: String {
         if !hasIssues {
-            return "Servicio operando con normalidad"
+            return String(localized: "Servicio operando con normalidad")
         }
 
         if incidents.count == 1 {
-            var description = status.rawValue
+            var description = status.displayName
             if !affectedStations.isEmpty {
-                description += " en: \(affectedStations.joined(separator: ", "))"
+                description += String(localized: " en: \(affectedStations.joined(separator: ", "))")
             }
             return description
         }
 
         // Multiple incidents
-        var description = "\(incidents.count) incidentes activos"
+        var description = String(localized: "\(incidents.count) incidentes activos")
         if !affectedStations.isEmpty {
-            description += ". Estaciones afectadas: \(affectedStations.joined(separator: ", "))"
+            description += String(localized: ". Estaciones afectadas: \(affectedStations.joined(separator: ", "))")
         }
         return description
     }
@@ -261,7 +285,15 @@ struct ScrapingResult {
 
 /// Represents a scheduled station closure for maintenance
 struct ScheduledClosure: Identifiable, Codable, Hashable {
-    let id: UUID
+    /// Identity from the natural key — same reasoning as `LineStatus.id`:
+    /// a stored `UUID()` regenerated on every init made each refresh
+    /// produce "brand-new" closures, churning ForEach diffs and dismissing
+    /// any UI keyed on a stale UUID. Uses `stableKey` (not `displayName`,
+    /// which is localized) so identity doesn't shift with the locale.
+    var id: String {
+        "\(lineNumber)|\(stationName)|\(direction.stableKey)|\(closurePeriod)"
+    }
+
     let lineNumber: String
     let stationName: String
     let direction: ClosureDirection
@@ -279,7 +311,6 @@ struct ScheduledClosure: Identifiable, Codable, Hashable {
         parsedDates: [Date]? = nil,
         hours: ClosureHours? = nil
     ) {
-        self.id = UUID()
         self.lineNumber = lineNumber
         self.stationName = stationName
         self.direction = direction
@@ -335,24 +366,36 @@ enum ClosureDirection: Codable, Hashable {
         }
     }
 
+    /// Locale-independent identity token (see `ScheduledClosure.id`).
+    var stableKey: String {
+        switch self {
+        case .both: return "both"
+        case .northbound: return "north"
+        case .southbound: return "south"
+        case .eastbound: return "east"
+        case .westbound: return "west"
+        case .custom(let direction): return direction
+        }
+    }
+
     var displayName: String {
         switch self {
-        case .both: return "Ambos sentidos"
-        case .northbound: return "Direccion Norte"
-        case .southbound: return "Direccion Sur"
-        case .eastbound: return "Direccion Oriente"
-        case .westbound: return "Direccion Poniente"
+        case .both: return String(localized: "Ambos sentidos")
+        case .northbound: return String(localized: "Dirección Norte")
+        case .southbound: return String(localized: "Dirección Sur")
+        case .eastbound: return String(localized: "Dirección Oriente")
+        case .westbound: return String(localized: "Dirección Poniente")
         case .custom(let direction): return direction
         }
     }
 
     var shortName: String {
         switch self {
-        case .both: return "Ambos"
-        case .northbound: return "Norte"
-        case .southbound: return "Sur"
-        case .eastbound: return "Oriente"
-        case .westbound: return "Poniente"
+        case .both: return String(localized: "Ambos")
+        case .northbound: return String(localized: "Norte")
+        case .southbound: return String(localized: "Sur")
+        case .eastbound: return String(localized: "Oriente")
+        case .westbound: return String(localized: "Poniente")
         case .custom(let direction):
             // Truncate if too long
             if direction.count > 15 {
