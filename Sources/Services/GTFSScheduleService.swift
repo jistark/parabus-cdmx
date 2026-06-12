@@ -58,6 +58,29 @@ actor GTFSScheduleService {
         }
     }
 
+    /// The next bus per direction (andén) at a station, on the CDMX clock.
+    /// Groups arrivals by headsign and keeps the soonest of each — one row
+    /// per platform is how a traveler thinks ("uno a Tepalcates, otro a
+    /// Tacubaya"), not an undifferentiated list of identical "Llegando"s.
+    /// Falls back to a single nil-headsign row against an old worker.
+    func upcomingBuses(at stationId: String, limit: Int = 3) async -> [UpcomingBus] {
+        let now = currentTimeInMinutes()
+        let arrivals = await nextArrivals(at: stationId, limit: 12)
+
+        var seen = Set<String>()
+        var buses: [UpcomingBus] = []
+        for arrival in arrivals {
+            let key = arrival.headsign ?? "?"
+            guard seen.insert(key).inserted else { continue }
+            buses.append(UpcomingBus(
+                headsign: arrival.headsign,
+                waitMinutes: max(0, arrival.arrivalMinutes - now)
+            ))
+            if buses.count >= limit { break }
+        }
+        return buses
+    }
+
     /// Get ETA string for next arrival at a station.
     func etaString(for stationId: String) async -> String? {
         let arrivals = await nextArrivals(at: stationId, limit: 1)
@@ -67,7 +90,7 @@ actor GTFSScheduleService {
         let minutesUntil = next.arrivalMinutes - now
 
         if minutesUntil <= 0 {
-            return "Llegando"
+            return String(localized: "Llegando")
         } else if minutesUntil == 1 {
             return "1 min"
         } else if minutesUntil < 60 {
@@ -135,7 +158,8 @@ actor GTFSScheduleService {
                 tripId: $0.tripId,
                 stopId: stopId,
                 arrivalMinutes: $0.arrivalMinutes,
-                sequence: $0.sequence
+                sequence: $0.sequence,
+                headsign: $0.headsign
             )
         }
         stopCache[stopId] = (arrivals, Date())
@@ -158,8 +182,15 @@ actor GTFSScheduleService {
         return try SharedCoders.plainDecoder.decode(T.self, from: data)
     }
 
+    /// GTFS arrival times are CDMX-local (the worker filters "next arrivals"
+    /// against CDMX time too), so the client-side re-filter must use the
+    /// same clock — `Calendar.current` shifted every ETA for any device
+    /// outside America/Mexico_City.
+    private static let cdmxTimeZone = TimeZone(identifier: "America/Mexico_City")!
+
     private func currentTimeInMinutes() -> Int {
-        let calendar = Calendar.current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = Self.cdmxTimeZone
         let now = Date()
         let hour = calendar.component(.hour, from: now)
         let minute = calendar.component(.minute, from: now)
@@ -179,6 +210,9 @@ private struct WireArrival: Decodable {
     let tripId: String
     let arrivalMinutes: Int
     let sequence: Int
+    /// Direction headsign ("Tepalcates"). Optional: workers older than the
+    /// v2 schedule shape omit it.
+    let headsign: String?
 }
 
 private struct TravelTimeResponse: Decodable {
@@ -195,12 +229,29 @@ struct ScheduledArrival: Identifiable {
     let stopId: String
     let arrivalMinutes: Int // Minutes since midnight
     let sequence: Int
+    /// Direction the bus is heading ("Tepalcates"); nil on old worker data.
+    let headsign: String?
+
+    init(tripId: String, stopId: String, arrivalMinutes: Int, sequence: Int, headsign: String? = nil) {
+        self.tripId = tripId
+        self.stopId = stopId
+        self.arrivalMinutes = arrivalMinutes
+        self.sequence = sequence
+        self.headsign = headsign
+    }
 
     var arrivalTime: String {
         let hours = arrivalMinutes / 60
         let minutes = arrivalMinutes % 60
         return String(format: "%02d:%02d", hours, minutes)
     }
+}
+
+/// The next bus toward one direction (andén) — what the "Ahora" card rows
+/// render.
+struct UpcomingBus: Equatable, Sendable {
+    let headsign: String?
+    let waitMinutes: Int
 }
 
 // MARK: - CommuteSchedule Extension
