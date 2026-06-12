@@ -40,7 +40,7 @@ struct MetrobusViewModelTests {
         let cache = InMemoryCacheStorage()
         try await cache.save(ScrapingResult(
             lines: MockTransitData.lines,
-            scrapedAt: Date().addingTimeInterval(-600), // 10 min old
+            scrapedAt: Date().addingTimeInterval(-660), // 11 min old → triggers stale policy
             source: URL(string: "https://test")!
         ))
 
@@ -88,7 +88,7 @@ struct MetrobusViewModelTests {
         await viewModel.loadStatus()
 
         // Assert
-        #expect(viewModel.statusSummary == "Todas las lineas operando normal")
+        #expect(viewModel.statusSummary == "Todas las líneas operando normal")
     }
 
     @Test("Status summary shows incident count when no closures")
@@ -111,7 +111,7 @@ struct MetrobusViewModelTests {
         await viewModel.loadStatus()
 
         // Assert
-        #expect(viewModel.statusSummary == "2 lineas con incidentes")
+        #expect(viewModel.statusSummary == "2 líneas con incidentes")
     }
 
     @Test("Lines are sorted by line number")

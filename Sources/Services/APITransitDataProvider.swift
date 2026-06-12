@@ -77,8 +77,14 @@ enum APIConfiguration {
     /// metrobus-status.starkji.workers.dev stays alive as fallback).
     static let baseURL: URL = URL(string: "https://bus.parab.us")!
 
-    /// Timeout for API requests in seconds.
+    /// Timeout for regular (cached) API requests in seconds.
     static let timeoutInterval: TimeInterval = 15.0
+
+    /// Timeout for force-refresh requests (`?refresh=true`). These bypass the
+    /// worker's KV cache and re-scrape upstream; jdv-bot on Render can cold-
+    /// start in 30 s+, so 45 s gives it a reasonable window to respond without
+    /// leaving the user spinning indefinitely.
+    static let forceRefreshTimeoutInterval: TimeInterval = 45.0
 }
 
 // MARK: - API Transit Data Provider
@@ -145,7 +151,7 @@ actor APITransitDataProvider: TransitDataProviding {
         if forceRefresh {
             url = url.appending(queryItems: [URLQueryItem(name: "refresh", value: "true")])
         }
-        let response = try await fetchAPIResponse(from: url)
+        let response = try await fetchAPIResponse(from: url, forceRefresh: forceRefresh)
         let scrapedAt = parseDate(response.lastUpdated) ?? Date()
         let source = APIConfiguration.baseURL.appendingPathComponent("status")
 
@@ -173,7 +179,7 @@ actor APITransitDataProvider: TransitDataProviding {
             url = url.appending(queryItems: [URLQueryItem(name: "refresh", value: "true")])
         }
 
-        let response = try await fetchAPIResponse(from: url)
+        let response = try await fetchAPIResponse(from: url, forceRefresh: forceRefresh)
         let lines = response.lines.map { convertToLineStatus($0) }
 
         return ScrapingResult(
@@ -187,12 +193,24 @@ actor APITransitDataProvider: TransitDataProviding {
 
     // MARK: - Private Methods
 
-    private func fetchAPIResponse(from url: URL? = nil) async throws -> APIMetrobusResponse {
+    /// Fetch a decoded API response.
+    ///
+    /// - Parameter url: Full URL including any query items (e.g. `?refresh=true`).
+    ///   When nil, the default `/status` endpoint is used.
+    /// - Parameter forceRefresh: When true the request carries `?refresh=true`
+    ///   and uses the longer `forceRefreshTimeoutInterval` so jdv-bot cold-starts
+    ///   don't time-out before the upstream scrape completes.
+    private func fetchAPIResponse(from url: URL? = nil, forceRefresh: Bool = false) async throws -> APIMetrobusResponse {
         let requestURL = url ?? APIConfiguration.baseURL.appendingPathComponent("status")
 
         var request = URLRequest(url: requestURL)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Parabus-iOS/1.0", forHTTPHeaderField: "User-Agent")
+        // Per-request timeout: force-refresh requests wait for upstream re-scrape
+        // (jdv-bot cold-start ≤ 30 s) while normal cached requests stay snappy.
+        if forceRefresh {
+            request.timeoutInterval = APIConfiguration.forceRefreshTimeoutInterval
+        }
 
         do {
             let (data, response) = try await session.data(for: request)

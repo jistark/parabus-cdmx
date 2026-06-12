@@ -15,6 +15,9 @@ struct ContentView: View {
     @State private var homeVM = HomeViewModel()
     @State private var showingSettings = false
     @State private var showingStationDetail = false
+    /// Briefly true after a failed pull-to-refresh so the hero header shows
+    /// "No se pudo actualizar" for ~3 seconds before reverting to the timestamp.
+    @State private var showRefreshFailure = false
     /// Tracks whether the home tab is on screen, so scenePhase changes don't
     /// re-arm home polling while another tab is visible.
     @State private var isHomeVisible = false
@@ -61,6 +64,15 @@ struct ContentView: View {
             #endif
             .refreshable {
                 await viewModel.refresh()
+                #if os(iOS)
+                UINotificationFeedbackGenerator()
+                    .notificationOccurred(viewModel.refreshFailed ? .warning : .success)
+                if viewModel.refreshFailed {
+                    showRefreshFailure = true
+                    try? await Task.sleep(for: .seconds(3))
+                    showRefreshFailure = false
+                }
+                #endif
             }
             .task {
                 isHomeVisible = true
@@ -143,7 +155,24 @@ struct ContentView: View {
             Spacer()
 
             if viewModel.isRefreshing {
-                RefreshingIndicator()
+                // Progress indicator shown while the network request is in
+                // flight. controlSize(.small) is one step up from .mini so
+                // it sits comfortably next to caption text in the header.
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Actualizando…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityLabel("Actualizando estado del servicio")
+            } else if showRefreshFailure {
+                // Transient "failed" copy shown for ~3 s after a PTR error.
+                // Plain text swap — no animation needed for Reduce Motion.
+                Text("No se pudo actualizar")
+                    .font(.caption)
+                    .foregroundStyle(StatusColors.warning)
+                    .accessibilityLabel("No se pudo actualizar el estado del servicio")
             } else if let description = viewModel.lastUpdatedDescription {
                 // Warning tint when the data is stale (upstream served
                 // cache, refresh failed, or cache aged out) — the
