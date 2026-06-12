@@ -24,6 +24,9 @@ struct ParabusApp: App {
     #endif
 
     init() {
+        // Favorites moved from .standard to the App Group suite so the
+        // widget can read them; carry over any pre-existing selection.
+        ParabusConstants.migrateFavoritesToSharedDefaults()
         #if os(iOS)
         BackgroundRefreshManager.shared.registerBackgroundTask()
         let router = NotificationRouter()

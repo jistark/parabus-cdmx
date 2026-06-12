@@ -8,6 +8,39 @@ enum ParabusConstants {
     static let widgetCacheFileName = "widget_status.json"
     static let widgetKind = "MetrobusStatusWidget"
     static let accessoryWidgetKind = "MetrobusAccessoryWidget"
+
+    // MARK: Favorites (shared with the widget)
+
+    static let favoriteLinesKey = "favoriteLines"
+    static let defaultFavoriteLines = "1,2,3"
+
+    /// App Group defaults — the widget extension can't read the app's
+    /// `.standard` defaults, so favorites live here. Nil when the App Group
+    /// isn't available (SwiftPM tests, previews); callers fall back to
+    /// `.standard`. Computed (not `static let`) because UserDefaults isn't
+    /// Sendable under Swift 6 strict concurrency; Foundation caches suite
+    /// state internally so re-instantiating is cheap.
+    static var sharedDefaults: UserDefaults? {
+        UserDefaults(suiteName: appGroupIdentifier)
+    }
+
+    /// Favorite line numbers as a parsed set, read from the shared store.
+    static func favoriteLineNumbers() -> Set<String> {
+        let csv = (sharedDefaults ?? .standard).string(forKey: favoriteLinesKey)
+            ?? defaultFavoriteLines
+        return Set(csv.split(separator: ",").map(String.init))
+    }
+
+    /// One-time migration: favorites lived in `.standard` before the widget
+    /// needed them. Copy into the App Group suite if not there yet so the
+    /// user's existing selection survives the upgrade.
+    static func migrateFavoritesToSharedDefaults() {
+        guard let shared = sharedDefaults,
+              shared.string(forKey: favoriteLinesKey) == nil,
+              let legacy = UserDefaults.standard.string(forKey: favoriteLinesKey)
+        else { return }
+        shared.set(legacy, forKey: favoriteLinesKey)
+    }
 }
 
 // MARK: - Shared Coders
@@ -81,25 +114,25 @@ enum WidgetServiceStatus: String, Codable, CaseIterable {
 
     var displayText: String {
         switch self {
-        case .regular: return "Normal"
-        case .intervention: return "Obra"
-        case .limited: return "Limitado"
-        case .delayed: return "Retraso"
-        case .suspended: return "Suspendido"
-        case .protest: return "Manifestación"
-        case .unknown: return "?"
+        case .regular: return String(localized: "Normal")
+        case .intervention: return String(localized: "Obra")
+        case .limited: return String(localized: "Limitado")
+        case .delayed: return String(localized: "Retraso")
+        case .suspended: return String(localized: "Suspendido")
+        case .protest: return String(localized: "Manifestación")
+        case .unknown: return String(localized: "Sin datos")
         }
     }
 
     var shortText: String {
         switch self {
-        case .regular: return "OK"
-        case .intervention: return "Obra"
-        case .limited: return "Lim."
-        case .delayed: return "Retraso"
-        case .suspended: return "Susp."
-        case .protest: return "Marcha"
-        case .unknown: return "?"
+        case .regular: return String(localized: "OK")
+        case .intervention: return String(localized: "Obra")
+        case .limited: return String(localized: "Lim.")
+        case .delayed: return String(localized: "Retraso")
+        case .suspended: return String(localized: "Susp.")
+        case .protest: return String(localized: "Marcha")
+        case .unknown: return String(localized: "S/D")
         }
     }
 
@@ -173,6 +206,25 @@ struct WidgetData: Codable {
 
     var allClear: Bool {
         linesWithIssues.isEmpty
+    }
+
+    /// Copy with the staleness flag overridden. The flag persisted at save
+    /// time only captures *upstream* staleness; the timeline provider also
+    /// needs to mark data that has simply aged out (no cache write in a
+    /// while), which can't be known until render time.
+    func withStale(_ stale: Bool) -> WidgetData {
+        WidgetData(lines: lines, updatedAt: updatedAt, isStale: stale)
+    }
+
+    /// Restrict the snapshot to the user's favorite lines — the widget shows
+    /// only what the user said they care about. Falls back to the full
+    /// network when favorites are empty or none match (a stale favorites
+    /// set must not blank the widget).
+    func scoped(to favorites: Set<String>) -> WidgetData {
+        guard !favorites.isEmpty else { return self }
+        let scopedLines = lines.filter { favorites.contains($0.lineNumber) }
+        guard !scopedLines.isEmpty else { return self }
+        return WidgetData(lines: scopedLines, updatedAt: updatedAt, isStale: isStale)
     }
 
     static let placeholder = WidgetData(
