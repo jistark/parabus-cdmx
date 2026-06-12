@@ -82,7 +82,10 @@ struct StationNowCard: View {
         }
         .padding(Layout.cardInset)
         .surface(.base, cornerRadius: Layout.cornerRadiusMedium)
-        .task(id: station.id) {
+        // Keyed on liveRows presence too: if the card enters the legacy path
+        // mid-session (worker degrades, liveRows non-nil → nil), the id flips
+        // from nil to station.id and the schedule fetch fires fresh.
+        .task(id: liveRows == nil ? station.id : nil) {
             guard liveRows == nil else { return }
             await loadArrivals()
         }
@@ -166,8 +169,10 @@ struct StationNowCard: View {
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             } else {
+                // Cap at 3: the deck height budgets three rows; multi-service
+                // stops can yield four.
                 VStack(spacing: Spacing.xs) {
-                    ForEach(liveRows, id: \.self) { row in
+                    ForEach(Array(liveRows.prefix(3)), id: \.self) { row in
                         liveRow(row)
                     }
                 }
@@ -230,7 +235,7 @@ struct StationNowCard: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.secondary)
                     Text(headsign)
-                        .font(.subheadline)
+                        .brandTitle(BrandTypography.statusLabel) // matches the live row — no typeface flip when degrading
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }

@@ -59,12 +59,15 @@ struct AlertCard: View {
 
     /// Manual age formatting — RelativeDateTimeFormatter renders a
     /// just-fetched timestamp as the future-tense "dentro de 0 s".
+    /// "act." (actualizado) because lastUpdated is the fetch time, not the
+    /// incident start — the worker doesn't expose incident start time;
+    /// first-seen tracking is a spec-3 candidate.
     private var relativeAge: String {
         let seconds = max(0, Int(Date().timeIntervalSince(line.lastUpdated)))
-        if seconds < 5 { return String(localized: "ahora") }
-        if seconds < 60 { return String(localized: "hace \(seconds) s") }
-        if seconds < 3600 { return String(localized: "hace \(seconds / 60) min") }
-        return String(localized: "hace \(seconds / 3600) h")
+        if seconds < 5 { return String(localized: "act. ahora") }
+        if seconds < 60 { return String(localized: "act. hace \(seconds) s") }
+        if seconds < 3600 { return String(localized: "act. hace \(seconds / 60) min") }
+        return String(localized: "act. hace \(seconds / 3600) h")
     }
 }
 

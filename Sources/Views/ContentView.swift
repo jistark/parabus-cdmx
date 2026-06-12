@@ -15,6 +15,9 @@ struct ContentView: View {
     @State private var homeVM = HomeViewModel()
     @State private var showingSettings = false
     @State private var showingStationDetail = false
+    /// Tracks whether the home tab is on screen, so scenePhase changes don't
+    /// re-arm home polling while another tab is visible.
+    @State private var isHomeVisible = false
     @Namespace private var heroNamespace
 
     @AppStorage(ParabusConstants.favoriteLinesKey, store: ParabusConstants.sharedDefaults)
@@ -60,6 +63,7 @@ struct ContentView: View {
                 await viewModel.refresh()
             }
             .task {
+                isHomeVisible = true
                 if locationCoordinator.authStatus == .authorized {
                     locationCoordinator.requestLocation()
                 }
@@ -76,11 +80,15 @@ struct ContentView: View {
             }
             .onChange(of: scenePhase) { _, newPhase in
                 Task {
-                    if newPhase == .active { await homeVM.activate() }
-                    else { await homeVM.deactivate() }
+                    if newPhase == .active && isHomeVisible { await homeVM.activate() }
+                    else if newPhase != .active { await homeVM.deactivate() }
                 }
             }
-            .onDisappear { Task { await homeVM.deactivate() } }
+            .onAppear { isHomeVisible = true }
+            .onDisappear {
+                isHomeVisible = false
+                Task { await homeVM.deactivate() }
+            }
             .sheet(item: $selectedLine) { line in
                 LineDetailSheet(line: line)
                     .presentationDetents([.medium, .large])
