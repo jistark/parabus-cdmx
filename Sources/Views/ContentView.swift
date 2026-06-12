@@ -22,6 +22,9 @@ struct ContentView: View {
     /// Briefly true after a failed pull-to-refresh so the hero header shows
     /// "No se pudo actualizar" for ~3 seconds before reverting to the timestamp.
     @State private var showRefreshFailure = false
+    /// Cancels any in-flight "No se pudo actualizar" hold so rapid PTR
+    /// attempts don't stack up multiple 3-second timers.
+    @State private var refreshFailureTask: Task<Void, Never>?
     /// Tracks whether the home tab is on screen, so scenePhase changes don't
     /// re-arm home polling while another tab is visible.
     @State private var isHomeVisible = false
@@ -80,9 +83,14 @@ struct ContentView: View {
                 UINotificationFeedbackGenerator()
                     .notificationOccurred(viewModel.refreshFailed ? .warning : .success)
                 if viewModel.refreshFailed {
-                    showRefreshFailure = true
-                    try? await Task.sleep(for: .seconds(3))
-                    showRefreshFailure = false
+                    // Detach the 3s hold so the system spinner releases
+                    // immediately. Cancel any prior hold (rapid PTR).
+                    refreshFailureTask?.cancel()
+                    refreshFailureTask = Task {
+                        showRefreshFailure = true
+                        try? await Task.sleep(for: .seconds(3))
+                        if !Task.isCancelled { showRefreshFailure = false }
+                    }
                 }
                 #endif
             }
@@ -195,18 +203,21 @@ struct ContentView: View {
         guard let link = notificationRouter.pendingDeepLink else { return }
         if let line = viewModel.allLines.first(where: { $0.lineNumber == link.lineNumber }) {
             selectedLine = line
-            // Next runloop hop so the inline detail exists before we scroll.
-            Task { @MainActor in
-                if reduceMotion {
-                    proxy.scrollTo("lineDetail", anchor: .top)
-                } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        proxy.scrollTo("lineDetail", anchor: .top)
-                    }
-                }
-            }
         }
         notificationRouter.pendingDeepLink = nil
+    }
+
+    /// Scroll the inline detail into view. Called from the detail's
+    /// `.onAppear` so layout is guaranteed to exist before we scroll —
+    /// no Task-hop race.
+    private func scrollToLineDetail(proxy: ScrollViewProxy) {
+        if reduceMotion {
+            proxy.scrollTo("lineDetail", anchor: .top)
+        } else {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                proxy.scrollTo("lineDetail", anchor: .top)
+            }
+        }
     }
 
     // MARK: - Hero Header
@@ -390,6 +401,9 @@ struct ContentView: View {
                     .padding(.horizontal, Layout.cardInset)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                     .id("lineDetail")  // scroll target for deep links
+                    // Scroll on appear — layout is guaranteed here so there
+                    // is no Task-hop race with the deep-link consumer above.
+                    .onAppear { scrollToLineDetail(proxy: proxy) }
                 }
 
                 if selectedLine == nil {

@@ -33,6 +33,10 @@ final class HomeViewModel {
     /// The app-wide polling router (single coordinator, global budget).
     /// Injectable so tests can use an isolated instance instead of `.shared`.
     private let polling: RealtimePolling
+    /// Double-activation guard (mirrors RealtimeMapViewModel.isPolling):
+    /// `.task` and scenePhase both fire on first appear; the second call must
+    /// be a no-op so we don't burn two budget slots on identical polls.
+    private var isActive = false
 
     init(
         fetchArrivals: @escaping @Sendable (String) async -> ArrivalsResponse? = { stopId in
@@ -50,9 +54,12 @@ final class HomeViewModel {
 
     /// Home became visible (tab/scene active). Re-arms the loop per the
     /// coordinator contract (setSurface(nil) cancels it; reactivation must
-    /// call startLoop() again).
+    /// call startLoop() again). Idempotent — the second call from scenePhase
+    /// while `.task` already completed is a no-op, saving a budget slot.
     func activate() async {
+        guard !isActive else { return }
         guard let entry = visibleEntry else { return }
+        isActive = true
         polling.homeHandler = { [weak self] stationId in
             await self?.refreshArrivals(for: stationId)
         }
@@ -65,6 +72,7 @@ final class HomeViewModel {
     /// the background trip mode). Conditional clear: if the map tab already
     /// claimed the surface (tab-switch ordering is not guaranteed), leave it.
     func deactivate() async {
+        isActive = false
         await polling.coordinator.clearSurface(where: { surface in
             if case .home = surface { return true }
             return false

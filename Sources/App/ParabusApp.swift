@@ -13,7 +13,7 @@ struct ParabusApp: App {
 
     /// Shared deep-link + permission state for local notifications. Lives at
     /// the App root so the UNUserNotificationCenter delegate (set once at
-    /// launch) can mutate `pendingDeepLink` and AlertsView/MainTabView can
+    /// launch) can mutate `pendingDeepLink` and ContentView/MainTabView can
     /// observe via @Environment.
     @State private var notificationRouter = NotificationRouter()
 

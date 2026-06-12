@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 /// Station and line search — the tab bar's native search tab (spec 3 B2).
@@ -9,6 +10,9 @@ struct SearchView: View {
     @State private var query = ""
     @State private var selectedLine: LineStatus? = nil
     @State private var selectedStation: GTFSStation? = nil
+    /// Nearest-station suggestion. Owns its own coordinator — no prompting;
+    /// only uses a fix when the system has already authorized location.
+    @State private var locationCoordinator = LocationCoordinator()
 
     // MARK: - Body
 
@@ -30,6 +34,13 @@ struct SearchView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
+        }
+        .task {
+            // Never prompt — only resolve a fix when permission is already
+            // granted (same contract as ContentView's home location use).
+            if locationCoordinator.authStatus == .authorized {
+                locationCoordinator.requestLocation()
+            }
         }
         // Sheets ─ mirror the pattern used in ContentView / MainTabView
         .sheet(item: $selectedLine) { line in
@@ -63,6 +74,18 @@ struct SearchView: View {
                 }
             } header: {
                 Text("Tu commute")
+            }
+        }
+
+        // Nearest station (only when we have a location fix, deduped vs commute)
+        let commuteIds = Set(commuteStations.map(\.id))
+        if let coord = locationCoordinator.latestLocation,
+           let nearest = GTFSStations.nearestStation(to: coord, inLine: nil),
+           !commuteIds.contains(nearest.id) {
+            Section {
+                nearestStationRow(nearest)
+            } header: {
+                Text("La más cercana")
             }
         }
 
@@ -182,6 +205,40 @@ struct SearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(station.name), Línea \(station.lineNumber)")
+        .accessibilityHint("Abre próximas llegadas")
+    }
+
+    private func nearestStationRow(_ station: GTFSStation) -> some View {
+        Button {
+            selectedStation = station
+        } label: {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(LineColors.color(for: station.lineNumber))
+                    .frame(width: 28, height: 28)
+                    .overlay {
+                        Image(systemName: "location.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                    }
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(station.name)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    Text("Línea \(station.lineNumber)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(station.name), Línea \(station.lineNumber), la más cercana")
         .accessibilityHint("Abre próximas llegadas")
     }
 

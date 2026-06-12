@@ -49,8 +49,13 @@ struct RealtimeMapView: View {
             #endif
             .task {
                 isMapVisible = true
-                await viewModel.startPolling()
+                // Bootstrap (station/line selection) runs BEFORE startPolling
+                // so the coordinator's initial surface carries the correct line
+                // filter. Without this ordering the first /vehicles fetch is
+                // unfiltered (~800 vehicles) and the selectedLine.didSet
+                // immediately fires a second fetch — wasting a budget slot.
                 handleBootstrap()
+                await viewModel.startPolling()
             }
             .onAppear { isMapVisible = true }
             .onDisappear {

@@ -72,7 +72,8 @@ actor RealtimePollingCoordinator {
         await tick()
     }
 
-    /// Start the 25s self-ticking loop (call once from the app root).
+    /// Start the 25s self-ticking loop. Started by the surface owners:
+    /// HomeViewModel.activate() and RealtimeMapViewModel.startPolling().
     /// Tests drive `tick()` manually instead.
     func startLoop() {
         loopTask?.cancel()

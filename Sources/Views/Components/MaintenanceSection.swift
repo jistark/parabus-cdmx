@@ -10,8 +10,8 @@ struct MaintenanceSection: View {
     let isToday: Bool
     /// When set, tapping a line group row selects that line (the home uses
     /// this to open the inline line detail) instead of expanding the group.
-    /// Defaults to nil so existing call sites (AlertsView) keep the
-    /// expand/collapse behavior unchanged.
+    /// Defaults to nil so call sites without a selection handler keep
+    /// the expand/collapse behavior unchanged.
     let onSelectLine: ((String) -> Void)?
 
     init(
